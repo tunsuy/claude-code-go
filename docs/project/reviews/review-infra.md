@@ -8,9 +8,9 @@
 
 ## 总体评价
 
-基础设施层设计整体思路清晰，TS → Go 的类型映射合理，三级配置加载、并发安全 Store、JSONL 会话持久化的核心骨架已具备可实施性。文档具备较高的完成度，可作为编码实现的起点。
+基础设施层设计整体思路清晰，层次划分合理，TypeScript → Go 的类型映射策略（branded string、discriminated union → struct + Type 字段、泛型 Store）体现了对 Go 惯用法的良好理解。依赖方向图正确，零依赖的 `pkg/types` 作为基石的设计符合架构文档要求，`RWMutex` 锁外通知订阅者的设计防止了死锁，`AtomicWriteFile` 的 rename 策略符合 POSIX 原子性语义，均是亮点。
 
-但评审过程中发现若干**设计缺陷与遗漏**，部分属于会在编码阶段引发 bug 或编译失败的严重问题，需要在开始实现前明确解决方案。整体结论为**有条件通过**，修复下列 P0/P1 问题后可启动编码。
+但评审过程中发现 **3 个 P0 级缺陷**，会在编码阶段直接导致运行时崩溃、数据竞争或企业安全策略失效，必须在动工前修复。另有若干 P1、P2 问题影响可测试性和代码质量。
 
 ---
 
@@ -18,54 +18,68 @@
 
 | 严重级别 | 位置 | 问题描述 | 建议 |
 |---------|------|---------|------|
-| **P0** | `pkg/types/ids.go` `NewAgentId()` | 函数体为 `panic("see internal/bootstrap")`，但同时在 `pkg/utils/ids/ids.go` 中又有完整的 `NewAgentId` 实现。`pkg/types` 是零依赖类型包，不应承担生成逻辑；当前写法会在任何调用者调用 `types.NewAgentId()` 时直接 panic，且无法 import `pkg/utils/ids`（循环依赖）。 | 删除 `pkg/types/ids.go` 中的 `NewAgentId()` 函数，仅保留 `AsAgentId()`/`AsSessionId()` 两个转换函数；生成逻辑完全收归 `pkg/utils/ids`。 |
-| **P0** | `internal/state/store.go` `SetState` + 4.3 AppState | `SetState` 使用 `func(prev T) T` 的值语义 updater，但 `AppState` 中含有 `map`（Tasks、AgentNameRegistry 等）和 `slice`（MCPClients 等）字段，这些是引用类型——"返回修改后的结构体值" 后旧值与新值共享同一 map/slice 底层数组，`s.mu.Unlock()` 之后 `onChange/notifyListeners` 传出的 `prev` 依然指向相同的 map，导致**读到已变更的旧状态**，竞争条件在有订阅者时必现。 | Phase 1 至少对 map 字段做浅拷贝（`maps.Clone`），或在 `SetState` 文档中明确禁止 updater 直接 mutate map；4.4 节的"示例"代码中直接 `prev.Tasks[taskId] = ...` 正是危险用法，需加警告并给出正确示例（先 `maps.Clone`，再赋值）。 |
-| **P0** | `internal/config/loader.go` `Load()` | `for src, path := range paths` 遍历 `map` 时迭代顺序不确定，但 `mergeSettings` 依赖固定的层级顺序（Policy < User < Project < Local）。若迭代顺序随机，读取文件的顺序虽不影响合并（合并在 `mergeSettings` 中按参数顺序），但 `ptrs` 赋值本身无顺序问题——**真正的 P0 是**：`os.IsNotExist(err)` 在 Go 1.13+ 已废弃，应改用 `errors.Is(err, os.ErrNotExist)`；旧 API 对 wrapped error 无法正确检测，会导致配置文件缺失时返回错误而非静默跳过。 | 将 `os.IsNotExist(err)` 替换为 `errors.Is(err, os.ErrNotExist)`（全文一致）。 |
-| **P1** | `internal/state/store.go` `Subscribe()` | 取消订阅通过"将切片对应位置置 nil"实现，但切片只增不减，长期运行后存在内存泄漏（nil 槽永远不会被回收）。且 `idx` 在闭包中捕获，当切片扩容（`append` 触发底层数组重分配）后 `idx` 依然有效，但若两个 goroutine 同时 `Subscribe`，存在 `append` 与 `idx` 读取的竞争。 | 改用 `map[uint64]Listener[T]` 加自增 ID 管理订阅者；取消时从 map 中 delete，彻底消除泄漏与竞争。 |
-| **P1** | `internal/config/loader.go` `applyLayer()` | `applyLayer` 仅手写了少量字段（`Model`、`APIKeyHelper`、`DefaultShell`、`RespectGitignore`、`CleanupPeriodDays`、`Env`、`Permissions`），注释"其余字段类似处理"——`SettingsJson` 共有 20+ 字段，大量字段（`AWSCredentialExport`、`GCPAuthRefresh`、`Hooks`、`Worktree`、`EnableAllProjectMCP`、`EnabledMCPServers` 等）缺乏合并逻辑，在当前设计下会被静默丢弃。 | 明确列出所有字段的合并语义；或改用反射/code-gen 生成合并代码；至少在文档中补全所有字段的处理策略（覆盖/追加/忽略）。 |
-| **P1** | `pkg/types/logs.go` `EntryEnvelope` | `EntryEnvelope.Raw` 字段缺少 `json:"..."` tag，在 JSON 反序列化时 `Raw` 不会被自动填充——当前 `ReadAll` 中是手动赋值 `env.Raw = json.RawMessage(line)`，但 `EntryEnvelope` 作为公开类型，使用者会误以为可直接通过标准 `json.Unmarshal` 填充 `Raw`。 | 为 `Raw` 添加 `json:"-"` 明确标记为非 JSON 字段，并在文档注释中说明需由调用方手动赋值；或改名为 `RawLine` 并加注释说明。 |
-| **P1** | `pkg/types/command.go` `LocalCommandContext` | `AppStateReader` 接口定义在 `pkg/types` 包内，但其方法 `GetPermissionContext() ToolPermissionContext` 返回的是同包类型，这本身没问题；**问题在于** `LocalCommandContext.AppState` 字段名与 `internal/state.AppStateStore` 存在概念混淆——命令层只需要只读快照，但接口未限制写操作（缺少 `context.Context` 参数），导致命令执行时无法支持取消/超时。 | `LocalCommandContext` 增加 `Ctx context.Context` 字段；`Call` 函数签名应包含 `context.Context` 参数以支持取消。 |
-| **P1** | `internal/session/store.go` `SessionStore` | `AppendEntry` 在加锁前先调用 `json.Marshal`（CPU 密集），这是正确的；但 `file.Write` 不保证原子性（write syscall 可能被拆分），对于 JSONL 格式，一行 JSON 若写入不完整将导致文件损坏，且无 `Sync`/`Flush` 调用，进程崩溃时最后若干行会丢失。 | 对于追加写入，Linux/macOS 的 `O_APPEND` + 单次 `write` 对于小于 PIPE_BUF（4096 字节）的数据是原子的，但消息可能超过此限制；建议改用 `bufio.Writer` + 定期 `Flush`，或在 `Close` 前调用 `file.Sync()`；同时在文档中说明崩溃恢复策略（`ReadAll` 中跳过损坏行已处理）。 |
-| **P2** | `pkg/types/permissions.go` `PermissionUpdate.Type` | `Type` 字段为裸 `string`，文档注释标注了有效值（`addRules|replaceRules|...`），但没有对应的枚举常量定义，调用方必须手写字符串字面量，易出错且无法 IDE 补全。 | 新增 `PermissionUpdateType string` 类型及对应常量（`PermissionUpdateAddRules` 等）。 |
-| **P2** | `internal/state/app_state.go` `AppState` | `MCPClients/MCPTools/MCPCommands/PluginsEnabled/PluginsDisabled` 全部用 `[]any` 并打 `json:"-"`，丢失了类型安全。当 `internal/state` 包需要操作这些字段时，调用者必须进行类型断言，极易引入运行时 panic。 | 定义前向声明接口（如 `MCPConnection interface{ ... }`）放在 `pkg/types` 或 `internal/state` 中，或至少使用具体指针类型（即便以注释说明"未来替换"）；避免 `[]any`。 |
-| **P2** | `pkg/utils/json/json.go` 包名冲突 | 包名为 `json`，与标准库 `encoding/json` 同名，虽然内部已用 `stdjson` 别名规避，但**调用方**在同一文件中同时 import `encoding/json` 和本包时，必须给其中一个起别名，降低可读性。 | 将包名改为 `jsonutil` 或 `jsonlines`，文件保留在 `pkg/utils/json/` 目录但 `package jsonutil`。 |
-| **P2** | `internal/config/loader.go` `LayeredSettings.Merged` 注释 | 注释写"合并后的有效配置（Local > Project > User > Policy）"，但 `mergeSettings` 的调用顺序是 `mergeSettings(ls.Policy, ls.User, ls.Project, ls.Local)`，即 Policy 优先级最低（最先被覆盖）；而架构文档（§4.4）和设计文档（§3.1）描述的企业策略（Policy）优先级应**最高**。注释与代码逻辑互相矛盾，至少有一处是错的。 | 核实 TS 原版 `managed-settings.json` 的优先级语义，统一注释与代码；若 Policy 确为最高优先级，则调用顺序应改为 `mergeSettings(ls.User, ls.Project, ls.Local, ls.Policy)`（Policy 最后 = 最高覆盖）。 |
-| **P2** | `internal/bootstrap/bootstrap.go` `homeDir()` | `Bootstrap` 中调用了 `homeDir()`，但该函数未在设计文档中定义；不清楚是 `os.UserHomeDir()` 封装还是读环境变量，存在平台差异（容器环境中 `$HOME` 可能未设置）。 | 在 `bootstrap.go` 中明确定义 `homeDir()` 的实现策略，优先 `os.UserHomeDir()`，失败时 fallback 到 `$HOME`，仍失败则返回错误（而非 panic）。 |
-| **P2** | `pkg/types/logs.go` Entry 类型不完整 | `EntryType` 常量仅列出 5 个（`transcript`/`summary`/`tag`/`pr_link`/`worktree_state`），注释"其余类型"，但 TS 原版 `src/types/logs.ts` 中有 20+ Entry 变体（含 `debug`、`tool_result`、`thinking`、`reasoning` 等），未定义的类型在 `ReadAll` 时会被 `EntryEnvelope` 解析为未知类型枚举值，调用方无法正确 type-switch。 | 补全所有 TS 原版中出现的 `EntryType` 枚举值，并为每个变体提供对应的具体结构体（至少在 logs.go 中列出声明）。 |
-| **P2** | `pkg/types/hooks.go` / `plugin.go` | 文档仅列出文件名，无任何代码实现或类型定义，属于完全空白的模块。Hooks 在架构文档中是独立的核心层模块，Plugin 类型也有跨层引用需求。 | 补充 `hooks.go` 和 `plugin.go` 的类型设计，至少给出与 TS 原版对应的核心类型骨架（`HookEvent`、`HookCallback`、`HookResult`、`LoadedPlugin` 等）。 |
+| **P0** | `pkg/types/ids.go` `NewAgentId()` | 导出函数体为 `panic("see internal/bootstrap")`。`pkg/types` 是公共类型包，任何上层模块调用 `types.NewAgentId()` 时都会直接 panic，且该包无法反向 import `pkg/utils/ids`（会循环依赖），是破坏性 API 契约。 | 从 `pkg/types/ids.go` 中**删除** `NewAgentId()` 函数，仅保留 `AsAgentId()`/`AsSessionId()` 纯类型转换函数；ID 生成逻辑已在 `pkg/utils/ids/ids.go` 正确实现，保留即可。 |
+| **P0** | `internal/config/loader.go` `mergeSettings()` 调用顺序 | §3.1 将企业托管配置（`managed-settings.json`）明确定义为"优先级**最高**，用于企业管控"，但代码 `mergeSettings(ls.Policy, ls.User, ls.Project, ls.Local)` 中 Policy 排在最前（被后者覆盖），实际是**最低优先级**。企业安全策略可被用户本地配置任意覆盖，语义完全颠倒，是安全设计缺陷。 | 明确区分 Policy 的"锁定字段"（`disableBypassPermissionsMode`、`allowManagedHooksOnly` 等，不可被覆盖）和"默认字段"（可作为基底被覆盖）。方案一：调整合并顺序为 `mergeSettings(ls.User, ls.Project, ls.Local)` 后再用单独的 `applyPolicyOverrides(ls.Policy)` 强制覆盖锁定字段；方案二：参考 TS 原版 `managedSettingsOverride` 实际行为确定字段分类。无论哪种方案，代码与文档描述必须完全一致。 |
+| **P0** | `internal/state/store.go` `SetState()` + `AppState` map/slice 引用语义 | `SetState` 使用 `func(prev T) T` updater，但 `AppState.Tasks`、`AgentNameRegistry` 等字段是 Go map（引用类型）。Updater 返回修改后的结构体值后，旧快照 `prev` 与新状态 `next` 共享同一底层 map，写锁释放后 `notifyListeners(next, prev)` 传出的 `prev` 依然指向已被修改的 map，导致订阅者读到"脏旧状态"。§4.4 示例代码 `prev.Tasks[taskId] = TaskState{...}` 正是触发此竞争的危险用法，设计文档承认问题但将修复推迟至 Phase 2，Phase 1 无任何保护。 | Phase 1 必须提供明确的保护方案（三选一）：(1) `SetState` 内对 map 字段自动执行 `maps.Clone()`（Go 1.21+）再传 updater；(2) 在 §4.4 示例中强制展示 copy-on-write 用法，作为所有 updater 实现的约定；(3) 在 CI 中运行 `go test -race` 并以集成测试覆盖并发写 map 的路径。"Phase 2 再修复"不可接受。 |
+| **P1** | `internal/config/loader.go`、`internal/session/store.go`、`internal/session/manager.go` | 三个核心基础设施组件均以具体 struct 暴露，缺乏对应 interface。上层模块（core、tools）无法 mock 配置加载和会话存储，单元测试将依赖真实文件系统，不符合可测试性要求。 | 为每个组件定义 interface：`type ConfigLoader interface { Load() (*LayeredSettings, error) }`、`type SessionStorer interface { AppendEntry(any) error; ReadAll() ([]EntryEnvelope, error); Close() error }`。具体 struct 实现这些 interface，调用方依赖 interface 而非具体类型。 |
+| **P1** | `internal/state/store.go` `Subscribe()` 内存泄漏 | 取消订阅通过将切片槽位置 nil 实现，切片**只增不减**。长期运行高频 subscribe/unsubscribe（TUI 重渲染场景）会导致 `listeners` 切片无限增长，每次 `notifyListeners` 遍历全量 nil 槽，是内存和 CPU 双重浪费。 | 改用 `map[uint64]Listener[T]` + 自增 ID 管理订阅者，取消时 `delete(s.listeners, id)`，彻底消除泄漏。需使用独立的 `listenerMu sync.Mutex` 保护此 map。 |
+| **P1** | `pkg/types/logs.go` `SerializedMessage` 字段遮蔽 | `SerializedMessage` 嵌入了 `Message`，而 `Message` 已有 `SessionId types.SessionId` 和 `Timestamp time.Time` 字段；`SerializedMessage` 自身又重复声明了同名同类型的 `SessionId` 和 `Timestamp`。Go 嵌入时重名字段发生遮蔽（shadow），JSON 序列化结果不可预测，且编译器不报错，是隐性 bug。 | 从 `SerializedMessage` 删除与 `Message` 重复的字段。若两者语义确有不同（API 层 vs 持久化层），则不应使用嵌入，改为显式组合：`Msg Message \`json:"message"\``。 |
+| **P1** | `internal/config/loader.go` `applyLayer()` 字段覆盖不完整 | `applyLayer` 仅手写了约 7 个字段的合并逻辑，注释"其余字段类似处理"。`SettingsJson` 共有 20+ 字段（`AWSCredentialExport`、`GCPAuthRefresh`、`Hooks`、`Worktree`、`EnableAllProjectMCP`、`EnabledMCPServers` 等），缺失字段在当前设计下会被**静默丢弃**，导致配置项完全不生效。 | 明确列出所有 `SettingsJson` 字段的合并语义（覆盖/追加/忽略）；或改用代码生成（`go:generate`）产生合并代码；禁止以"类似处理"注释代替实际实现。 |
+| **P1** | `pkg/types/logs.go` `EntryEnvelope.Raw` 无 json tag | `Raw json.RawMessage` 字段缺少 json struct tag，默认序列化 key 为 `"Raw"`，但实际 JSONL 行中不存在此键；同时使用者可能误以为 `json.Unmarshal` 可自动填充 `Raw`，实际上需在 `ReadAll` 中手动赋值，接口语义不清晰。 | 将 `Raw` 标注为 `json:"-"`，并在字段注释中明确说明"由 `ReadAll` 在反序列化后手动填充原始行内容"。 |
+| **P1** | `pkg/types/hooks.go` / `plugin.go` 完全缺失 | 文件结构 §1.2 列出了 `hooks.go` 和 `plugin.go`，但文档中无任何类型定义。Hooks 是架构文档明确的核心模块（pre/post-tool/session/sampling hooks），`SettingsJson.Hooks` 字段当前为 `map[string]any`，完全丢失类型安全，下游 Agent-Core 无法基于此实现 hook 调度。 | 补充 `hooks.go` 和 `plugin.go` 的核心类型骨架：`HookType` 枚举（`pre_tool_use`/`post_tool_use`/`session_start` 等）、`HookDefinition`（`command`、`matcher` 字段）、`HookResult`（`block`/`approve`/`modify`）；`SettingsJson.Hooks` 改为 `map[HookType][]HookDefinition`。`LoadedPlugin` 至少给出与 TS 原版对应的字段声明。 |
+| **P1** | `pkg/types/command.go` `LocalCommandContext` 缺少 `context.Context` | `Call func(args string, ctx *LocalCommandContext)` 缺少 `context.Context` 参数，命令执行无法支持取消和超时。CLI 中 Ctrl-C 中止、`--max-turns` 超限等场景均需 context 传递。 | `Call` 签名改为 `func(ctx context.Context, args string, cmdCtx *LocalCommandContext) (*LocalCommandResult, error)`，与 Go 惯用法一致（context 作为第一参数）。 |
+| **P2** | `pkg/utils/json/json.go` 包名遮蔽标准库 | 包名 `json` 与标准库 `encoding/json` 同名，调用方在同一文件中同时引用时必须为其中一个起别名，增加认知负担，不符合 Go 惯用法。 | 将包声明改为 `package jsonutil`（文件路径不变），消除歧义。 |
+| **P2** | `internal/config/loader.go` `os.IsNotExist` 过时 API | `os.IsNotExist(err)` 在 Go 1.13+ 已标记为 legacy，无法正确处理 wrapped error（如 `fmt.Errorf("...: %w", fs.ErrNotExist)`）。 | 替换为 `errors.Is(err, fs.ErrNotExist)`（需 import `io/fs`）。 |
+| **P2** | `pkg/utils/ids/ids.go` 忽略 `rand.Read` 错误 | `_, _ = rand.Read(b)` 显式丢弃错误。在受限容器环境下熵源不可用时，会静默产生全零随机字节，导致 ID 碰撞。 | 改为 `if _, err := rand.Read(b); err != nil { panic(fmt.Sprintf("crypto/rand unavailable: %v", err)) }`。此处 panic 是合理的不可恢复错误处理。 |
+| **P2** | `pkg/types/permissions.go` `PermissionUpdate.Type` 裸 string | 有效值 `addRules/replaceRules/removeRules/setMode/addDirectories/removeDirectories` 仅以注释说明，缺少枚举常量定义，调用方需手写字符串字面量，易出错。同样的问题存在于 `LocalCommandResult.Type`、`TaskState.Status`。 | 定义 `type PermissionUpdateType string` + 常量；同理补全其他"裸 string 状态值"类型。 |
+| **P2** | `pkg/types/permissions.go` `ToolPermissionContext` 缺少 json tag | 同包其他结构体均有 json tags，`ToolPermissionContext` 字段（如 `IsBypassPermissionsModeAvailable`）序列化时使用原始字段名，与 TS 原版 camelCase 格式不一致，跨语言互操作时会产生 key 不匹配。 | 为 `ToolPermissionContext` 所有字段补充 json tags，与 TS 原版字段名对齐。 |
+| **P2** | `internal/state/app_state.go` `[]any` MCP 字段 | `MCPClients/MCPTools/MCPCommands/PluginsEnabled/PluginsDisabled` 全部使用 `[]any`，完全丢失类型安全，所有访问都需类型断言，断言失败即 panic。 | 在 `pkg/types` 中定义前向声明接口（`MCPConnection interface { ... }`、`MCPTool interface { ... }`），或将 MCP 运行时字段移出 `AppState`，通过依赖注入传递。 |
+| **P2** | `internal/session/store.go` 静默跳过损坏行 | `ReadAll` 中 JSON 解析失败时 `continue` 静默跳过，无日志输出，会话文件损坏时用户无感知，调试极为困难。 | 通过注入的 logger（或 `slog.Default()`）输出 `WARN` 级日志，注明跳过的行索引和错误内容。 |
+| **P2** | `pkg/types/logs.go` `EntryType` 枚举不完整 | 仅定义 5 个 EntryType 常量，TS 原版 `src/types/logs.ts` 有 20+ Entry 变体（含 `debug`、`tool_result`、`thinking` 等）。缺失的类型在 `type-switch` 时命中 default 分支，导致数据静默丢失。 | 通读 TS 原版 `src/types/logs.ts`，补全所有 EntryType 枚举值，并为每种变体提供对应的 Go 结构体声明。 |
+| **P2** | `internal/bootstrap/bootstrap.go` `homeDir()` 未定义 | `Bootstrap` 内调用 `homeDir()`，但该函数未在文档中定义，实现策略不明确，在容器等 `$HOME` 未设置的环境下可能 panic 或返回空路径。 | 明确定义 `homeDir()` 实现：优先 `os.UserHomeDir()`，失败则 fallback `$HOME` 环境变量，仍失败则返回 error（而非 panic）。 |
 
 ---
 
 ## 通过条件
 
-在开始 Agent-Infra 编码实现（任务 #13）之前，须满足以下条件：
+以下 **3 个 P0 条件**必须在 Agent-Infra 编码开始前完成（文档修订 + 设计确认），其余 P1/P2 可在编码阶段同步修复并在首个 PR 中一并解决。
 
-### 必须修复（阻塞编码启动）
+### 条件一：消除 `pkg/types/ids.go` 中的 `NewAgentId` panic 存根
 
-1. **[P0-1]** 删除 `pkg/types/ids.go` 中的 `NewAgentId()` panic 存根，避免调用者运行时崩溃。
-2. **[P0-2]** 在 `SetState` 文档和 4.4 节示例中，明确说明 map/slice 字段必须先浅拷贝再修改，并提供正确示例代码（`maps.Clone`）；或在 `SetState` 实现中自动对 map 字段做防御性拷贝。
-3. **[P0-3]** 将 `os.IsNotExist` 替换为 `errors.Is(err, os.ErrNotExist)`。
+`pkg/types/ids.go` 中 `NewAgentId()` 函数必须**删除**。`pkg/types` 只保留零副作用的类型定义和纯转换函数（`AsAgentId`、`AsSessionId`）。ID 生成能力由 `pkg/utils/ids/ids.go` 提供，各调用方直接 import `pkg/utils/ids`。
 
-### 应当修复（编码前明确，不阻塞但需在 PR 前完成）
+**验收标准**：`pkg/types` 包内不存在任何会触发 panic 的导出函数体。
 
-4. **[P1-1]** 将 `Subscribe` 的订阅者管理从"nil 槽切片"改为"map + 自增 ID"，消除内存泄漏。
-5. **[P1-2]** 在 `applyLayer` 中补全所有 `SettingsJson` 字段的合并逻辑，或在文档中明确列出哪些字段暂缓实现及原因。
-6. **[P1-3]** 为 `LocalCommandContext.Call` 增加 `context.Context` 参数。
-7. **[P1-4]** 澄清 `LayeredSettings.Merged` 注释与代码中 Policy 优先级的矛盾，保持一致。
+---
 
-### 建议改进（可在后续迭代中处理）
+### 条件二：明确 managed-settings（Policy）的优先级语义并保持代码一致
 
-8. **[P2]** 将 `pkg/utils/json` 包名改为 `jsonutil`，避免与标准库冲突。
-9. **[P2]** `PermissionUpdate.Type` 增加枚举常量。
-10. **[P2]** `AppState` 中的 `[]any` 字段改用前向声明接口。
-11. **[P2]** 补全 `EntryType` 枚举，补充 `hooks.go` 和 `plugin.go` 骨架。
+设计文档 §3.1 描述的 Policy 优先级（"最高，用于企业管控"）与当前 `mergeSettings` 调用顺序存在矛盾。必须在文档中明确：
+
+1. Policy 中哪些字段属于**锁定字段**（不可被任何用户级配置覆盖）；
+2. `mergeSettings` 或补充的 `applyPolicyOverrides` 逻辑必须与文档语义完全一致；
+3. 参考 TS 原版 `managed-settings.json` 的实际合并行为作为最终依据。
+
+**验收标准**：文档 §3.1 的优先级说明与代码实现无矛盾；Policy 锁定字段不可被 Local/Project/User 配置覆盖。
+
+---
+
+### 条件三：`SetState` 中 map/slice 字段的并发安全方案明确落地
+
+"Phase 2 再修复"不可接受，Phase 1 必须选定并文档化以下三个方案之一：
+
+- **方案 A**：`SetState` 内对 `AppState` 所有 map 字段自动执行 `maps.Clone()`，再将副本传入 updater；
+- **方案 B**：在 §4.4 示例和 API 文档中明确约定 updater 必须 copy-on-write（提供标准模板），并在 code review checklist 中强制检查；
+- **方案 C**：禁止在 `AppState` 中存放可变 map，所有集合操作通过 `SetState` 返回全新 map 实现（函数式风格）。
+
+**验收标准**：设计文档 §4.3 不再出现"暂不修复 / Phase 2 待定"，而是给出可落地的 Phase 1 保护方案，且 §4.4 示例代码中没有直接对 map 字段做 mutate 的危险用法。
 
 ---
 
 ## 评审结论
 
-设计文档骨架完整，核心模块划分符合架构规范，依赖方向总体正确（`pkg/types` 零依赖、`internal/*` 单向依赖 `pkg/types`），Go 惯用法运用基本合理（泛型 Store、RWMutex 保护、原子写文件等）。
+设计骨架完整，模块边界清晰，依赖方向符合架构规范（`pkg/types` 零依赖，`internal/*` 单向依赖），泛型 Store、RWMutex 锁外通知、原子文件写入等关键设计合理。
 
-**P0 问题有 3 个**，其中"ids.go panic 存根"和"map 引用语义竞争条件"如果不修复，会在编码阶段直接导致运行时崩溃或 data race，必须在动笔前解决。
+三个 P0 问题中，"ids.go panic 存根"会导致直接运行时崩溃，"SetState map 竞争"在有订阅者时必然触发 data race，"Policy 优先级倒置"会使企业安全管控形同虚设——三者均会在编码阶段造成严重后果。
 
-**条件满足后**，设计文档视为批准，Agent-Infra 可以开始编码实现（**任务 #13**）。
+**P0 条件全部满足后，设计文档视为批准，Agent-Infra 可以开始编码实现（任务 #13）。**

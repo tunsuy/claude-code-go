@@ -458,20 +458,14 @@ LLM 调用 AgentTool（含任务描述）
 ## 7. 模块负责 Agent 索引
 
 > 各 Agent 的详细设计见 `docs/project/agents/` 目录
+>
+> Agent 划分与架构分层一一对应，每个层次由一个 Agent 全权负责。
 
-| 模块 | 负责 Agent | 主要依赖 |
-|------|-----------|---------|
-| 公共类型包 | Agent-Infra | 无 |
-| 配置系统、应用状态、会话存储 | Agent-Infra | 公共类型包 |
-| API 客户端 | Agent-Services | 公共类型包、配置 |
-| MCP 客户端 | Agent-Services | 公共类型包、配置 |
-| OAuth | Agent-Services | 配置 |
-| 权限系统 | Agent-Core | 公共类型包、配置、应用状态 |
-| 上下文压缩 | Agent-Core | API 客户端、公共类型包 |
-| 查询引擎 | Agent-Core | API 客户端、工具接口、权限系统、压缩、应用状态 |
-| 工具系统（接口 + 全部内置工具） | Agent-Tools | 工具接口、权限系统、配置 |
-| 多 Agent 协调 | Agent-Coordinator | 查询引擎、工具系统 |
-| Hooks 系统 | Agent-Core | 配置、公共类型包 |
-| Slash 命令 | Agent-Commands | 查询引擎、应用状态 |
-| TUI | Agent-TUI | 查询引擎、应用状态、权限系统 |
-| CLI 入口 | Agent-CLI | 所有模块（组装层） |
+| 层次 | 负责 Agent | 包含模块 | 主要依赖 |
+|------|-----------|---------|---------|
+| 基础设施层 | **Agent-Infra** | 公共类型包、配置系统、应用状态、会话存储 | 无（最底层） |
+| 服务层 | **Agent-Services** | API 客户端、MCP 客户端、OAuth | Agent-Infra |
+| 核心层 | **Agent-Core** | 查询引擎、权限系统、上下文压缩、Hooks 系统 | Agent-Infra、Agent-Services |
+| 工具层 | **Agent-Tools** | 工具接口定义 + 全部内置工具实现 | Agent-Infra、Agent-Core（接口） |
+| TUI 层 | **Agent-TUI** | TUI 界面、Slash 命令、多 Agent 协调 | Agent-Core、Agent-Infra |
+| 入口层 | **Agent-CLI** | CLI 入口、程序启动与模式分发 | 所有层（组装点） |

@@ -69,16 +69,16 @@
 
 ### 3.2 开发执行层
 
-| Agent | 负责模块 | 主要依赖 | 输出物 |
-|-------|---------|---------|-------|
-| **Agent-Infra** | types、config、permissions、错误框架、测试基础设施 | Tech Lead 接口文档 | 公共库包 |
-| **Agent-Core** | QueryEngine、query pipeline、cost-tracker、history | Agent-Infra | LLM 核心包 |
-| **Agent-Tools** | 45 个 Tool 实现 | Agent-Infra + Agent-Core 接口 | tools 包 |
-| **Agent-Services** | API client、MCP、OAuth、LSP | Agent-Infra | services 包 |
-| **Agent-TUI** | BubbleTea 框架、核心 UI 组件、REPL 主界面 | Agent-Infra | ui 包 |
-| **Agent-Commands** | 110 个 slash commands、cobra 路由 | Agent-Core + Agent-Tools | commands 包 |
-| **Agent-Bridge** | IDE Bridge、Bridge 协议、远程会话 | Agent-Services | bridge 包 |
-| **Agent-Coordinator** | 多 Agent 协调、Task 系统、Swarm | Agent-Core + Agent-Tools | coordinator 包 |
+Agent 划分与架构分层一一对应，每个层次由一个 Agent 全权负责。
+
+| Agent | 对应层次 | 负责模块 | 主要依赖 |
+|-------|---------|---------|---------|
+| **Agent-Infra** | 基础设施层 | 公共类型包、配置系统、应用状态、会话存储 | 无（最底层） |
+| **Agent-Services** | 服务层 | API 客户端、MCP 客户端、OAuth | Agent-Infra |
+| **Agent-Core** | 核心层 | 查询引擎、权限系统、上下文压缩、Hooks 系统 | Agent-Infra、Agent-Services |
+| **Agent-Tools** | 工具层 | 工具接口定义 + 全部内置工具实现 | Agent-Infra、Agent-Core（接口） |
+| **Agent-TUI** | TUI 层 | TUI 界面、Slash 命令、多 Agent 协调 | Agent-Core、Agent-Infra |
+| **Agent-CLI** | 入口层 | CLI 入口、程序启动与模式分发 | 所有层（组装点） |
 
 ---
 
@@ -101,14 +101,12 @@
 
 ```
 claude-code-go/               ← 主仓库（main 分支，骨架+接口）
-├── feat/agent-infra          ← Agent-Infra worktree
-├── feat/agent-core           ← Agent-Core worktree
-├── feat/agent-tools          ← Agent-Tools worktree
-├── feat/agent-services       ← Agent-Services worktree
-├── feat/agent-tui            ← Agent-TUI worktree
-├── feat/agent-commands       ← Agent-Commands worktree
-├── feat/agent-bridge         ← Agent-Bridge worktree
-└── feat/agent-coordinator    ← Agent-Coordinator worktree
+├── feat/agent-infra          ← Agent-Infra worktree（基础设施层）
+├── feat/agent-services       ← Agent-Services worktree（服务层）
+├── feat/agent-core           ← Agent-Core worktree（核心层）
+├── feat/agent-tools          ← Agent-Tools worktree（工具层）
+├── feat/agent-tui            ← Agent-TUI worktree（TUI 层）
+└── feat/agent-cli            ← Agent-CLI worktree（入口层）
 ```
 
 **原则：**

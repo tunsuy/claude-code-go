@@ -56,13 +56,14 @@
 ## 标准工作流程
 
 ```
-1. 等待 Agent-Core 完成（需要 QueryEngine 接口和 permissions channel）
+1. 接收 PM 任务分配，立即启动
 2. 深度阅读原始 TS screens/ 和 components/ 代码
-3. 输出详细设计文档（docs/project/design/tui.md）
-4. 提交 Tech Lead 评审，根据反馈修订
-5. 评审通过后按设计编码实现
-6. 编写测试，覆盖率 ≥ 60%
-7. 通知 PM：TUI 层就绪，可解锁 Agent-CLI
+3. QueryEngine 接口尚未就绪时，用 TODO 标记占位，先完成不依赖的 UI 组件
+4. 输出详细设计文档（docs/project/design/tui.md）
+5. 提交 Tech Lead 评审，根据反馈修订
+6. 评审通过后按设计编码实现；PM 通知依赖就绪后回填 TODO
+7. 编写测试，覆盖率 ≥ 60%
+8. 通知 PM：TUI 层就绪
 ```
 
 ---

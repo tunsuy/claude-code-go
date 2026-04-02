@@ -52,13 +52,14 @@
 ## 标准工作流程
 
 ```
-1. 等待 Agent-Infra 完成（pkg/types、internal/config 就绪）
+1. 接收 PM 任务分配，立即启动
 2. 深度阅读原始 TS 服务层代码（src/services/api/、mcp/、oauth/）
-3. 输出详细设计文档（docs/project/design/services.md）
-4. 提交 Tech Lead 评审，根据反馈修订
-5. 评审通过后按设计编码实现
-6. 编写单元测试，覆盖率 ≥ 70%
-7. 通知 PM：服务层就绪，可解锁 Agent-Core
+3. 依赖 Agent-Infra 的接口尚未就绪时，用 TODO 标记占位，先完成不依赖的部分
+4. 输出详细设计文档（docs/project/design/services.md）
+5. 提交 Tech Lead 评审，根据反馈修订
+6. 评审通过后按设计编码实现；PM 通知 Agent-Infra 就绪后回填 TODO
+7. 编写单元测试，覆盖率 ≥ 70%
+8. 通知 PM：服务层就绪
 ```
 
 ---

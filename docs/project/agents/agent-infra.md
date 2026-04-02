@@ -52,12 +52,13 @@
 ## 标准工作流程
 
 ```
-1. 深度阅读原始 TS 代码中对应模块（types/、utils/config.ts、state/ 等）
-2. 输出详细设计文档（docs/project/design/infra.md）
-3. 提交 Tech Lead 评审，根据反馈修订
-4. 评审通过后按设计编码实现
-5. 编写单元测试，覆盖率 ≥ 80%
-6. 通知 PM：基础设施层就绪，可解锁 Agent-Services 和 Agent-Core
+1. 接收 PM 任务分配，立即启动
+2. 深度阅读原始 TS 代码中对应模块（types/、utils/config.ts、state/ 等）
+3. 输出详细设计文档（docs/project/design/infra.md）
+4. 提交 Tech Lead 评审，根据反馈修订
+5. 评审通过后按设计编码实现
+6. 编写单元测试，覆盖率 ≥ 80%
+7. 通知 PM：基础设施层就绪（其他 Agent 的相关 TODO 可回填）
 ```
 
 ---

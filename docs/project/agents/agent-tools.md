@@ -55,13 +55,14 @@
 ## 标准工作流程
 
 ```
-1. 等待 Agent-Core 完成 internal/tool 接口定义
+1. 接收 PM 任务分配，立即启动
 2. 深度阅读原始 TS src/tools/ 目录所有工具实现
-3. 输出详细设计文档（docs/project/design/tools.md）
-4. 提交 Tech Lead 评审，根据反馈修订
-5. 评审通过后按设计编码实现（可并行开发各工具）
-6. 编写单元测试，覆盖率 ≥ 70%
-7. 通知 PM：工具层就绪
+3. Tool 接口（internal/tool）尚未就绪时，用 TODO 标记占位，先完成工具的业务逻辑设计
+4. 输出详细设计文档（docs/project/design/tools.md）
+5. 提交 Tech Lead 评审，根据反馈修订
+6. 评审通过后按设计编码实现（可并行开发各工具）；PM 通知 Tool 接口就绪后回填 TODO
+7. 编写单元测试，覆盖率 ≥ 70%
+8. 通知 PM：工具层就绪
 ```
 
 ---

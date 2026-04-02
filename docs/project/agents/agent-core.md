@@ -55,14 +55,15 @@
 ## 标准工作流程
 
 ```
-1. 等待 Agent-Infra、Agent-Services 完成
+1. 接收 PM 任务分配，立即启动
 2. 深度阅读原始 TS 核心层代码（query engine、permissions、compact、hooks 等）
-3. 输出详细设计文档（docs/project/design/core.md），重点包含 Tool 接口定义
-4. 提交 Tech Lead 评审，根据反馈修订
-5. Tool 接口评审通过后，立即通知 PM 解锁 Agent-Tools 并行编码
-6. 按设计编码实现核心层其余模块
-7. 编写单元测试，覆盖率 ≥ 75%
-8. 通知 PM：核心层就绪，可解锁 Agent-TUI
+3. 依赖 Agent-Infra/Services 的接口尚未就绪时，用 TODO 标记占位，先完成不依赖的部分
+4. 输出详细设计文档（docs/project/design/core.md），重点包含 Tool 接口定义
+5. 提交 Tech Lead 评审，根据反馈修订
+6. Tool 接口评审通过后，立即通知 PM 同步给 Agent-Tools
+7. 按设计编码实现核心层其余模块；PM 通知依赖就绪后回填 TODO
+8. 编写单元测试，覆盖率 ≥ 75%
+9. 通知 PM：核心层就绪
 ```
 
 ---

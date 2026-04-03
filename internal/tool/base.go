@@ -35,8 +35,8 @@ func (b BaseTool) IsDestructive(_ Input) bool { return false }
 // IsEnabled returns true — tools are enabled by default.
 func (b BaseTool) IsEnabled() bool { return true }
 
-// InterruptBehavior returns Cancel — the safe default.
-func (b BaseTool) InterruptBehavior() InterruptBehavior { return InterruptBehaviorCancel }
+// InterruptBehavior returns Block — wait for the current operation to complete.
+func (b BaseTool) InterruptBehavior() InterruptBehavior { return InterruptBehaviorBlock }
 
 // ValidateInput returns OK=true — skip validation by default.
 func (b BaseTool) ValidateInput(_ Input, _ *UseContext) (ValidationResult, error) {

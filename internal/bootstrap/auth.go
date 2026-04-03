@@ -160,7 +160,7 @@ func runAuthStatus() error {
 			return nil
 		}
 		fmt.Fprintln(os.Stderr, "Not authenticated. Run 'claude auth login'.")
-		os.Exit(1)
+		return fmt.Errorf("not authenticated")
 	}
 	fmt.Println("Authenticated.")
 	return nil

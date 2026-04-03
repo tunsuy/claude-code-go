@@ -164,7 +164,7 @@ func resolveModel(settings *config.LayeredSettings, override string) string {
 	if override != "" {
 		return override
 	}
-	if settings.Merged != nil && settings.Merged.Model != "" {
+	if settings != nil && settings.Merged != nil && settings.Merged.Model != "" {
 		return settings.Merged.Model
 	}
 	return defaultModel

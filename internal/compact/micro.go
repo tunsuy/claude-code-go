@@ -1,6 +1,8 @@
 package compact
 
 import (
+	"context"
+
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -59,9 +61,22 @@ func (m *MicroCompactor) NeedsCompaction(messages []types.Message, _ string, _ C
 	return false
 }
 
-// Compact replaces oversized tool_result content with a truncation notice.
+// Compact implements the Compressor interface. It delegates to the internal
+// compact method and wraps the result in a *CompactionResult.
+func (m *MicroCompactor) Compact(
+	_ context.Context,
+	messages []types.Message,
+	_ CompactionParams,
+) (*CompactionResult, error) {
+	result := m.compact(messages)
+	return &CompactionResult{
+		SummaryMessages: result.Messages,
+	}, nil
+}
+
+// compact replaces oversized tool_result content with a truncation notice.
 // It returns a shallow-copy of the message list with affected blocks replaced.
-func (m *MicroCompactor) Compact(messages []types.Message) MicroCompactResult {
+func (m *MicroCompactor) compact(messages []types.Message) MicroCompactResult {
 	result := make([]types.Message, len(messages))
 	for i, msg := range messages {
 		if msg.Role != types.RoleUser {

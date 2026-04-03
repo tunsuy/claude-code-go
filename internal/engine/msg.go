@@ -18,6 +18,8 @@ const (
 	MsgTypeThinkingDelta MsgType = "thinking_delta"
 	// MsgTypeToolUseStart is emitted when the LLM begins a tool call.
 	MsgTypeToolUseStart MsgType = "tool_use_start"
+	// MsgTypeToolUseInputDelta is emitted for each incremental JSON fragment of a tool's input.
+	MsgTypeToolUseInputDelta MsgType = "tool_use_input_delta"
 	// MsgTypeToolUseComplete is emitted when the full tool input is known.
 	MsgTypeToolUseComplete MsgType = "tool_use_complete"
 	// MsgTypeToolResult is emitted after a tool finishes executing.
@@ -54,10 +56,10 @@ type Msg struct {
 	// --- MsgTypeStreamText / MsgTypeThinkingDelta ---
 	TextDelta string
 
-	// --- MsgTypeToolUseStart ---
+	// --- MsgTypeToolUseStart / MsgTypeToolUseInputDelta ---
 	ToolUseID  string
 	ToolName   string
-	InputDelta string // streaming JSON fragment
+	InputDelta string // streaming JSON fragment (MsgTypeToolUseInputDelta)
 
 	// --- MsgTypeToolUseComplete ---
 	ToolInput string // complete JSON

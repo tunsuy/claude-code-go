@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/anthropics/claude-code-go/internal/commands"
+	"github.com/anthropics/claude-code-go/internal/state"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -54,6 +55,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitForStreamEvent(m.streamCh)
 
 	case StreamToolUseStartMsg:
+		if m.streamCh == nil {
+			return m, nil
+		}
+		return m, waitForStreamEvent(m.streamCh)
+
+	case StreamToolUseInputDeltaMsg:
 		if m.streamCh == nil {
 			return m, nil
 		}
@@ -188,6 +195,15 @@ func (m AppModel) applyCommandResult(result commands.Result, name string) (AppMo
 
 	if result.ToggleVim {
 		m.input.vimEnabled = !m.input.vimEnabled
+	}
+
+	if result.NewModel != "" {
+		m.queryEngine.SetModel(result.NewModel)
+		m.statusBar.model = result.NewModel
+		m.appState.SetState(func(prev state.AppState) state.AppState {
+			prev.MainLoopModel.ModelID = result.NewModel
+			return prev
+		})
 	}
 
 	// Handle /compact sentinel.

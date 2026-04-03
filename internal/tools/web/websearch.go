@@ -156,7 +156,6 @@ func callBraveSearchAPI(
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Accept-Encoding", "gzip")
 	req.Header.Set("X-Subscription-Token", apiKey)
 
 	if ctx != nil && ctx.Ctx != nil {
@@ -223,7 +222,8 @@ func domainAllowed(rawURL string, allowed, blocked []string) bool {
 	host := strings.ToLower(parsed.Hostname())
 
 	for _, d := range blocked {
-		if strings.HasSuffix(host, strings.ToLower(d)) {
+		d = strings.ToLower(d)
+		if host == d || strings.HasSuffix(host, "."+d) {
 			return false
 		}
 	}
@@ -231,7 +231,8 @@ func domainAllowed(rawURL string, allowed, blocked []string) bool {
 		return true
 	}
 	for _, d := range allowed {
-		if strings.HasSuffix(host, strings.ToLower(d)) {
+		d = strings.ToLower(d)
+		if host == d || strings.HasSuffix(host, "."+d) {
 			return true
 		}
 	}

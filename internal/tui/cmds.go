@@ -84,6 +84,12 @@ func dispatchEngineMsg(msg engine.Msg) tea.Msg {
 			ToolName:   msg.ToolName,
 			InputDelta: msg.InputDelta,
 		}
+	case engine.MsgTypeToolUseInputDelta:
+		return StreamToolUseInputDeltaMsg{
+			ToolUseID:  msg.ToolUseID,
+			ToolName:   msg.ToolName,
+			InputDelta: msg.InputDelta,
+		}
 	case engine.MsgTypeToolUseComplete:
 		return StreamToolUseCompleteMsg{
 			ToolUseID: msg.ToolUseID,

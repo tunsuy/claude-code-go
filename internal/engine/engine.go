@@ -2,8 +2,10 @@ package engine
 
 import (
 	"context"
+	"sync"
 
 	"github.com/anthropics/claude-code-go/internal/api"
+	"github.com/anthropics/claude-code-go/internal/compact"
 	"github.com/anthropics/claude-code-go/internal/tool"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
@@ -25,6 +27,9 @@ type QueryEngine interface {
 
 	// SetMessages replaces the conversation history (used after /compact).
 	SetMessages(messages []types.Message)
+
+	// SetModel changes the active model used for subsequent requests.
+	SetModel(model string)
 }
 
 // QueryParams encapsulates a single Query call's configuration.
@@ -77,12 +82,23 @@ type engineImpl struct {
 	model     string
 	maxTokens int
 
-	// messages is the mutable conversation history; protected by the query loop goroutine.
+	// mu protects messages against concurrent access between runQueryLoop
+	// (goroutine) and GetMessages/SetMessages (caller goroutine).
+	mu sync.Mutex
+	// messages is the mutable conversation history; protected by mu.
 	messages []types.Message
 
+	// abortMu protects abortFn against concurrent reads from Interrupt() and
+	// writes from Query() running in separate goroutines.
+	abortMu sync.Mutex
 	// abort controls the current query cycle.
 	abortFn  context.CancelFunc
 	abortCh  chan struct{}
+
+	// microCompactor compresses oversized tool results (no LLM call).
+	microCompactor *compact.MicroCompactor
+	// autoCompactor performs LLM-based summarisation when context is near the limit.
+	autoCompactor *compact.AutoCompactor
 }
 
 // Config is the constructor parameter bundle for New.
@@ -104,16 +120,20 @@ func New(cfg Config) QueryEngine {
 		maxTokens = 8192
 	}
 	return &engineImpl{
-		client:    cfg.Client,
-		registry:  cfg.Registry,
-		model:     cfg.Model,
-		maxTokens: maxTokens,
-		abortCh:   make(chan struct{}),
+		client:         cfg.Client,
+		registry:       cfg.Registry,
+		model:          cfg.Model,
+		maxTokens:      maxTokens,
+		abortCh:        make(chan struct{}),
+		microCompactor: compact.NewMicroCompactor(),
+		autoCompactor:  compact.NewAutoCompactor(cfg.Client, cfg.Model, maxTokens),
 	}
 }
 
 // GetMessages returns the current conversation history.
 func (e *engineImpl) GetMessages() []types.Message {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	result := make([]types.Message, len(e.messages))
 	copy(result, e.messages)
 	return result
@@ -121,13 +141,23 @@ func (e *engineImpl) GetMessages() []types.Message {
 
 // SetMessages replaces the conversation history.
 func (e *engineImpl) SetMessages(messages []types.Message) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	e.messages = make([]types.Message, len(messages))
 	copy(e.messages, messages)
 }
 
 // Interrupt cancels the currently-running query (if any).
 func (e *engineImpl) Interrupt(_ context.Context) {
-	if e.abortFn != nil {
-		e.abortFn()
+	e.abortMu.Lock()
+	fn := e.abortFn
+	e.abortMu.Unlock()
+	if fn != nil {
+		fn()
 	}
+}
+
+// SetModel changes the active model for subsequent Query calls.
+func (e *engineImpl) SetModel(model string) {
+	e.model = model
 }

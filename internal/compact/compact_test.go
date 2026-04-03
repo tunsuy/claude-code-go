@@ -192,7 +192,7 @@ func TestMicroCompactor_Compact_ReplacesLargeResult(t *testing.T) {
 	msgs := []types.Message{
 		toolResultMsg("id1", large),
 	}
-	result := m.Compact(msgs)
+	result := m.compact(msgs)
 	if len(result.Messages) != 1 {
 		t.Fatalf("expected 1 message, got %d", len(result.Messages))
 	}
@@ -218,7 +218,7 @@ func TestMicroCompactor_Compact_PreservesSmallResult(t *testing.T) {
 	msgs := []types.Message{
 		toolResultMsg("id1", small),
 	}
-	result := m.Compact(msgs)
+	result := m.compact(msgs)
 	blk := result.Messages[0].Content[0]
 	if blk.Content[0].Text == nil || *blk.Content[0].Text != small {
 		t.Errorf("small result should be unchanged, got %v", blk.Content[0].Text)
@@ -242,7 +242,7 @@ func TestMicroCompactor_Compact_PreservesAssistantMessages(t *testing.T) {
 	}
 	// Assistant messages with tool_result-shaped blocks should NOT be compacted
 	// (MicroCompactor only touches user messages).
-	result := m.Compact(msgs)
+	result := m.compact(msgs)
 	blk := result.Messages[0].Content[0]
 	if blk.Content[0].Text == nil || *blk.Content[0].Text != large {
 		t.Error("assistant message content should be unchanged")
@@ -328,3 +328,6 @@ func TestAutoCompactor_NeedsCompaction_CircuitBreaker(t *testing.T) {
 		t.Error("expected false when circuit breaker is open")
 	}
 }
+
+// compile-time assertion: MicroCompactor must satisfy the Compressor interface.
+var _ Compressor = (*MicroCompactor)(nil)

@@ -15,14 +15,57 @@ type jsonRPCClient struct {
 	nextID     atomic.Int64
 	mu         sync.Mutex
 	pending    map[int64]chan *JSONRPCMessage
+	recvErr    chan error // buffered(1); background reader writes the first error then exits
+	startOnce  sync.Once // ensures startReader is called only once
 }
 
 func newJSONRPCClient(transport Transport) *jsonRPCClient {
 	c := &jsonRPCClient{
 		transport: transport,
 		pending:   make(map[int64]chan *JSONRPCMessage),
+		recvErr:   make(chan error, 1),
 	}
 	return c
+}
+
+// startReader launches a single background goroutine (at most once) that owns
+// the transport's Recv loop and dispatches responses to the appropriate pending
+// channel. This prevents multiple concurrent call() invocations from racing on
+// the underlying bufio.Reader.
+func (c *jsonRPCClient) startReader(ctx context.Context) {
+	c.startOnce.Do(func() {
+		go func() {
+			for {
+				msg, err := c.transport.Recv(ctx)
+				if err != nil {
+					select {
+					case c.recvErr <- err:
+					default:
+					}
+					return
+				}
+				// Determine the response ID.
+				var respID int64
+				if msg.ID != nil {
+					switch v := msg.ID.(type) {
+					case float64:
+						respID = int64(v)
+					case int64:
+						respID = v
+					}
+				}
+				c.mu.Lock()
+				target, ok := c.pending[respID]
+				c.mu.Unlock()
+				if ok {
+					select {
+					case target <- msg:
+					default:
+					}
+				}
+			}
+		}()
+	})
 }
 
 // initialize performs the MCP handshake and returns the server info.
@@ -91,42 +134,8 @@ func (c *jsonRPCClient) call(ctx context.Context, method string, params json.Raw
 		return nil, err
 	}
 
-	// Read responses in a loop until our ID arrives
-	for {
-		resp, err := c.transport.Recv(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-
-		// Dispatch to pending caller or our own channel
-		respID := int64(0)
-		if resp.ID != nil {
-			switch v := resp.ID.(type) {
-			case float64:
-				respID = int64(v)
-			case int64:
-				respID = v
-			}
-		}
-
-		c.mu.Lock()
-		target, ok := c.pending[respID]
-		c.mu.Unlock()
-
-		if ok {
-			select {
-			case target <- resp:
-			default:
-			}
-		}
-
-		if respID == id {
-			break
-		}
-	}
+	// Ensure the single background reader is running before we wait.
+	c.startReader(ctx)
 
 	select {
 	case resp := <-ch:
@@ -134,6 +143,13 @@ func (c *jsonRPCClient) call(ctx context.Context, method string, params json.Raw
 			return nil, resp.Error
 		}
 		return resp.Result, nil
+	case err := <-c.recvErr:
+		// Propagate the error to other pending callers, then return.
+		select {
+		case c.recvErr <- err:
+		default:
+		}
+		return nil, err
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}

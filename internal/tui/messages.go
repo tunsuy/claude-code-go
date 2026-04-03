@@ -35,6 +35,14 @@ type StreamToolUseStartMsg struct {
 	InputDelta string
 }
 
+// StreamToolUseInputDeltaMsg is emitted for each incremental JSON fragment of
+// a tool call's input while the LLM is still streaming it.
+type StreamToolUseInputDeltaMsg struct {
+	ToolUseID  string
+	ToolName   string
+	InputDelta string
+}
+
 // StreamToolUseCompleteMsg is emitted when the LLM completes a tool call block.
 type StreamToolUseCompleteMsg struct {
 	ToolUseID string

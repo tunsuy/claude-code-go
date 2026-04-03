@@ -166,13 +166,6 @@ current directory.  Use -p / --print for non-interactive single-shot mode.
 
 // runInteractiveOrHeadless dispatches to the correct run path based on flags.
 func runInteractiveOrHeadless(cmd *cobra.Command, f *rootFlags, args []string) error {
-	// Record entrypoint in environment for downstream consumers.
-	if f.print {
-		os.Setenv("CLAUDE_CODE_ENTRYPOINT", "sdk-cli") //nolint:errcheck
-	} else {
-		os.Setenv("CLAUDE_CODE_ENTRYPOINT", "cli") //nolint:errcheck
-	}
-
 	// Build the application container (config → auth → engine → TUI).
 	cwd, err := os.Getwd()
 	if err != nil {

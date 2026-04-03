@@ -66,6 +66,21 @@
 
 ---
 
+#### 第四批：Tech Lead 代码评审（实现完成后）
+
+> 遵循「设计文档优先」原则：评审者先读 `docs/project/design/<layer>.md`，再对比实现代码，产出 `docs/project/reviews/code-review-<layer>.md`，报告须含 `## Design vs Implementation Delta` 章节。
+
+| 任务 | 负责方 | 前置条件 | 任务ID |
+|------|--------|---------|--------|
+| 代码评审：基础设施层（#13） | Tech Lead | #13 完成 | #42 |
+| 代码评审：服务层（#14） | Tech Lead | #14 完成 | #47 |
+| 代码评审：核心层（#15） | Tech Lead | #15 完成 | #43 |
+| 代码评审：工具层（#16） | Tech Lead | #16 完成 | #50 |
+| 代码评审：TUI 层（#17） | Tech Lead | #17 完成 | #45 |
+| 代码评审：CLI 层（#18） | Tech Lead | #18 完成 | #44 |
+
+---
+
 ### M2 · 验收与集成
 
 | 任务 | 负责方 | 前置条件 | 任务ID |
@@ -118,3 +133,4 @@
 |------|------|
 | [status.md](status.md) | 任务状态总览（实时更新） |
 | [log.md](log.md) | PM 巡检日志（按时间倒序） |
+| [doc-sync-policy.md](doc-sync-policy.md) | 设计文档同步规范（代码变更后必读） |

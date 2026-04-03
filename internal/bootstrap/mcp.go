@@ -1,9 +1,14 @@
 package bootstrap
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/anthropics/claude-code-go/internal/mcp"
 )
 
 // newMCPCmd creates the `claude mcp` subcommand tree.
@@ -32,9 +37,49 @@ func newMCPServeCmd() *cobra.Command {
 		Use:   "serve",
 		Short: "Start Claude as an MCP server on stdin/stdout",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("mcp serve: not yet implemented")
+			return runMCPServe()
 		},
 	}
+}
+
+func runMCPServe() error {
+	// Serve Claude as an MCP server over stdin/stdout.
+	enc := json.NewEncoder(os.Stdout)
+	dec := json.NewDecoder(os.Stdin)
+	for {
+		var req mcp.JSONRPCMessage
+		if err := dec.Decode(&req); err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return fmt.Errorf("mcp serve: decode: %w", err)
+		}
+		switch req.Method {
+		case "initialize":
+			resp := &mcp.JSONRPCMessage{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result: mustMarshalJSON(map[string]any{
+					"protocolVersion": "2024-11-05",
+					"serverInfo":      map[string]any{"name": "claude-code-go", "version": "0.1.0"},
+					"capabilities":    map[string]any{"tools": map[string]any{}},
+				}),
+			}
+			enc.Encode(resp) //nolint:errcheck
+		default:
+			resp := &mcp.JSONRPCMessage{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Error:   &mcp.JSONRPCError{Code: -32601, Message: "Method not found: " + req.Method},
+			}
+			enc.Encode(resp) //nolint:errcheck
+		}
+	}
+}
+
+func mustMarshalJSON(v any) json.RawMessage {
+	b, _ := json.Marshal(v)
+	return b
 }
 
 func newMCPAddCmd() *cobra.Command {

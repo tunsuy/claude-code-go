@@ -12,9 +12,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"time"
-
 	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/anthropics/claude-code-go/pkg/utils/ids"
 	utilfs "github.com/anthropics/claude-code-go/pkg/utils/fs"
 )
 
@@ -129,7 +128,7 @@ type SessionManager struct {
 
 // New creates a new session under projectDir and returns the manager.
 func New(projectDir string) (types.SessionId, *SessionManager, error) {
-	sid := newSessionId()
+	sid := ids.NewSessionId()
 	storePath, err := sessionPath(projectDir, sid)
 	if err != nil {
 		return "", nil, err
@@ -191,11 +190,4 @@ func sessionPath(projectDir string, sid types.SessionId) (string, error) {
 	}
 	dir := filepath.Join(projectDir, ".claude", "projects", hash)
 	return filepath.Join(dir, string(sid)+".jsonl"), nil
-}
-
-// newSessionId generates a time-stamped session ID.
-// Full implementation is in pkg/utils/ids; replicated here to avoid a dependency
-// on that package from within the session package. (They are in the same module.)
-func newSessionId() types.SessionId {
-	return types.AsSessionId(fmt.Sprintf("%d", time.Now().UnixMilli()))
 }

@@ -329,8 +329,8 @@ func TestBaseTool_Defaults(t *testing.T) {
 	if !m.IsEnabled() {
 		t.Error("expected IsEnabled true by default")
 	}
-	if m.InterruptBehavior() != tool.InterruptBehaviorCancel {
-		t.Errorf("expected InterruptBehaviorCancel, got %q", m.InterruptBehavior())
+	if m.InterruptBehavior() != tool.InterruptBehaviorBlock {
+		t.Errorf("expected InterruptBehaviorBlock, got %q", m.InterruptBehavior())
 	}
 	prompt, err := m.Prompt(context.Background(), nil)
 	if err != nil || prompt != "" {

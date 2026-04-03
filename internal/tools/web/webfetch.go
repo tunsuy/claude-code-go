@@ -273,7 +273,7 @@ func removeTagBlock(html, tag string) string {
 	close := "</" + tag + ">"
 	var sb strings.Builder
 	for {
-		start := strings.Index(strings.ToLower(html), open)
+		start := strings.Index(lower, open)
 		if start < 0 {
 			sb.WriteString(html)
 			break
@@ -282,6 +282,7 @@ func removeTagBlock(html, tag string) string {
 		rest := lower[start:]
 		end := strings.Index(rest, close)
 		if end < 0 {
+			sb.WriteString(html)
 			break
 		}
 		html = html[start+end+len(close):]

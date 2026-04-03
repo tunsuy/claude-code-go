@@ -3,12 +3,15 @@ package engine
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strconv"
 
 	"github.com/anthropics/claude-code-go/internal/api"
+	"github.com/anthropics/claude-code-go/internal/compact"
+	"github.com/anthropics/claude-code-go/internal/tool"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -27,7 +30,9 @@ func msgBufSize() int {
 // It starts the query loop in a background goroutine and returns the event channel.
 func (e *engineImpl) Query(ctx context.Context, params QueryParams) (<-chan Msg, error) {
 	ctx, cancel := context.WithCancel(ctx)
+	e.abortMu.Lock()
 	e.abortFn = cancel
+	e.abortMu.Unlock()
 
 	msgCh := make(chan Msg, msgBufSize())
 
@@ -48,6 +53,15 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 	messages := make([]types.Message, len(params.Messages))
 	copy(messages, params.Messages)
 
+	// Write the final message history back to the engine when the loop exits,
+	// under mu so GetMessages/SetMessages callers see a consistent snapshot.
+	defer func() {
+		e.mu.Lock()
+		e.messages = make([]types.Message, len(messages))
+		copy(e.messages, messages)
+		e.mu.Unlock()
+	}()
+
 	maxTurns := params.MaxTurns
 	turns := 0
 
@@ -66,8 +80,51 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 		}
 		turns++
 
-		// Build the API request.
-		req, err := e.buildRequest(params, messages)
+		// ── Compaction pipeline ─────────────────────────────────────────────
+		// Step 1: Snip compaction — remove old tool result content locally
+		// (no LLM call) to stay within the context budget.
+		snipResult := compact.SnipCompactIfNeeded(messages)
+		messages = snipResult.Messages
+		if snipResult.BoundaryMessage != nil {
+			messages = append(messages, *snipResult.BoundaryMessage)
+		}
+
+		// Step 2: Micro compaction — truncate any single oversized tool result.
+		if e.microCompactor != nil {
+			extra := compact.CompactionExtra{SnipTokensFreed: snipResult.TokensFreed}
+			if e.microCompactor.NeedsCompaction(messages, e.model, extra) {
+				compactParams := compact.CompactionParams{
+					SystemPromptParts: systemPromptParts(params),
+					UserContext:       params.UserContext,
+					SystemContext:     params.SystemContext,
+					QuerySource:       params.QuerySource,
+				}
+				if result, err := e.microCompactor.Compact(ctx, messages, compactParams); err == nil {
+					messages = result.SummaryMessages
+				}
+			}
+		}
+
+		// Step 3: Auto compaction — LLM-based summarisation when context is
+		// near the model's context window limit.
+		if e.autoCompactor != nil {
+			extra := compact.CompactionExtra{SnipTokensFreed: snipResult.TokensFreed}
+			if e.autoCompactor.NeedsCompaction(messages, e.model, extra) {
+				compactParams := compact.CompactionParams{
+					SystemPromptParts: systemPromptParts(params),
+					UserContext:       params.UserContext,
+					SystemContext:     params.SystemContext,
+					QuerySource:       params.QuerySource,
+				}
+				if result, err := e.autoCompactor.Compact(ctx, messages, compactParams); err == nil {
+					messages = result.SummaryMessages
+				}
+			}
+		}
+		// ────────────────────────────────────────────────────────────────────
+
+		// Build the API request using the primary model.
+		req, err := e.buildRequestWithModel(params, messages, e.model)
 		if err != nil {
 			sendError(ctx, msgCh, fmt.Errorf("engine: build request: %w", err))
 			return
@@ -83,8 +140,26 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 		// Stream the LLM response.
 		assistantMsg, toolCalls, stopReason, usage, streamErr := e.streamResponse(ctx, req, msgCh)
 		if streamErr != nil {
-			sendError(ctx, msgCh, streamErr)
-			return
+			// If a context-window overflow error occurred and a fallback model is set,
+			// retry the same turn with the fallback model.
+			var apiErr *api.APIError
+			if params.FallbackModel != "" && errors.As(streamErr, &apiErr) && apiErr.Kind == api.ErrKindContextWindow {
+				fallbackReq, fbErr := e.buildRequestWithModel(params, messages, params.FallbackModel)
+				if fbErr != nil {
+					sendError(ctx, msgCh, fmt.Errorf("engine: build fallback request: %w", fbErr))
+					return
+				}
+				select {
+				case msgCh <- Msg{Type: MsgTypeRequestStart, Model: fallbackReq.Model}:
+				case <-ctx.Done():
+					return
+				}
+				assistantMsg, toolCalls, stopReason, usage, streamErr = e.streamResponse(ctx, fallbackReq, msgCh)
+			}
+			if streamErr != nil {
+				sendError(ctx, msgCh, streamErr)
+				return
+			}
 		}
 
 		// Append the assistant message to the conversation.
@@ -254,7 +329,7 @@ func (e *engineImpl) streamResponse(
 				if id, ok := activeToolUseIDs[d.Index]; ok {
 					select {
 					case msgCh <- Msg{
-						Type:       MsgTypeToolUseStart,
+						Type:       MsgTypeToolUseInputDelta,
 						ToolUseID:  id,
 						ToolName:   activeToolNames[d.Index],
 						InputDelta: d.Delta.PartialJSON,
@@ -318,12 +393,8 @@ func (e *engineImpl) streamResponse(
 	return assistantMsg, toolCalls, result.StopReason, result.Usage, nil
 }
 
-// buildRequest constructs an api.MessageRequest from the query params and messages.
-func (e *engineImpl) buildRequest(params QueryParams, messages []types.Message) (*api.MessageRequest, error) {
-	model := e.model
-	if params.FallbackModel != "" {
-		model = params.FallbackModel
-	}
+// buildRequestWithModel constructs an api.MessageRequest using the given model.
+func (e *engineImpl) buildRequestWithModel(params QueryParams, messages []types.Message, model string) (*api.MessageRequest, error) {
 	maxTokens := e.maxTokens
 	if params.MaxOutputTokensOverride > 0 {
 		maxTokens = params.MaxOutputTokensOverride
@@ -360,9 +431,13 @@ func (e *engineImpl) buildRequest(params QueryParams, messages []types.Message) 
 		if err != nil {
 			return nil, fmt.Errorf("marshal tool schema for %s: %w", t.Name(), err)
 		}
+		var permCtx tool.PermissionContext
+		if params.ToolUseContext != nil {
+			permCtx = params.ToolUseContext.PermCtx
+		}
 		toolSchemas = append(toolSchemas, api.ToolSchema{
 			Name:        t.Name(),
-			Description: t.Description(nil, nil),
+			Description: t.Description(nil, permCtx),
 			InputSchema: schemaRaw,
 		})
 	}
@@ -437,4 +512,15 @@ func joinStrings(parts []string, sep string) string {
 		result += p
 	}
 	return result
+}
+
+// systemPromptParts extracts the text parts from a QueryParams system prompt.
+func systemPromptParts(params QueryParams) []string {
+	parts := make([]string, 0, len(params.SystemPrompt.Parts))
+	for _, p := range params.SystemPrompt.Parts {
+		if p.Text != "" {
+			parts = append(parts, p.Text)
+		}
+	}
+	return parts
 }

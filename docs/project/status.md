@@ -32,14 +32,14 @@
 | #11 | 评审核心层设计文档（含 Tool 接口契约确认） | ✅ 已完成 | Tech Lead | 见 review-core.md；Tool 接口正式确认 |
 | #12 | 评审服务/工具/TUI/CLI 四份设计文档 | ✅ 已完成 | Tech Lead | 见 review-services/tools/tui/cli.md |
 | #13 | 实现基础设施层所有模块 | ✅ 已完成 | Agent-Infra | P0-2/P0-3/P0-1 均已修复，全部测试通过 |
-| #14 | 实现服务层所有模块 | 🔄 进行中 | Agent-Services | FileStore 加密方案：AES-256-GCM |
-| #15 | 实现核心层所有模块 | ⏳ 待启动 | Agent-Core | 阻塞于 #13 #14 |
+| #14 | 实现服务层所有模块 | ✅ 已完成 | Agent-Services | AES-256-GCM token store, singleflight token refresh, MCP adapter |
+| #15 | 实现核心层所有模块 | 🔄 进行中 | Agent-Core | |
 | #16 | 实现所有内置工具 | ✅ 已完成 | Agent-Tools | B-1 已修复（GetPath 已从 Tool 主接口移除），所有工具实现完成 |
 | #17 | 实现 TUI 层所有模块 | ⏳ 待启动 | Agent-TUI | 阻塞于 #15 |
 | #18 | 实现 CLI 入口层 | ⏳ 待启动 | Agent-CLI | 阻塞于 #17 |
 | #19 | 输出测试策略文档，搭建测试基础设施 | ✅ 已完成 | QA | |
 | #20 | 验收基础设施层 | ⏳ 待启动 | QA | 阻塞于 #13（已完成，可开始验收） |
-| #21 | 验收服务层 | ⏳ 待启动 | QA | 阻塞于 #14 |
+| #21 | 验收服务层 | ⏳ 待启动 | QA | 阻塞于 #14（已完成，可开始验收） |
 | #22 | 验收核心层 | ⏳ 待启动 | QA | 阻塞于 #15 |
 | #23 | 验收工具层 | ⏳ 待启动 | QA | 阻塞于 #16（已完成，可开始验收） |
 | #24 | 验收 TUI 层 | ⏳ 待启动 | QA | 阻塞于 #17 |

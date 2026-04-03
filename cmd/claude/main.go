@@ -1,3 +1,6 @@
+// Package main is the entry point for the Claude Code CLI.
+// It delegates immediately to internal/bootstrap after handling any
+// zero-dependency fast-path flags (--version, etc.).
 package main
 
 import (
@@ -7,7 +10,14 @@ import (
 )
 
 func main() {
-	if err := bootstrap.Execute(); err != nil {
+	// Phase 0: handle fast-path flags without initialising cobra or any
+	// other dependency.  Returns true if the process should exit cleanly.
+	if bootstrap.HandleFastPath(os.Args) {
+		return
+	}
+
+	// Phase 1–6: full initialisation + cobra root command execution.
+	if err := bootstrap.Run(os.Args); err != nil {
 		os.Exit(1)
 	}
 }

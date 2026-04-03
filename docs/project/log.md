@@ -5,6 +5,35 @@
 
 ---
 
+## 2026-04-03（第 3 次巡检）
+
+**阶段**：M1 第三批（编码阶段）持续推进
+
+**进展**：
+- #13（Agent-Infra）✅ 完成并提交
+  - 所有 P0 修复均已落地：P0-1（无 panic stub）、P0-2（Policy 优先级最高）、P0-3（COW maps.Clone）
+  - go.mod 版本从 `go 1.22` 降至 `go 1.21`（匹配本地工具链 1.21.6）
+  - 全部测试通过（`go test ./pkg/... ./internal/config/... ./internal/state/... ./internal/session/...`）
+- #16（Agent-Tools）✅ 完成并提交
+  - B-1 修复：`GetPath` 已从 `Tool` 主接口移除，仅保留于 `PathTool` 子接口
+  - 所有内置工具实现完成（bash、fileops、glob、grep、web、mcp、agent、interact、tasks、misc）
+  - `go test ./internal/tool/... ./internal/tools/fileops/...` 通过
+- #14（Agent-Services）🔄 已启动
+
+**风险 / 阻塞**：
+
+| 编号 | 级别 | 内容 |
+|------|------|------|
+| （无） | — | 所有已知阻塞已解除 |
+
+**下一步**：
+- 等待 #14（Agent-Services）完成
+- #14 完成后立即启动 #15（Agent-Core）
+- #15 完成后立即启动 #17（Agent-TUI）
+- #17 完成后立即启动 #18（Agent-CLI）
+
+---
+
 ## 2026-04-02（第 2 次巡检）
 
 **阶段**：M1 第三批（编码阶段）启动

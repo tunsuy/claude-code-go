@@ -163,6 +163,11 @@ The entire codebase — from architecture design through implementation, code re
 
 ```
 ┌─────────────────────────────────────────────────────────┐
+│                      PM Agent                            │
+│        Project plan · milestones · task breakdown        │
+└─────────────────────────┬───────────────────────────────┘
+                           │
+┌─────────────────────────▼───────────────────────────────┐
 │                    Tech Lead Agent                       │
 │  Architecture design · design-doc review · code review  │
 └───────┬──────────┬──────────┬──────────┬──────────┬─────┘
@@ -183,10 +188,11 @@ The entire codebase — from architecture design through implementation, code re
 
 **The workflow:**
 
-1. **Tech Lead Agent** produced the architecture document and six layer-level design docs, then reviewed every implementation for correctness and adherence to the design.
-2. **Six specialist implementation agents** (Infra, Services, Core, Tools, TUI, CLI) worked in parallel, each owning their layer end-to-end.
-3. **QA Agent** wrote a test strategy, ran acceptance tests per layer, filed P0/P1 bugs, and issued a final integration sign-off.
-4. **All inter-agent communication** happened through the shared codebase, design docs, and QA reports in `docs/project/` — agents read each other's outputs and iterated.
+1. **PM Agent** kicked off the project by producing the overall plan, milestone breakdown, and task assignments for all subsequent agents.
+2. **Tech Lead Agent** produced the architecture document and six layer-level design docs, then reviewed every implementation for correctness and adherence to the design.
+3. **Six specialist implementation agents** (Infra, Services, Core, Tools, TUI, CLI) worked in parallel, each owning their layer end-to-end.
+4. **QA Agent** wrote a test strategy, ran acceptance tests per layer, filed P0/P1 bugs, and issued a final integration sign-off.
+5. **All inter-agent communication** happened through the shared codebase, design docs, and QA reports in `docs/project/` — agents read each other's outputs and iterated.
 
 This project serves as a real-world demonstration that a non-trivial, multi-layer Go application (~7,000 lines of production code + tests) can be designed, implemented, reviewed, and shipped entirely by AI agents collaborating asynchronously.
 

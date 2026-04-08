@@ -155,6 +155,43 @@ Claude Code Go is organized in six layers:
 
 See [`docs/project/architecture.md`](docs/project/architecture.md) for a detailed breakdown.
 
+## Built with Multi-Agent Collaboration
+
+> **This project was built entirely by a team of Claude AI agents working in parallel — no human wrote any of the production code.**
+
+The entire codebase — from architecture design through implementation, code review, testing, and QA — was produced through a structured multi-agent workflow orchestrated by Claude Code itself:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    Tech Lead Agent                       │
+│  Architecture design · design-doc review · code review  │
+└───────┬──────────┬──────────┬──────────┬──────────┬─────┘
+        │          │          │          │          │
+   Agent-Infra  Agent-     Agent-    Agent-    Agent-CLI
+   (pkg/types   Services   Core      Tools     (cmd/claude
+    config       api        engine    tools      bootstrap
+    state        oauth      coord.    perms.)    commands)
+    session      mcp        tool
+    hooks)       compact    dispatch
+        │          │          │          │          │
+        └──────────┴──────────┴──────────┴──────────┘
+                              │
+                         QA Agent
+                  test strategy · acceptance
+                  coverage · integration tests
+```
+
+**The workflow:**
+
+1. **Tech Lead Agent** produced the architecture document and six layer-level design docs, then reviewed every implementation for correctness and adherence to the design.
+2. **Six specialist implementation agents** (Infra, Services, Core, Tools, TUI, CLI) worked in parallel, each owning their layer end-to-end.
+3. **QA Agent** wrote a test strategy, ran acceptance tests per layer, filed P0/P1 bugs, and issued a final integration sign-off.
+4. **All inter-agent communication** happened through the shared codebase, design docs, and QA reports in `docs/project/` — agents read each other's outputs and iterated.
+
+This project serves as a real-world demonstration that a non-trivial, multi-layer Go application (~7,000 lines of production code + tests) can be designed, implemented, reviewed, and shipped entirely by AI agents collaborating asynchronously.
+
+The internal design documents and QA reports in [`docs/project/`](docs/project/) capture the full decision trail.
+
 ## Development
 
 ### Prerequisites

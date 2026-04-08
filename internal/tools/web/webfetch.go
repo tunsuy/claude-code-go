@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// WebFetchInput is the input schema for the WebFetch tool.
+// WebFetchInput is the input schema for the WebFetch tools.
 type WebFetchInput struct {
 	// URL is the target URL (HTTP is upgraded to HTTPS automatically).
 	URL string `json:"url"`
@@ -91,14 +91,14 @@ var defaultHTTPClient HTTPClient = &http.Client{
 
 // ── Tool implementation ───────────────────────────────────────────────────────
 
-type webFetchTool struct{ tool.BaseTool }
+type webFetchTool struct{ tools.BaseTool }
 
 // WebFetchTool is the exported singleton instance.
-var WebFetchTool tool.Tool = &webFetchTool{}
+var WebFetchTool tools.Tool = &webFetchTool{}
 
 func (t *webFetchTool) Name() string { return "WebFetch" }
 
-func (t *webFetchTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *webFetchTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Fetches content from a specified URL and returns it as text/Markdown.
 
 Usage notes:
@@ -110,14 +110,14 @@ Usage notes:
 - Includes a 15-minute cache for repeated access to the same URL`
 }
 
-func (t *webFetchTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *webFetchTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"url": tool.PropSchema(map[string]any{
+			"url": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The URL to fetch content from",
 			}),
-			"prompt": tool.PropSchema(map[string]any{
+			"prompt": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "A prompt describing what information to extract from the page",
 			}),
@@ -126,11 +126,11 @@ func (t *webFetchTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *webFetchTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *webFetchTool) IsReadOnly(_ tool.Input) bool         { return true }
+func (t *webFetchTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *webFetchTool) IsReadOnly(_ tools.Input) bool         { return true }
 func (t *webFetchTool) SearchHint() string                   { return "web fetch url http download browse" }
 
-func (t *webFetchTool) UserFacingName(input tool.Input) string {
+func (t *webFetchTool) UserFacingName(input tools.Input) string {
 	var in WebFetchInput
 	if json.Unmarshal(input, &in) == nil && in.URL != "" {
 		return fmt.Sprintf("WebFetch(%s)", in.URL)
@@ -138,25 +138,25 @@ func (t *webFetchTool) UserFacingName(input tool.Input) string {
 	return "WebFetch"
 }
 
-func (t *webFetchTool) ValidateInput(input tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
+func (t *webFetchTool) ValidateInput(input tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	var in WebFetchInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
 	}
 	if strings.TrimSpace(in.URL) == "" {
-		return tool.ValidationResult{OK: false, Reason: "url is required"}, nil
+		return tools.ValidationResult{OK: false, Reason: "url is required"}, nil
 	}
 	if _, err := url.ParseRequestURI(in.URL); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "url is not a valid URI: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "url is not a valid URI: " + err.Error()}, nil
 	}
-	return tool.ValidationResult{OK: true}, nil
+	return tools.ValidationResult{OK: true}, nil
 }
 
-// Call executes the WebFetch tool.
-func (t *webFetchTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+// Call executes the WebFetch tools.
+func (t *webFetchTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var in WebFetchInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return &tool.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
+		return &tools.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
 	}
 
 	// Upgrade HTTP → HTTPS.
@@ -164,13 +164,13 @@ func (t *webFetchTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnPro
 
 	// Check cache.
 	if cached, ok := getCached(fetchURL); ok {
-		return &tool.Result{Content: cached}, nil
+		return &tools.Result{Content: cached}, nil
 	}
 
 	// Build request.
 	req, err := http.NewRequest("GET", fetchURL, nil)
 	if err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("cannot build request: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("cannot build request: %v", err)}, nil
 	}
 	req.Header.Set("User-Agent", "claude-code-go/1.0 (WebFetch tool)")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5")
@@ -181,14 +181,14 @@ func (t *webFetchTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnPro
 
 	resp, err := defaultHTTPClient.Do(req)
 	if err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("request failed: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("request failed: %v", err)}, nil
 	}
 	defer resp.Body.Close()
 
 	// Read with size cap.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxWebFetchBodyBytes))
 	if err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("error reading response: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("error reading response: %v", err)}, nil
 	}
 
 	contentType := resp.Header.Get("Content-Type")
@@ -205,13 +205,13 @@ func (t *webFetchTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnPro
 	}
 
 	if resp.StatusCode >= 400 {
-		return &tool.Result{
+		return &tools.Result{
 			IsError: true,
 			Content: fmt.Sprintf("HTTP %d: %s\n\n%s", resp.StatusCode, resp.Status, content),
 		}, nil
 	}
 
-	return &tool.Result{Content: out}, nil
+	return &tools.Result{Content: out}, nil
 }
 
 // upgradeToHTTPS replaces http:// with https://.

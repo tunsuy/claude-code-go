@@ -1,18 +1,18 @@
-package tool_test
+package tools_test
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 // mockTool is a minimal Tool implementation for testing the Registry.
 type mockTool struct {
-	tool.BaseTool
+	tools.BaseTool
 	name    string
 	aliases []string
 	enabled bool
@@ -26,21 +26,21 @@ func (m *mockTool) Name() string    { return m.name }
 func (m *mockTool) Aliases() []string { return m.aliases }
 func (m *mockTool) IsEnabled() bool { return m.enabled }
 
-func (m *mockTool) Description(_ tool.Input, _ tool.PermissionContext) string { return "" }
-func (m *mockTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(nil, nil)
+func (m *mockTool) Description(_ tools.Input, _ tools.PermissionContext) string { return "" }
+func (m *mockTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(nil, nil)
 }
-func (m *mockTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (m *mockTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (m *mockTool) UserFacingName(_ tool.Input) string  { return m.name }
-func (m *mockTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
-	return &tool.Result{Content: "ok"}, nil
+func (m *mockTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (m *mockTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (m *mockTool) UserFacingName(_ tools.Input) string  { return m.name }
+func (m *mockTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	return &tools.Result{Content: "ok"}, nil
 }
 
 // ── Register ──────────────────────────────────────────────────────────────────
 
 func TestRegistry_Register_BasicLookup(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("Bash"))
 
 	got, ok := r.Get("Bash")
@@ -53,7 +53,7 @@ func TestRegistry_Register_BasicLookup(t *testing.T) {
 }
 
 func TestRegistry_Register_AliasLookup(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("Read", "FileRead", "ReadFile"))
 
 	for _, alias := range []string{"Read", "FileRead", "ReadFile"} {
@@ -68,7 +68,7 @@ func TestRegistry_Register_AliasLookup(t *testing.T) {
 }
 
 func TestRegistry_Register_PanicOnDuplicate(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("Bash"))
 
 	defer func() {
@@ -80,7 +80,7 @@ func TestRegistry_Register_PanicOnDuplicate(t *testing.T) {
 }
 
 func TestRegistry_Register_PreservesOrder(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	names := []string{"Alpha", "Beta", "Gamma", "Delta"}
 	for _, n := range names {
 		r.Register(newMock(n))
@@ -100,7 +100,7 @@ func TestRegistry_Register_PreservesOrder(t *testing.T) {
 // ── Deregister ────────────────────────────────────────────────────────────────
 
 func TestRegistry_Deregister_RemovesCanonical(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("Bash"))
 
 	if err := r.Deregister("Bash"); err != nil {
@@ -115,7 +115,7 @@ func TestRegistry_Deregister_RemovesCanonical(t *testing.T) {
 }
 
 func TestRegistry_Deregister_RemovesAliases(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("Read", "FileRead", "ReadFile"))
 
 	if err := r.Deregister("Read"); err != nil {
@@ -129,7 +129,7 @@ func TestRegistry_Deregister_RemovesAliases(t *testing.T) {
 }
 
 func TestRegistry_Deregister_UpdatesOrder(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("A"))
 	r.Register(newMock("B"))
 	r.Register(newMock("C"))
@@ -151,7 +151,7 @@ func TestRegistry_Deregister_UpdatesOrder(t *testing.T) {
 }
 
 func TestRegistry_Deregister_ErrorIfNotFound(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	err := r.Deregister("NonExistent")
 	if err == nil {
 		t.Error("expected error when deregistering non-existent tool")
@@ -161,7 +161,7 @@ func TestRegistry_Deregister_ErrorIfNotFound(t *testing.T) {
 // ── Replace ───────────────────────────────────────────────────────────────────
 
 func TestRegistry_Replace_UpdatesExisting(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	old := newMock("Bash")
 	r.Register(old)
 
@@ -181,7 +181,7 @@ func TestRegistry_Replace_UpdatesExisting(t *testing.T) {
 }
 
 func TestRegistry_Replace_RegistersIfAbsent(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Replace(newMock("NewTool"))
 
 	if _, ok := r.Get("NewTool"); !ok {
@@ -190,7 +190,7 @@ func TestRegistry_Replace_RegistersIfAbsent(t *testing.T) {
 }
 
 func TestRegistry_Replace_UpdatesAliases(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("MyTool", "OldAlias"))
 
 	// Replace with new aliases — OldAlias should be gone.
@@ -205,7 +205,7 @@ func TestRegistry_Replace_UpdatesAliases(t *testing.T) {
 }
 
 func TestRegistry_Replace_PreservesOrder(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("A"))
 	r.Register(newMock("B"))
 	r.Register(newMock("C"))
@@ -223,7 +223,7 @@ func TestRegistry_Replace_PreservesOrder(t *testing.T) {
 // ── All / Filter ──────────────────────────────────────────────────────────────
 
 func TestRegistry_All_SkipsDisabled(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("Enabled"))
 
 	disabled := newMock("Disabled")
@@ -240,7 +240,7 @@ func TestRegistry_All_SkipsDisabled(t *testing.T) {
 }
 
 func TestRegistry_Filter_SubsetByName(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	for _, n := range []string{"A", "B", "C", "D"} {
 		r.Register(newMock(n))
 	}
@@ -255,7 +255,7 @@ func TestRegistry_Filter_SubsetByName(t *testing.T) {
 }
 
 func TestRegistry_Filter_EmptyReturnsAll(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	r.Register(newMock("X"))
 	r.Register(newMock("Y"))
 
@@ -268,7 +268,7 @@ func TestRegistry_Filter_EmptyReturnsAll(t *testing.T) {
 // ── Concurrency ───────────────────────────────────────────────────────────────
 
 func TestRegistry_ConcurrentReadsSafe(t *testing.T) {
-	r := tool.NewRegistry()
+	r := tools.NewRegistry()
 	for i := 0; i < 20; i++ {
 		r.Register(newMock(string(rune('A' + i))))
 	}
@@ -291,7 +291,7 @@ func TestRegistry_ConcurrentReadsSafe(t *testing.T) {
 
 func TestPropSchema_RoundTrip(t *testing.T) {
 	def := map[string]any{"type": "string", "description": "test"}
-	raw := tool.PropSchema(def)
+	raw := tools.PropSchema(def)
 
 	var got map[string]any
 	if err := json.Unmarshal(raw, &got); err != nil {
@@ -303,7 +303,7 @@ func TestPropSchema_RoundTrip(t *testing.T) {
 }
 
 func TestNewInputSchema_TypeIsObject(t *testing.T) {
-	schema := tool.NewInputSchema(nil, nil)
+	schema := tools.NewInputSchema(nil, nil)
 	if schema.Type != "object" {
 		t.Errorf("expected Type=object, got %q", schema.Type)
 	}
@@ -329,7 +329,7 @@ func TestBaseTool_Defaults(t *testing.T) {
 	if !m.IsEnabled() {
 		t.Error("expected IsEnabled true by default")
 	}
-	if m.InterruptBehavior() != tool.InterruptBehaviorBlock {
+	if m.InterruptBehavior() != tools.InterruptBehaviorBlock {
 		t.Errorf("expected InterruptBehaviorBlock, got %q", m.InterruptBehavior())
 	}
 	prompt, err := m.Prompt(context.Background(), nil)
@@ -341,7 +341,7 @@ func TestBaseTool_Defaults(t *testing.T) {
 		t.Errorf("expected ValidateInput OK, got (%v, %v)", vr, err)
 	}
 	pr, err := m.CheckPermissions(nil, nil)
-	if err != nil || pr.Behavior != tool.PermissionPassthrough {
+	if err != nil || pr.Behavior != tools.PermissionPassthrough {
 		t.Errorf("expected CheckPermissions Passthrough, got (%v, %v)", pr, err)
 	}
 	matcher, err := m.PreparePermissionMatcher(nil)

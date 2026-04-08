@@ -3,7 +3,7 @@ package interact
 import (
 	"encoding/json"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── TodoWrite ─────────────────────────────────────────────────────────────────
@@ -25,13 +25,13 @@ type TodoWriteInput struct {
 
 // TodoWriteTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core session state / UI layer.
-var TodoWriteTool tool.Tool = &todoWriteTool{}
+var TodoWriteTool tools.Tool = &todoWriteTool{}
 
-type todoWriteTool struct{ tool.BaseTool }
+type todoWriteTool struct{ tools.BaseTool }
 
 func (t *todoWriteTool) Name() string { return "TodoWrite" }
 
-func (t *todoWriteTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *todoWriteTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Writes the complete TODO list for the current session, replacing the existing list.
 
 Usage notes:
@@ -39,10 +39,10 @@ Usage notes:
 - Status must be one of: pending, in_progress, completed`
 }
 
-func (t *todoWriteTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *todoWriteTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"todos": tool.PropSchema(map[string]any{
+			"todos": tools.PropSchema(map[string]any{
 				"type":        "array",
 				"description": "The complete list of TODO items",
 				"items": map[string]any{
@@ -61,13 +61,13 @@ func (t *todoWriteTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *todoWriteTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *todoWriteTool) IsReadOnly(_ tool.Input) bool        { return false }
-func (t *todoWriteTool) UserFacingName(_ tool.Input) string  { return "TodoWrite" }
+func (t *todoWriteTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *todoWriteTool) IsReadOnly(_ tools.Input) bool        { return false }
+func (t *todoWriteTool) UserFacingName(_ tools.Input) string  { return "TodoWrite" }
 
-func (t *todoWriteTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *todoWriteTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core session state / UI layer.
-	return &tool.Result{IsError: true, Content: "TodoWrite not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "TodoWrite not yet implemented (TODO(dep))"}, nil
 }
 
 // ── AskUserQuestion ───────────────────────────────────────────────────────────
@@ -82,13 +82,13 @@ type AskUserQuestionInput struct {
 
 // AskUserQuestionTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core UI/interaction layer.
-var AskUserQuestionTool tool.Tool = &askUserQuestionTool{}
+var AskUserQuestionTool tools.Tool = &askUserQuestionTool{}
 
-type askUserQuestionTool struct{ tool.BaseTool }
+type askUserQuestionTool struct{ tools.BaseTool }
 
 func (t *askUserQuestionTool) Name() string { return "AskUserQuestion" }
 
-func (t *askUserQuestionTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *askUserQuestionTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Pauses execution and asks the user a clarifying question, waiting for their response.
 
 Usage notes:
@@ -97,14 +97,14 @@ Usage notes:
 - Optionally provide response options to guide the user`
 }
 
-func (t *askUserQuestionTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *askUserQuestionTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"question": tool.PropSchema(map[string]any{
+			"question": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The question to ask the user",
 			}),
-			"options": tool.PropSchema(map[string]any{
+			"options": tools.PropSchema(map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
 				"description": "Optional suggested response options",
@@ -114,14 +114,14 @@ func (t *askUserQuestionTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *askUserQuestionTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *askUserQuestionTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (t *askUserQuestionTool) InterruptBehavior() tool.InterruptBehavior {
-	return tool.InterruptBehaviorBlock
+func (t *askUserQuestionTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *askUserQuestionTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (t *askUserQuestionTool) InterruptBehavior() tools.InterruptBehavior {
+	return tools.InterruptBehaviorBlock
 }
-func (t *askUserQuestionTool) UserFacingName(_ tool.Input) string { return "AskUserQuestion" }
+func (t *askUserQuestionTool) UserFacingName(_ tools.Input) string { return "AskUserQuestion" }
 
-func (t *askUserQuestionTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *askUserQuestionTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core UI layer (bubbletea input).
-	return &tool.Result{IsError: true, Content: "AskUserQuestion not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "AskUserQuestion not yet implemented (TODO(dep))"}, nil
 }

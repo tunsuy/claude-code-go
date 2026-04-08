@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/misc"
 )
 
@@ -224,9 +224,9 @@ func TestSyntheticOutputTool_Call_ReturnsError(t *testing.T) {
 // ── Interface compliance ──────────────────────────────────────────────────────
 
 func TestAllMiscTools_ImplementToolInterface(t *testing.T) {
-	var _ tool.Tool = misc.SkillTool
-	var _ tool.Tool = misc.BriefTool
-	var _ tool.Tool = misc.ToolSearchTool
-	var _ tool.Tool = misc.SleepTool
-	var _ tool.Tool = misc.SyntheticOutputTool
+	var _ tools.Tool = misc.SkillTool
+	var _ tools.Tool = misc.BriefTool
+	var _ tools.Tool = misc.ToolSearchTool
+	var _ tools.Tool = misc.SleepTool
+	var _ tools.Tool = misc.SyntheticOutputTool
 }

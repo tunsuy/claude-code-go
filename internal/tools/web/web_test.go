@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -344,7 +344,7 @@ func TestWebFetchTool_MapResultToToolResultBlock(t *testing.T) {
 }
 
 func TestWebFetchTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = WebFetchTool
+	var _ tools.Tool = WebFetchTool
 }
 
 // ── WebSearch tool ────────────────────────────────────────────────────────────
@@ -558,5 +558,5 @@ func TestParseBraveResponse_InvalidJSON(t *testing.T) {
 }
 
 func TestWebSearchTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = WebSearchTool
+	var _ tools.Tool = WebSearchTool
 }

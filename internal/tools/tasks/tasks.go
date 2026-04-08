@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Shared types ──────────────────────────────────────────────────────────────
@@ -42,29 +42,29 @@ type TaskCreateInput struct {
 
 // TaskCreateTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core TaskManager.
-var TaskCreateTool tool.Tool = &taskCreateTool{}
+var TaskCreateTool tools.Tool = &taskCreateTool{}
 
-type taskCreateTool struct{ tool.BaseTool }
+type taskCreateTool struct{ tools.BaseTool }
 
 func (t *taskCreateTool) Name() string { return "TaskCreate" }
 
-func (t *taskCreateTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *taskCreateTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return "Creates a new task and returns its ID."
 }
 
-func (t *taskCreateTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *taskCreateTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"description": tool.PropSchema(map[string]any{
+			"description": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "A human-readable description of the task",
 			}),
-			"tools": tool.PropSchema(map[string]any{
+			"tools": tools.PropSchema(map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
 				"description": "Optional list of tool names available to this task",
 			}),
-			"priority": tool.PropSchema(map[string]any{
+			"priority": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": "Optional task priority (higher number = higher priority)",
 			}),
@@ -73,10 +73,10 @@ func (t *taskCreateTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *taskCreateTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *taskCreateTool) IsReadOnly(_ tool.Input) bool        { return false }
+func (t *taskCreateTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *taskCreateTool) IsReadOnly(_ tools.Input) bool        { return false }
 
-func (t *taskCreateTool) UserFacingName(input tool.Input) string {
+func (t *taskCreateTool) UserFacingName(input tools.Input) string {
 	var in TaskCreateInput
 	if json.Unmarshal(input, &in) == nil && in.Description != "" {
 		desc := in.Description
@@ -88,9 +88,9 @@ func (t *taskCreateTool) UserFacingName(input tool.Input) string {
 	return "TaskCreate"
 }
 
-func (t *taskCreateTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *taskCreateTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tool.Result{IsError: true, Content: "TaskCreate not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "TaskCreate not yet implemented (TODO(dep))"}, nil
 }
 
 // ── TaskGet ───────────────────────────────────────────────────────────────────
@@ -102,20 +102,20 @@ type TaskGetInput struct {
 
 // TaskGetTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core TaskManager.
-var TaskGetTool tool.Tool = &taskGetTool{}
+var TaskGetTool tools.Tool = &taskGetTool{}
 
-type taskGetTool struct{ tool.BaseTool }
+type taskGetTool struct{ tools.BaseTool }
 
 func (t *taskGetTool) Name() string { return "TaskGet" }
 
-func (t *taskGetTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *taskGetTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return "Returns the current state of a task by ID."
 }
 
-func (t *taskGetTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *taskGetTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"id": tool.PropSchema(map[string]any{
+			"id": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The task ID to retrieve",
 			}),
@@ -124,10 +124,10 @@ func (t *taskGetTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *taskGetTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *taskGetTool) IsReadOnly(_ tool.Input) bool        { return true }
+func (t *taskGetTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *taskGetTool) IsReadOnly(_ tools.Input) bool        { return true }
 
-func (t *taskGetTool) UserFacingName(input tool.Input) string {
+func (t *taskGetTool) UserFacingName(input tools.Input) string {
 	var in TaskGetInput
 	if json.Unmarshal(input, &in) == nil && in.ID != "" {
 		return fmt.Sprintf("TaskGet(%s)", in.ID)
@@ -135,9 +135,9 @@ func (t *taskGetTool) UserFacingName(input tool.Input) string {
 	return "TaskGet"
 }
 
-func (t *taskGetTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *taskGetTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tool.Result{IsError: true, Content: "TaskGet not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "TaskGet not yet implemented (TODO(dep))"}, nil
 }
 
 // ── TaskList ──────────────────────────────────────────────────────────────────
@@ -149,20 +149,20 @@ type TaskListInput struct {
 
 // TaskListTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core TaskManager.
-var TaskListTool tool.Tool = &taskListTool{}
+var TaskListTool tools.Tool = &taskListTool{}
 
-type taskListTool struct{ tool.BaseTool }
+type taskListTool struct{ tools.BaseTool }
 
 func (t *taskListTool) Name() string { return "TaskList" }
 
-func (t *taskListTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *taskListTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return "Lists all tasks, optionally filtered by status."
 }
 
-func (t *taskListTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *taskListTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"status": tool.PropSchema(map[string]any{
+			"status": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "Optional status filter (pending, running, completed, failed, stopped)",
 				"enum":        []string{"pending", "running", "completed", "failed", "stopped"},
@@ -172,13 +172,13 @@ func (t *taskListTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *taskListTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *taskListTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (t *taskListTool) UserFacingName(_ tool.Input) string  { return "TaskList" }
+func (t *taskListTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *taskListTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (t *taskListTool) UserFacingName(_ tools.Input) string  { return "TaskList" }
 
-func (t *taskListTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *taskListTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tool.Result{IsError: true, Content: "TaskList not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "TaskList not yet implemented (TODO(dep))"}, nil
 }
 
 // ── TaskUpdate ────────────────────────────────────────────────────────────────
@@ -192,28 +192,28 @@ type TaskUpdateInput struct {
 
 // TaskUpdateTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core TaskManager.
-var TaskUpdateTool tool.Tool = &taskUpdateTool{}
+var TaskUpdateTool tools.Tool = &taskUpdateTool{}
 
-type taskUpdateTool struct{ tool.BaseTool }
+type taskUpdateTool struct{ tools.BaseTool }
 
 func (t *taskUpdateTool) Name() string { return "TaskUpdate" }
 
-func (t *taskUpdateTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *taskUpdateTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return "Updates the description or status of an existing task."
 }
 
-func (t *taskUpdateTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *taskUpdateTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"id": tool.PropSchema(map[string]any{
+			"id": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The task ID to update",
 			}),
-			"description": tool.PropSchema(map[string]any{
+			"description": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "New description (optional)",
 			}),
-			"status": tool.PropSchema(map[string]any{
+			"status": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "New status (optional)",
 				"enum":        []string{"pending", "running", "completed", "failed", "stopped"},
@@ -223,10 +223,10 @@ func (t *taskUpdateTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *taskUpdateTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *taskUpdateTool) IsReadOnly(_ tool.Input) bool        { return false }
+func (t *taskUpdateTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *taskUpdateTool) IsReadOnly(_ tools.Input) bool        { return false }
 
-func (t *taskUpdateTool) UserFacingName(input tool.Input) string {
+func (t *taskUpdateTool) UserFacingName(input tools.Input) string {
 	var in TaskUpdateInput
 	if json.Unmarshal(input, &in) == nil && in.ID != "" {
 		return fmt.Sprintf("TaskUpdate(%s)", in.ID)
@@ -234,9 +234,9 @@ func (t *taskUpdateTool) UserFacingName(input tool.Input) string {
 	return "TaskUpdate"
 }
 
-func (t *taskUpdateTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *taskUpdateTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tool.Result{IsError: true, Content: "TaskUpdate not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "TaskUpdate not yet implemented (TODO(dep))"}, nil
 }
 
 // ── TaskStop ──────────────────────────────────────────────────────────────────
@@ -248,20 +248,20 @@ type TaskStopInput struct {
 
 // TaskStopTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core TaskManager.
-var TaskStopTool tool.Tool = &taskStopTool{}
+var TaskStopTool tools.Tool = &taskStopTool{}
 
-type taskStopTool struct{ tool.BaseTool }
+type taskStopTool struct{ tools.BaseTool }
 
 func (t *taskStopTool) Name() string { return "TaskStop" }
 
-func (t *taskStopTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *taskStopTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return "Stops a running task and sets its status to stopped."
 }
 
-func (t *taskStopTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *taskStopTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"id": tool.PropSchema(map[string]any{
+			"id": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The task ID to stop",
 			}),
@@ -270,11 +270,11 @@ func (t *taskStopTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *taskStopTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *taskStopTool) IsReadOnly(_ tool.Input) bool        { return false }
-func (t *taskStopTool) IsDestructive(_ tool.Input) bool     { return true }
+func (t *taskStopTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *taskStopTool) IsReadOnly(_ tools.Input) bool        { return false }
+func (t *taskStopTool) IsDestructive(_ tools.Input) bool     { return true }
 
-func (t *taskStopTool) UserFacingName(input tool.Input) string {
+func (t *taskStopTool) UserFacingName(input tools.Input) string {
 	var in TaskStopInput
 	if json.Unmarshal(input, &in) == nil && in.ID != "" {
 		return fmt.Sprintf("TaskStop(%s)", in.ID)
@@ -282,9 +282,9 @@ func (t *taskStopTool) UserFacingName(input tool.Input) string {
 	return "TaskStop"
 }
 
-func (t *taskStopTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *taskStopTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tool.Result{IsError: true, Content: "TaskStop not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "TaskStop not yet implemented (TODO(dep))"}, nil
 }
 
 // ── TaskOutput ────────────────────────────────────────────────────────────────
@@ -298,24 +298,24 @@ type TaskOutputInput struct {
 
 // TaskOutputTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core TaskManager.
-var TaskOutputTool tool.Tool = &taskOutputTool{}
+var TaskOutputTool tools.Tool = &taskOutputTool{}
 
-type taskOutputTool struct{ tool.BaseTool }
+type taskOutputTool struct{ tools.BaseTool }
 
 func (t *taskOutputTool) Name() string { return "TaskOutput" }
 
-func (t *taskOutputTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *taskOutputTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return "Returns the captured output (stdout/stderr) of a task."
 }
 
-func (t *taskOutputTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *taskOutputTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"id": tool.PropSchema(map[string]any{
+			"id": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The task ID whose output to retrieve",
 			}),
-			"since": tool.PropSchema(map[string]any{
+			"since": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": "Optional byte offset; only output after this position is returned",
 			}),
@@ -324,10 +324,10 @@ func (t *taskOutputTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *taskOutputTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *taskOutputTool) IsReadOnly(_ tool.Input) bool        { return true }
+func (t *taskOutputTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *taskOutputTool) IsReadOnly(_ tools.Input) bool        { return true }
 
-func (t *taskOutputTool) UserFacingName(input tool.Input) string {
+func (t *taskOutputTool) UserFacingName(input tools.Input) string {
 	var in TaskOutputInput
 	if json.Unmarshal(input, &in) == nil && in.ID != "" {
 		return fmt.Sprintf("TaskOutput(%s)", in.ID)
@@ -335,7 +335,7 @@ func (t *taskOutputTool) UserFacingName(input tool.Input) string {
 	return "TaskOutput"
 }
 
-func (t *taskOutputTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *taskOutputTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tool.Result{IsError: true, Content: "TaskOutput not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "TaskOutput not yet implemented (TODO(dep))"}, nil
 }

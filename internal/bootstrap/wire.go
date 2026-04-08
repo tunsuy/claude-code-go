@@ -11,7 +11,7 @@ import (
 	"github.com/anthropics/claude-code-go/internal/mcp"
 	"github.com/anthropics/claude-code-go/internal/oauth"
 	"github.com/anthropics/claude-code-go/internal/state"
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -33,7 +33,7 @@ type AppContainer struct {
 	// AppStateStore holds the global reactive application state.
 	AppStateStore *state.AppStateStore
 	// ToolRegistry holds all registered tools.
-	ToolRegistry *tool.Registry
+	ToolRegistry *tools.Registry
 	// MCPPool manages MCP server connections.
 	MCPPool *mcp.Pool
 	// Settings is the merged layered config.
@@ -72,7 +72,7 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	}
 
 	// ── Phase 4: Tool registry ───────────────────────────────────────────────
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	RegisterBuiltinTools(reg)
 
 	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────

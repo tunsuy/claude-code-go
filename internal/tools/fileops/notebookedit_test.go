@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/fileops"
 )
 
@@ -124,5 +124,5 @@ func TestNotebookEditTool_Call_WithEditMode(t *testing.T) {
 }
 
 func TestNotebookEditTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = fileops.NotebookEditTool
+	var _ tools.Tool = fileops.NotebookEditTool
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/anthropics/claude-code-go/internal/hooks"
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -18,13 +18,13 @@ import (
 type Checker interface {
 	// CanUseTool performs a non-interactive permission check for a tool call.
 	// Returns Allow, Deny, or Ask; never blocks waiting for user input.
-	CanUseTool(ctx context.Context, toolName string, input tool.Input, tctx *tool.UseContext) (tool.PermissionResult, error)
+	CanUseTool(ctx context.Context, toolName string, input tools.Input, tctx *tools.UseContext) (tools.PermissionResult, error)
 
 	// RequestPermission runs the full permission flow:
 	//   1. CanUseTool
 	//   2. If Ask → send AskRequest on askCh and wait for AskResponse
 	//   3. Record decision in denial state
-	RequestPermission(ctx context.Context, req PermissionRequest, tctx *tool.UseContext) (tool.PermissionResult, error)
+	RequestPermission(ctx context.Context, req PermissionRequest, tctx *tools.UseContext) (tools.PermissionResult, error)
 
 	// GetDenialCount returns the number of permission denials recorded in this
 	// session (used for automatic prompting-mode downgrade).
@@ -35,10 +35,10 @@ type Checker interface {
 type PermissionRequest struct {
 	ToolName   string
 	ToolUseID  string
-	Input      tool.Input
-	// ToolResult is the preliminary result from tool.CheckPermissions (may be
+	Input      tools.Input
+	// ToolResult is the preliminary result from tools.CheckPermissions (may be
 	// PermissionPassthrough if the tool deferred).
-	ToolResult tool.PermissionResult
+	ToolResult tools.PermissionResult
 }
 
 // checker is the concrete Checker implementation.
@@ -47,7 +47,7 @@ type checker struct {
 	dispatcher *hooks.Dispatcher
 	// t is the resolved tool (may be nil if registry is nil).
 	registry   interface {
-		Get(name string) (tool.Tool, bool)
+		Get(name string) (tools.Tool, bool)
 	}
 	askCh      chan<- AskRequest
 	respCh     <-chan AskResponse
@@ -62,7 +62,7 @@ type CheckerConfig struct {
 	Dispatcher *hooks.Dispatcher
 	// Registry resolves tool names to Tool implementations (may be nil).
 	Registry interface {
-		Get(name string) (tool.Tool, bool)
+		Get(name string) (tools.Tool, bool)
 	}
 	// AskCh receives AskRequest events from the permission system.
 	// If nil, Ask decisions are downgraded to Deny.
@@ -88,18 +88,18 @@ func NewChecker(cfg CheckerConfig) Checker {
 func (c *checker) CanUseTool(
 	ctx context.Context,
 	toolName string,
-	input tool.Input,
-	tctx *tool.UseContext,
-) (tool.PermissionResult, error) {
+	input tools.Input,
+	tctx *tools.UseContext,
+) (tools.PermissionResult, error) {
 	// 1. bypassPermissions mode → unconditional allow.
 	if c.permCtx.Mode == types.PermissionModeBypassPermissions {
-		return tool.PermissionResult{Behavior: tool.PermissionAllow}, nil
+		return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
 	}
 
 	// 2. alwaysDenyRules → deny.
 	if matched, reason := matchRules(c.permCtx.AlwaysDenyRules, toolName, input, c.resolveMatcherFn(toolName, input)); matched {
-		return tool.PermissionResult{
-			Behavior: tool.PermissionDeny,
+		return tools.PermissionResult{
+			Behavior: tools.PermissionDeny,
 			Reason:   fmt.Sprintf("tool %q is in the always-deny list: %s", toolName, reason),
 		}, nil
 	}
@@ -109,10 +109,10 @@ func (c *checker) CanUseTool(
 		if t, ok := c.registry.Get(toolName); ok {
 			vr, verr := t.ValidateInput(input, tctx)
 			if verr != nil {
-				return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: verr.Error()}, nil
+				return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: verr.Error()}, nil
 			}
 			if !vr.OK {
-				return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: vr.Reason}, nil
+				return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: vr.Reason}, nil
 			}
 		}
 	}
@@ -128,48 +128,48 @@ func (c *checker) CanUseTool(
 			if len(hookResult.BlockReasons) > 0 {
 				reason = strings.Join(hookResult.BlockReasons, "; ")
 			}
-			return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: reason}, nil
+			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: reason}, nil
 		}
 	}
 
 	// 5. alwaysAllowRules → allow.
 	if matched, _ := matchRules(c.permCtx.AlwaysAllowRules, toolName, input, c.resolveMatcherFn(toolName, input)); matched {
-		return tool.PermissionResult{Behavior: tool.PermissionAllow}, nil
+		return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
 	}
 
 	// 6. alwaysAskRules → ask.
 	if matched, _ := matchRules(c.permCtx.AlwaysAskRules, toolName, input, c.resolveMatcherFn(toolName, input)); matched {
-		return tool.PermissionResult{Behavior: tool.PermissionAsk}, nil
+		return tools.PermissionResult{Behavior: tools.PermissionAsk}, nil
 	}
 
 	// 7. PermissionMode default decisions.
 	switch c.permCtx.Mode {
 	case types.PermissionModeDontAsk:
-		return tool.PermissionResult{Behavior: tool.PermissionAllow}, nil
+		return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
 	case types.PermissionModePlan:
 		// In plan mode, deny all write operations; allow reads.
 		if c.registry != nil {
 			if t, ok := c.registry.Get(toolName); ok {
 				if !t.IsReadOnly(input) {
-					return tool.PermissionResult{
-						Behavior: tool.PermissionDeny,
+					return tools.PermissionResult{
+						Behavior: tools.PermissionDeny,
 						Reason:   "write operations are not allowed in plan mode",
 					}, nil
 				}
 			}
 		}
-		return tool.PermissionResult{Behavior: tool.PermissionAllow}, nil
+		return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
 	case types.PermissionModeAcceptEdits:
 		// Allow all edit-type tools; ask for other write tools.
 		if c.registry != nil {
 			if t, ok := c.registry.Get(toolName); ok {
 				if t.IsReadOnly(input) {
-					return tool.PermissionResult{Behavior: tool.PermissionAllow}, nil
+					return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
 				}
 			}
 		}
 		// Default to ask for non-read tools.
-		return tool.PermissionResult{Behavior: tool.PermissionAsk}, nil
+		return tools.PermissionResult{Behavior: tools.PermissionAsk}, nil
 	}
 
 	// 8. Tool-specific CheckPermissions.
@@ -177,9 +177,9 @@ func (c *checker) CanUseTool(
 		if t, ok := c.registry.Get(toolName); ok {
 			result, terr := t.CheckPermissions(input, tctx)
 			if terr != nil {
-				return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: terr.Error()}, nil
+				return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: terr.Error()}, nil
 			}
-			if result.Behavior != tool.PermissionPassthrough {
+			if result.Behavior != tools.PermissionPassthrough {
 				return result, nil
 			}
 		}
@@ -189,30 +189,30 @@ func (c *checker) CanUseTool(
 	if c.registry != nil {
 		if t, ok := c.registry.Get(toolName); ok {
 			if t.IsReadOnly(input) {
-				return tool.PermissionResult{Behavior: tool.PermissionAllow}, nil
+				return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
 			}
 		}
 	}
 	// Unknown or write tool in default mode → ask.
-	return tool.PermissionResult{Behavior: tool.PermissionAsk}, nil
+	return tools.PermissionResult{Behavior: tools.PermissionAsk}, nil
 }
 
 // RequestPermission implements the full interactive permission flow.
 func (c *checker) RequestPermission(
 	ctx context.Context,
 	req PermissionRequest,
-	tctx *tool.UseContext,
-) (tool.PermissionResult, error) {
+	tctx *tools.UseContext,
+) (tools.PermissionResult, error) {
 	result, err := c.CanUseTool(ctx, req.ToolName, req.Input, tctx)
 	if err != nil {
 		return result, err
 	}
 
 	switch result.Behavior {
-	case tool.PermissionAllow:
+	case tools.PermissionAllow:
 		return result, nil
 
-	case tool.PermissionDeny:
+	case tools.PermissionDeny:
 		c.denial.Record(DenialRecord{
 			ToolName:  req.ToolName,
 			ToolUseID: req.ToolUseID,
@@ -220,7 +220,7 @@ func (c *checker) RequestPermission(
 		})
 		return result, nil
 
-	case tool.PermissionAsk:
+	case tools.PermissionAsk:
 		// Forward the ask to the TUI layer.
 		if c.askCh == nil || c.respCh == nil {
 			// No UI available — deny.
@@ -229,7 +229,7 @@ func (c *checker) RequestPermission(
 				ToolUseID: req.ToolUseID,
 				Reason:    "no interactive channel; ask downgraded to deny",
 			})
-			return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: result.Reason}, nil
+			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: result.Reason}, nil
 		}
 
 		askReq := AskRequest{
@@ -242,26 +242,26 @@ func (c *checker) RequestPermission(
 		select {
 		case c.askCh <- askReq:
 		case <-ctx.Done():
-			return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: "context cancelled"}, nil
+			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "context cancelled"}, nil
 		}
 
 		// Wait for response (60-second deadline handled by the TUI side).
 		select {
 		case resp, ok := <-c.respCh:
 			if !ok {
-				return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: "response channel closed"}, nil
+				return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "response channel closed"}, nil
 			}
-			if resp.Decision == tool.PermissionAllow {
-				return tool.PermissionResult{Behavior: tool.PermissionAllow, Reason: "user approved"}, nil
+			if resp.Decision == tools.PermissionAllow {
+				return tools.PermissionResult{Behavior: tools.PermissionAllow, Reason: "user approved"}, nil
 			}
 			c.denial.Record(DenialRecord{
 				ToolName:  req.ToolName,
 				ToolUseID: req.ToolUseID,
 				Reason:    "user denied",
 			})
-			return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: "user denied"}, nil
+			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "user denied"}, nil
 		case <-ctx.Done():
-			return tool.PermissionResult{Behavior: tool.PermissionDeny, Reason: "context cancelled"}, nil
+			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "context cancelled"}, nil
 		}
 	}
 
@@ -275,7 +275,7 @@ func (c *checker) GetDenialCount() int {
 
 // resolveMatcherFn retrieves the tool's PreparePermissionMatcher result (if available).
 // Returns nil if the tool is not found or returns no matcher.
-func (c *checker) resolveMatcherFn(toolName string, input tool.Input) func(string) bool {
+func (c *checker) resolveMatcherFn(toolName string, input tools.Input) func(string) bool {
 	if c.registry == nil {
 		return nil
 	}
@@ -294,7 +294,7 @@ func (c *checker) resolveMatcherFn(toolName string, input tool.Input) func(strin
 func matchRules(
 	rules types.ToolPermissionRulesBySource,
 	toolName string,
-	input tool.Input,
+	input tools.Input,
 	matcherFn func(string) bool,
 ) (bool, string) {
 	for _, patterns := range rules {

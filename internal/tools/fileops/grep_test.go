@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/fileops"
 )
 
@@ -67,7 +67,7 @@ func TestGrepTool_IsReadOnly(t *testing.T) {
 }
 
 func TestGrepTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = fileops.GrepTool
+	var _ tools.Tool = fileops.GrepTool
 }
 
 // ── ValidateInput ─────────────────────────────────────────────────────────────

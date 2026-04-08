@@ -8,12 +8,12 @@ import (
 	"sort"
 	"strings"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// GlobInput is the validated input for the Glob tool.
+// GlobInput is the validated input for the Glob tools.
 type GlobInput struct {
 	// Pattern is the glob expression (required). Examples: "**/*.go", "src/**/*.ts"
 	Pattern string `json:"pattern"`
@@ -37,16 +37,16 @@ const maxGlobResults = 10_000
 
 // ── Tool implementation ───────────────────────────────────────────────────────
 
-type globTool struct{ tool.BaseTool }
+type globTool struct{ tools.BaseTool }
 
 // GlobTool is the exported singleton instance.
-var GlobTool tool.Tool = &globTool{}
+var GlobTool tools.Tool = &globTool{}
 
 func (t *globTool) Name() string { return "Glob" }
 
 func (t *globTool) Aliases() []string { return nil }
 
-func (t *globTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *globTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Fast file pattern matching tool that works with any codebase size.
 - Supports glob patterns like "**/*.js" or "src/**/*.ts"
 - Returns matching file paths sorted by modification time (most recently modified first)
@@ -54,14 +54,14 @@ func (t *globTool) Description(_ tool.Input, _ tool.PermissionContext) string {
 - Results are truncated at 10,000 files`
 }
 
-func (t *globTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *globTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"pattern": tool.PropSchema(map[string]any{
+			"pattern": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": `The glob pattern to match files against (e.g. "**/*.go", "src/**/*.ts")`,
 			}),
-			"path": tool.PropSchema(map[string]any{
+			"path": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The directory to search in. If not specified the current working directory is used.",
 			}),
@@ -70,11 +70,11 @@ func (t *globTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *globTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *globTool) IsReadOnly(_ tool.Input) bool         { return true }
+func (t *globTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *globTool) IsReadOnly(_ tools.Input) bool         { return true }
 func (t *globTool) SearchHint() string                   { return "glob pattern file search find" }
 
-func (t *globTool) UserFacingName(input tool.Input) string {
+func (t *globTool) UserFacingName(input tools.Input) string {
 	var in GlobInput
 	if json.Unmarshal(input, &in) == nil && in.Pattern != "" {
 		return fmt.Sprintf("Glob(%s)", in.Pattern)
@@ -82,22 +82,22 @@ func (t *globTool) UserFacingName(input tool.Input) string {
 	return "Glob"
 }
 
-func (t *globTool) ValidateInput(input tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
+func (t *globTool) ValidateInput(input tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	var in GlobInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
 	}
 	if strings.TrimSpace(in.Pattern) == "" {
-		return tool.ValidationResult{OK: false, Reason: "pattern is required and must be non-empty"}, nil
+		return tools.ValidationResult{OK: false, Reason: "pattern is required and must be non-empty"}, nil
 	}
-	return tool.ValidationResult{OK: true}, nil
+	return tools.ValidationResult{OK: true}, nil
 }
 
-// Call executes the Glob tool.
-func (t *globTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+// Call executes the Glob tools.
+func (t *globTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var in GlobInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("invalid input: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("invalid input: %v", err)}, nil
 	}
 
 	// Resolve base directory.
@@ -106,7 +106,7 @@ func (t *globTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 		var err error
 		baseDir, err = os.Getwd()
 		if err != nil {
-			return &tool.Result{IsError: true, Content: "could not determine working directory: " + err.Error()}, nil
+			return &tools.Result{IsError: true, Content: "could not determine working directory: " + err.Error()}, nil
 		}
 	} else {
 		baseDir = expandPath(baseDir)
@@ -114,7 +114,7 @@ func (t *globTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 
 	// Verify the base directory exists.
 	if info, err := os.Stat(baseDir); err != nil || !info.IsDir() {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("path does not exist or is not a directory: %s", baseDir)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("path does not exist or is not a directory: %s", baseDir)}, nil
 	}
 
 	// Execute the glob walk.
@@ -169,7 +169,7 @@ func (t *globTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 		return nil
 	})
 	if err != nil && ctx != nil && ctx.Ctx.Err() != nil {
-		return &tool.Result{IsError: true, Content: "glob cancelled"}, nil
+		return &tools.Result{IsError: true, Content: "glob cancelled"}, nil
 	}
 
 	// Sort by modification time descending (most recent first).
@@ -187,7 +187,7 @@ func (t *globTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 		NumFiles:  len(filenames),
 		Truncated: truncated,
 	}
-	return &tool.Result{Content: out}, nil
+	return &tools.Result{Content: out}, nil
 }
 
 func (t *globTool) MapResultToToolResultBlock(output any, toolUseID string) (json.RawMessage, error) {

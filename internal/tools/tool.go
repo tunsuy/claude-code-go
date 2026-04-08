@@ -1,10 +1,9 @@
-// Package tool defines the Tool interface contract.
-// All built-in tools must implement this interface.
+// Package tools defines the Tool interface contract and registry.
+// All built-in tool implementations live in sub-packages of this package.
 //
-// Dependency direction: this package has ZERO external dependencies and is
-// imported by tool implementations. It must NOT import engine, permissions,
-// tui, or any other internal package to avoid circular dependencies.
-package tool
+// Dependency direction: this package has ZERO external dependencies and must
+// NOT import engine, permissions, tui, or any other internal package.
+package tools
 
 import (
 	"context"

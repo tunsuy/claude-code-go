@@ -4,16 +4,16 @@ import (
 	"encoding/json"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/mcp"
 )
 
 // ── MCPProxyTool ──────────────────────────────────────────────────────────────
 
 func makeProxy() *mcp.MCPProxyTool {
-	schema := tool.NewInputSchema(
+	schema := tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"input": tool.PropSchema(map[string]any{
+			"input": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "test input",
 			}),
@@ -88,7 +88,7 @@ func TestMCPProxyTool_Call_ReturnsError(t *testing.T) {
 }
 
 func TestMCPProxyTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = makeProxy()
+	var _ tools.Tool = makeProxy()
 }
 
 // ── ListMcpResourcesTool ──────────────────────────────────────────────────────
@@ -189,6 +189,6 @@ func TestReadMcpResourceTool_Call_ReturnsError(t *testing.T) {
 }
 
 func TestAllMCPTools_ImplementToolInterface(t *testing.T) {
-	var _ tool.Tool = mcp.ListMcpResourcesTool
-	var _ tool.Tool = mcp.ReadMcpResourceTool
+	var _ tools.Tool = mcp.ListMcpResourcesTool
+	var _ tools.Tool = mcp.ReadMcpResourceTool
 }

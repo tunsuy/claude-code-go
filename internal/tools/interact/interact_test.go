@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/interact"
 )
 
@@ -247,10 +247,10 @@ func TestExitWorktreeTool_Call_ReturnsError(t *testing.T) {
 // ── Interface compliance ──────────────────────────────────────────────────────
 
 func TestAllInteractTools_ImplementToolInterface(t *testing.T) {
-	var _ tool.Tool = interact.TodoWriteTool
-	var _ tool.Tool = interact.AskUserQuestionTool
-	var _ tool.Tool = interact.EnterPlanModeTool
-	var _ tool.Tool = interact.ExitPlanModeTool
-	var _ tool.Tool = interact.EnterWorktreeTool
-	var _ tool.Tool = interact.ExitWorktreeTool
+	var _ tools.Tool = interact.TodoWriteTool
+	var _ tools.Tool = interact.AskUserQuestionTool
+	var _ tools.Tool = interact.EnterPlanModeTool
+	var _ tools.Tool = interact.ExitPlanModeTool
+	var _ tools.Tool = interact.EnterWorktreeTool
+	var _ tools.Tool = interact.ExitWorktreeTool
 }

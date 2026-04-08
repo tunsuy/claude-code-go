@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── EnterPlanMode ─────────────────────────────────────────────────────────────
@@ -17,13 +17,13 @@ type EnterPlanModeInput struct {
 
 // EnterPlanModeTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core plan-mode state management.
-var EnterPlanModeTool tool.Tool = &enterPlanModeTool{}
+var EnterPlanModeTool tools.Tool = &enterPlanModeTool{}
 
-type enterPlanModeTool struct{ tool.BaseTool }
+type enterPlanModeTool struct{ tools.BaseTool }
 
 func (t *enterPlanModeTool) Name() string { return "EnterPlanMode" }
 
-func (t *enterPlanModeTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *enterPlanModeTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Enters plan mode, pausing execution until the plan is approved by the user.
 
 Usage notes:
@@ -31,10 +31,10 @@ Usage notes:
 - Execution resumes only after ExitPlanMode is called (typically by the user)`
 }
 
-func (t *enterPlanModeTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *enterPlanModeTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"plan": tool.PropSchema(map[string]any{
+			"plan": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "Human-readable plan summary to display to the user",
 			}),
@@ -43,16 +43,16 @@ func (t *enterPlanModeTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *enterPlanModeTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *enterPlanModeTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (t *enterPlanModeTool) InterruptBehavior() tool.InterruptBehavior {
-	return tool.InterruptBehaviorBlock
+func (t *enterPlanModeTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *enterPlanModeTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (t *enterPlanModeTool) InterruptBehavior() tools.InterruptBehavior {
+	return tools.InterruptBehaviorBlock
 }
-func (t *enterPlanModeTool) UserFacingName(_ tool.Input) string { return "EnterPlanMode" }
+func (t *enterPlanModeTool) UserFacingName(_ tools.Input) string { return "EnterPlanMode" }
 
-func (t *enterPlanModeTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *enterPlanModeTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core plan-mode state machine.
-	return &tool.Result{IsError: true, Content: "EnterPlanMode not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "EnterPlanMode not yet implemented (TODO(dep))"}, nil
 }
 
 // ── ExitPlanMode ──────────────────────────────────────────────────────────────
@@ -65,20 +65,20 @@ type ExitPlanModeInput struct {
 
 // ExitPlanModeTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core plan-mode state management.
-var ExitPlanModeTool tool.Tool = &exitPlanModeTool{}
+var ExitPlanModeTool tools.Tool = &exitPlanModeTool{}
 
-type exitPlanModeTool struct{ tool.BaseTool }
+type exitPlanModeTool struct{ tools.BaseTool }
 
 func (t *exitPlanModeTool) Name() string { return "ExitPlanMode" }
 
-func (t *exitPlanModeTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *exitPlanModeTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Exits plan mode. Set approved=true to proceed with the plan, false to abort.`
 }
 
-func (t *exitPlanModeTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *exitPlanModeTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"approved": tool.PropSchema(map[string]any{
+			"approved": tools.PropSchema(map[string]any{
 				"type":        "boolean",
 				"description": "True to approve and proceed; false to abort",
 			}),
@@ -87,13 +87,13 @@ func (t *exitPlanModeTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *exitPlanModeTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *exitPlanModeTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (t *exitPlanModeTool) UserFacingName(_ tool.Input) string  { return "ExitPlanMode" }
+func (t *exitPlanModeTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *exitPlanModeTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (t *exitPlanModeTool) UserFacingName(_ tools.Input) string  { return "ExitPlanMode" }
 
-func (t *exitPlanModeTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *exitPlanModeTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core plan-mode state machine.
-	return &tool.Result{IsError: true, Content: "ExitPlanMode not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "ExitPlanMode not yet implemented (TODO(dep))"}, nil
 }
 
 // ── EnterWorktree ─────────────────────────────────────────────────────────────
@@ -106,13 +106,13 @@ type EnterWorktreeInput struct {
 
 // EnterWorktreeTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core worktree manager.
-var EnterWorktreeTool tool.Tool = &enterWorktreeTool{}
+var EnterWorktreeTool tools.Tool = &enterWorktreeTool{}
 
-type enterWorktreeTool struct{ tool.BaseTool }
+type enterWorktreeTool struct{ tools.BaseTool }
 
 func (t *enterWorktreeTool) Name() string { return "EnterWorktree" }
 
-func (t *enterWorktreeTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *enterWorktreeTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Creates and switches to an isolated git worktree for the current session.
 
 Usage notes:
@@ -121,10 +121,10 @@ Usage notes:
 - Use ExitWorktree to leave the worktree`
 }
 
-func (t *enterWorktreeTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *enterWorktreeTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"name": tool.PropSchema(map[string]any{
+			"name": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "Optional name for the worktree; random name generated if omitted",
 			}),
@@ -133,10 +133,10 @@ func (t *enterWorktreeTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *enterWorktreeTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *enterWorktreeTool) IsReadOnly(_ tool.Input) bool        { return false }
+func (t *enterWorktreeTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *enterWorktreeTool) IsReadOnly(_ tools.Input) bool        { return false }
 
-func (t *enterWorktreeTool) UserFacingName(input tool.Input) string {
+func (t *enterWorktreeTool) UserFacingName(input tools.Input) string {
 	var in EnterWorktreeInput
 	if json.Unmarshal(input, &in) == nil && in.Name != "" {
 		return fmt.Sprintf("EnterWorktree(%s)", in.Name)
@@ -144,9 +144,9 @@ func (t *enterWorktreeTool) UserFacingName(input tool.Input) string {
 	return "EnterWorktree"
 }
 
-func (t *enterWorktreeTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *enterWorktreeTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core worktree manager.
-	return &tool.Result{IsError: true, Content: "EnterWorktree not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "EnterWorktree not yet implemented (TODO(dep))"}, nil
 }
 
 // ── ExitWorktree ──────────────────────────────────────────────────────────────
@@ -161,13 +161,13 @@ type ExitWorktreeInput struct {
 
 // ExitWorktreeTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core worktree manager.
-var ExitWorktreeTool tool.Tool = &exitWorktreeTool{}
+var ExitWorktreeTool tools.Tool = &exitWorktreeTool{}
 
-type exitWorktreeTool struct{ tool.BaseTool }
+type exitWorktreeTool struct{ tools.BaseTool }
 
 func (t *exitWorktreeTool) Name() string { return "ExitWorktree" }
 
-func (t *exitWorktreeTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *exitWorktreeTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Exits the current worktree session and returns to the original directory.
 
 Usage notes:
@@ -175,15 +175,15 @@ Usage notes:
 - Set discard_changes=true to force removal even with uncommitted changes`
 }
 
-func (t *exitWorktreeTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *exitWorktreeTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"action": tool.PropSchema(map[string]any{
+			"action": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "\"keep\" or \"remove\"",
 				"enum":        []string{"keep", "remove"},
 			}),
-			"discard_changes": tool.PropSchema(map[string]any{
+			"discard_changes": tools.PropSchema(map[string]any{
 				"type":        "boolean",
 				"description": "If true, removes even when there are uncommitted changes",
 			}),
@@ -192,12 +192,12 @@ func (t *exitWorktreeTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *exitWorktreeTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *exitWorktreeTool) IsReadOnly(_ tool.Input) bool        { return false }
-func (t *exitWorktreeTool) IsDestructive(_ tool.Input) bool     { return true }
-func (t *exitWorktreeTool) UserFacingName(_ tool.Input) string  { return "ExitWorktree" }
+func (t *exitWorktreeTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *exitWorktreeTool) IsReadOnly(_ tools.Input) bool        { return false }
+func (t *exitWorktreeTool) IsDestructive(_ tools.Input) bool     { return true }
+func (t *exitWorktreeTool) UserFacingName(_ tools.Input) string  { return "ExitWorktree" }
 
-func (t *exitWorktreeTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *exitWorktreeTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core worktree manager.
-	return &tool.Result{IsError: true, Content: "ExitWorktree not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "ExitWorktree not yet implemented (TODO(dep))"}, nil
 }

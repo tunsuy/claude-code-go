@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -35,7 +35,7 @@ type toolBatch struct {
 // according to concurrency safety.  Consecutive IsConcurrencySafe=true calls
 // are merged into one concurrent batch; a single IsConcurrencySafe=false call
 // forms its own serial batch.
-func partitionToolCalls(calls []toolCall, registry *tool.Registry) []toolBatch {
+func partitionToolCalls(calls []toolCall, registry *tools.Registry) []toolBatch {
 	var batches []toolBatch
 	var currentBatch []toolCall
 	currentConcurrent := false
@@ -89,8 +89,8 @@ func maxToolConcurrency() int {
 func runTools(
 	ctx context.Context,
 	batches []toolBatch,
-	registry *tool.Registry,
-	uctx *tool.UseContext,
+	registry *tools.Registry,
+	uctx *tools.UseContext,
 	msgCh chan<- Msg,
 ) ([]types.ContentBlock, error) {
 	var allResults []types.ContentBlock
@@ -109,8 +109,8 @@ func runTools(
 func executeBatch(
 	ctx context.Context,
 	batch toolBatch,
-	registry *tool.Registry,
-	uctx *tool.UseContext,
+	registry *tools.Registry,
+	uctx *tools.UseContext,
 	msgCh chan<- Msg,
 ) ([]types.ContentBlock, error) {
 	if batch.concurrent {
@@ -123,8 +123,8 @@ func executeBatch(
 func executeConcurrentBatch(
 	ctx context.Context,
 	calls []toolCall,
-	registry *tool.Registry,
-	uctx *tool.UseContext,
+	registry *tools.Registry,
+	uctx *tools.UseContext,
 	msgCh chan<- Msg,
 ) ([]types.ContentBlock, error) {
 	limit := maxToolConcurrency()
@@ -180,8 +180,8 @@ func executeConcurrentBatch(
 func executeSerialBatch(
 	ctx context.Context,
 	calls []toolCall,
-	registry *tool.Registry,
-	uctx *tool.UseContext,
+	registry *tools.Registry,
+	uctx *tools.UseContext,
 	msgCh chan<- Msg,
 ) ([]types.ContentBlock, error) {
 	var results []types.ContentBlock
@@ -199,8 +199,8 @@ func executeSerialBatch(
 func executeOneTool(
 	ctx context.Context,
 	tc toolCall,
-	registry *tool.Registry,
-	uctx *tool.UseContext,
+	registry *tools.Registry,
+	uctx *tools.UseContext,
 	msgCh chan<- Msg,
 ) (types.ContentBlock, error) {
 	t, ok := registry.Get(tc.name)

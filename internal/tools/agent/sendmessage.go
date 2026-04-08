@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// SendMessageInput is the input schema for the SendMessage tool.
+// SendMessageInput is the input schema for the SendMessage tools.
 type SendMessageInput struct {
 	// AgentID is the target sub-agent identifier (required).
 	AgentID string `json:"agent_id"`
@@ -27,13 +27,13 @@ type SendMessageOutput struct {
 
 // SendMessageTool is the exported singleton instance.
 // TODO(dep): Full implementation requires Agent-Core's session/message-routing layer.
-var SendMessageTool tool.Tool = &sendMessageTool{}
+var SendMessageTool tools.Tool = &sendMessageTool{}
 
-type sendMessageTool struct{ tool.BaseTool }
+type sendMessageTool struct{ tools.BaseTool }
 
 func (t *sendMessageTool) Name() string { return "SendMessage" }
 
-func (t *sendMessageTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *sendMessageTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Sends a message to a running sub-agent and returns its response.
 
 Usage notes:
@@ -41,14 +41,14 @@ Usage notes:
 - Returns the sub-agent's reply to the message`
 }
 
-func (t *sendMessageTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *sendMessageTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"agent_id": tool.PropSchema(map[string]any{
+			"agent_id": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The identifier of the target sub-agent",
 			}),
-			"content": tool.PropSchema(map[string]any{
+			"content": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The message content to send to the sub-agent",
 			}),
@@ -57,10 +57,10 @@ func (t *sendMessageTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *sendMessageTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *sendMessageTool) IsReadOnly(_ tool.Input) bool        { return false }
+func (t *sendMessageTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *sendMessageTool) IsReadOnly(_ tools.Input) bool        { return false }
 
-func (t *sendMessageTool) UserFacingName(input tool.Input) string {
+func (t *sendMessageTool) UserFacingName(input tools.Input) string {
 	var in SendMessageInput
 	if json.Unmarshal(input, &in) == nil && in.AgentID != "" {
 		msg := in.Content
@@ -72,9 +72,9 @@ func (t *sendMessageTool) UserFacingName(input tool.Input) string {
 	return "SendMessage"
 }
 
-func (t *sendMessageTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *sendMessageTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core session routing.
-	return &tool.Result{
+	return &tools.Result{
 		IsError: true,
 		Content: "SendMessage tool not yet implemented: requires Agent-Core session router (TODO(dep))",
 	}, nil

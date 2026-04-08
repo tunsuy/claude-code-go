@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -22,7 +22,7 @@ const (
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// BashInput is the input schema for the Bash tool.
+// BashInput is the input schema for the Bash tools.
 type BashInput struct {
 	// Command is the shell command to execute (required).
 	Command string `json:"command"`
@@ -50,13 +50,13 @@ type BashOutput struct {
 // TODO(dep): Full sandbox implementation requires Agent-Core sandbox manager.
 // Phase 1 MVP uses exec.Command directly; Phase 2 will inject a BashExecutor
 // interface for sandboxed execution.
-var BashTool tool.Tool = &bashTool{}
+var BashTool tools.Tool = &bashTool{}
 
-type bashTool struct{ tool.BaseTool }
+type bashTool struct{ tools.BaseTool }
 
 func (t *bashTool) Name() string { return "Bash" }
 
-func (t *bashTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *bashTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Executes a given bash command and returns its output.
 
 The working directory persists between commands, but shell state does not.
@@ -67,18 +67,18 @@ IMPORTANT:
 - Use the run_in_background parameter for long-running commands`
 }
 
-func (t *bashTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *bashTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"command": tool.PropSchema(map[string]any{
+			"command": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The bash command to execute",
 			}),
-			"timeout": tool.PropSchema(map[string]any{
+			"timeout": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": fmt.Sprintf("Optional timeout in milliseconds (max %d)", MaxBashTimeoutMs),
 			}),
-			"dangerously_disable_sandbox": tool.PropSchema(map[string]any{
+			"dangerously_disable_sandbox": tools.PropSchema(map[string]any{
 				"type":        "boolean",
 				"description": "Set to true to disable sandbox mode when policy permits",
 			}),
@@ -87,15 +87,15 @@ func (t *bashTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *bashTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *bashTool) IsReadOnly(_ tool.Input) bool         { return false }
-func (t *bashTool) IsDestructive(_ tool.Input) bool      { return true }
+func (t *bashTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *bashTool) IsReadOnly(_ tools.Input) bool         { return false }
+func (t *bashTool) IsDestructive(_ tools.Input) bool      { return true }
 
-func (t *bashTool) InterruptBehavior() tool.InterruptBehavior {
-	return tool.InterruptBehaviorCancel
+func (t *bashTool) InterruptBehavior() tools.InterruptBehavior {
+	return tools.InterruptBehaviorCancel
 }
 
-func (t *bashTool) UserFacingName(input tool.Input) string {
+func (t *bashTool) UserFacingName(input tools.Input) string {
 	var in BashInput
 	if json.Unmarshal(input, &in) == nil && in.Command != "" {
 		cmd := in.Command
@@ -107,30 +107,30 @@ func (t *bashTool) UserFacingName(input tool.Input) string {
 	return "Bash"
 }
 
-func (t *bashTool) ValidateInput(input tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
+func (t *bashTool) ValidateInput(input tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	var in BashInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
 	}
 	if strings.TrimSpace(in.Command) == "" {
-		return tool.ValidationResult{OK: false, Reason: "command is required"}, nil
+		return tools.ValidationResult{OK: false, Reason: "command is required"}, nil
 	}
 	if in.Timeout != nil && *in.Timeout > MaxBashTimeoutMs {
-		return tool.ValidationResult{
+		return tools.ValidationResult{
 			OK:     false,
 			Reason: fmt.Sprintf("timeout exceeds maximum allowed value of %d ms", MaxBashTimeoutMs),
 		}, nil
 	}
-	return tool.ValidationResult{OK: true}, nil
+	return tools.ValidationResult{OK: true}, nil
 }
 
-// Call executes the Bash tool.
+// Call executes the Bash tools.
 // TODO(dep): sandbox support, permission checks, and security rule matching
 // require Agent-Core's SandboxManager and permission system.
-func (t *bashTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *bashTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var in BashInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return &tool.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
+		return &tools.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
 	}
 
 	timeoutMs := DefaultBashTimeoutMs
@@ -167,7 +167,7 @@ func (t *bashTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 		if timeoutCtx.Err() == context.DeadlineExceeded {
 			out.TimedOut = true
 			out.ExitCode = -1
-			return &tool.Result{
+			return &tools.Result{
 				IsError: true,
 				Content: fmt.Sprintf("Command timed out after %d ms.\nstdout: %s\nstderr: %s",
 					timeoutMs, out.Stdout, out.Stderr),
@@ -180,7 +180,7 @@ func (t *bashTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 		}
 	}
 
-	return &tool.Result{Content: out}, nil
+	return &tools.Result{Content: out}, nil
 }
 
 func (t *bashTool) MapResultToToolResultBlock(output any, toolUseID string) (json.RawMessage, error) {

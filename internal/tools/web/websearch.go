@@ -9,12 +9,12 @@ import (
 	"os"
 	"strings"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// WebSearchInput is the input schema for the WebSearch tool.
+// WebSearchInput is the input schema for the WebSearch tools.
 type WebSearchInput struct {
 	// Query is the search query (required).
 	Query string `json:"query"`
@@ -42,14 +42,14 @@ const braveSearchAPIURL = "https://api.search.brave.com/res/v1/web/search"
 
 // ── Tool implementation ───────────────────────────────────────────────────────
 
-type webSearchTool struct{ tool.BaseTool }
+type webSearchTool struct{ tools.BaseTool }
 
 // WebSearchTool is the exported singleton instance.
-var WebSearchTool tool.Tool = &webSearchTool{}
+var WebSearchTool tools.Tool = &webSearchTool{}
 
 func (t *webSearchTool) Name() string { return "WebSearch" }
 
-func (t *webSearchTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *webSearchTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Searches the web using the Brave Search API and returns formatted results.
 
 Usage notes:
@@ -59,19 +59,19 @@ Usage notes:
 - Web search is read-only and concurrency-safe`
 }
 
-func (t *webSearchTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *webSearchTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"query": tool.PropSchema(map[string]any{
+			"query": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The search query",
 			}),
-			"allowed_domains": tool.PropSchema(map[string]any{
+			"allowed_domains": tools.PropSchema(map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
 				"description": "Only include results from these domains",
 			}),
-			"blocked_domains": tool.PropSchema(map[string]any{
+			"blocked_domains": tools.PropSchema(map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
 				"description": "Never include results from these domains",
@@ -81,8 +81,8 @@ func (t *webSearchTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *webSearchTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *webSearchTool) IsReadOnly(_ tool.Input) bool         { return true }
+func (t *webSearchTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *webSearchTool) IsReadOnly(_ tools.Input) bool         { return true }
 func (t *webSearchTool) SearchHint() string {
 	return "web search internet query find browse"
 }
@@ -93,7 +93,7 @@ func (t *webSearchTool) IsEnabled() bool {
 	return true
 }
 
-func (t *webSearchTool) UserFacingName(input tool.Input) string {
+func (t *webSearchTool) UserFacingName(input tools.Input) string {
 	var in WebSearchInput
 	if json.Unmarshal(input, &in) == nil && in.Query != "" {
 		return fmt.Sprintf("WebSearch(%s)", in.Query)
@@ -101,27 +101,27 @@ func (t *webSearchTool) UserFacingName(input tool.Input) string {
 	return "WebSearch"
 }
 
-func (t *webSearchTool) ValidateInput(input tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
+func (t *webSearchTool) ValidateInput(input tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	var in WebSearchInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
 	}
 	if strings.TrimSpace(in.Query) == "" {
-		return tool.ValidationResult{OK: false, Reason: "query is required and must be non-empty"}, nil
+		return tools.ValidationResult{OK: false, Reason: "query is required and must be non-empty"}, nil
 	}
-	return tool.ValidationResult{OK: true}, nil
+	return tools.ValidationResult{OK: true}, nil
 }
 
-// Call executes the WebSearch tool.
-func (t *webSearchTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+// Call executes the WebSearch tools.
+func (t *webSearchTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var in WebSearchInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return &tool.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
+		return &tools.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
 	}
 
 	apiKey := os.Getenv("BRAVE_API_KEY")
 	if apiKey == "" {
-		return &tool.Result{
+		return &tools.Result{
 			IsError: true,
 			Content: "BRAVE_API_KEY environment variable is not set. WebSearch requires a Brave Search API key.",
 		}, nil
@@ -129,21 +129,21 @@ func (t *webSearchTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnPr
 
 	results, err := callBraveSearchAPI(apiKey, in.Query, in.AllowedDomains, in.BlockedDomains, ctx)
 	if err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("search failed: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("search failed: %v", err)}, nil
 	}
 
 	out := WebSearchOutput{
 		Query:   in.Query,
 		Results: results,
 	}
-	return &tool.Result{Content: out}, nil
+	return &tools.Result{Content: out}, nil
 }
 
 // callBraveSearchAPI calls the Brave Search API and returns parsed results.
 func callBraveSearchAPI(
 	apiKey, query string,
 	allowedDomains, blockedDomains []string,
-	ctx *tool.UseContext,
+	ctx *tools.UseContext,
 ) ([]WebSearchResult, error) {
 	params := url.Values{}
 	params.Set("q", query)

@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // toolNameRe matches characters NOT allowed in Anthropic tool names.
@@ -19,11 +19,11 @@ func NormalizeToolName(name string) string {
 	return toolNameRe.ReplaceAllString(name, "_")
 }
 
-// AdaptToTool adapts an MCPToolDef to the internal tool.Tool interface.
+// AdaptToTool adapts an MCPToolDef to the internal tools.Tool interface.
 //
 // Naming convention: "{serverName}__{normalizedToolName}" (double underscore),
 // matching TS buildMcpToolName().
-func AdaptToTool(serverName string, def MCPToolDef, client MCPClient) tool.Tool {
+func AdaptToTool(serverName string, def MCPToolDef, client MCPClient) tools.Tool {
 	normalized := NormalizeToolName(def.Name)
 	fullName := serverName + "__" + normalized
 	return &mcpTool{
@@ -36,9 +36,9 @@ func AdaptToTool(serverName string, def MCPToolDef, client MCPClient) tool.Tool 
 	}
 }
 
-// mcpTool implements tool.Tool for an MCP-backed tool.
+// mcpTool implements tools.Tool for an MCP-backed tools.
 type mcpTool struct {
-	tool.BaseTool
+	tools.BaseTool
 	fullName   string
 	serverName string
 	rawName    string
@@ -51,25 +51,25 @@ type mcpTool struct {
 
 func (t *mcpTool) Name() string { return t.fullName }
 func (t *mcpTool) Aliases() []string { return nil }
-func (t *mcpTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *mcpTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return t.desc
 }
-func (t *mcpTool) InputSchema() tool.InputSchema {
-	// Deserialise the MCP JSON Schema into tool.InputSchema
+func (t *mcpTool) InputSchema() tools.InputSchema {
+	// Deserialise the MCP JSON Schema into tools.InputSchema
 	var s struct {
 		Properties map[string]json.RawMessage `json:"properties"`
 		Required   []string                   `json:"required"`
 	}
 	if err := json.Unmarshal(t.schema, &s); err != nil {
-		return tool.InputSchema{Type: "object"}
+		return tools.InputSchema{Type: "object"}
 	}
-	return tool.InputSchema{
+	return tools.InputSchema{
 		Type:       "object",
 		Properties: s.Properties,
 		Required:   s.Required,
 	}
 }
-func (t *mcpTool) Prompt(_ context.Context, _ tool.PermissionContext) (string, error) {
+func (t *mcpTool) Prompt(_ context.Context, _ tools.PermissionContext) (string, error) {
 	return "", nil
 }
 func (t *mcpTool) MaxResultSizeChars() int { return -1 }
@@ -77,33 +77,33 @@ func (t *mcpTool) SearchHint() string      { return t.serverName + " " + t.rawNa
 
 // ── Concurrency & Safety ─────────────────────────────────────────────────────
 
-func (t *mcpTool) IsConcurrencySafe(_ tool.Input) bool  { return false }
-func (t *mcpTool) IsReadOnly(_ tool.Input) bool         { return false }
-func (t *mcpTool) IsDestructive(_ tool.Input) bool      { return false }
+func (t *mcpTool) IsConcurrencySafe(_ tools.Input) bool  { return false }
+func (t *mcpTool) IsReadOnly(_ tools.Input) bool         { return false }
+func (t *mcpTool) IsDestructive(_ tools.Input) bool      { return false }
 func (t *mcpTool) IsEnabled() bool                      { return true }
-func (t *mcpTool) InterruptBehavior() tool.InterruptBehavior {
-	return tool.InterruptBehaviorCancel
+func (t *mcpTool) InterruptBehavior() tools.InterruptBehavior {
+	return tools.InterruptBehaviorCancel
 }
 
 // ── Permissions ──────────────────────────────────────────────────────────────
 
-func (t *mcpTool) ValidateInput(_ tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
-	return tool.ValidationResult{OK: true}, nil
+func (t *mcpTool) ValidateInput(_ tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
+	return tools.ValidationResult{OK: true}, nil
 }
-func (t *mcpTool) CheckPermissions(_ tool.Input, _ *tool.UseContext) (tool.PermissionResult, error) {
-	return tool.PermissionResult{Behavior: tool.PermissionAsk}, nil
+func (t *mcpTool) CheckPermissions(_ tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	return tools.PermissionResult{Behavior: tools.PermissionAsk}, nil
 }
-func (t *mcpTool) PreparePermissionMatcher(_ tool.Input) (func(string) bool, error) {
+func (t *mcpTool) PreparePermissionMatcher(_ tools.Input) (func(string) bool, error) {
 	return nil, nil
 }
 
 // ── Execution ────────────────────────────────────────────────────────────────
 
-func (t *mcpTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *mcpTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var args map[string]any
 	if len(input) > 0 {
 		if err := json.Unmarshal(input, &args); err != nil {
-			return &tool.Result{
+			return &tools.Result{
 				Content: fmt.Sprintf("invalid input: %v", err),
 				IsError: true,
 			}, nil
@@ -112,7 +112,7 @@ func (t *mcpTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgress
 
 	result, err := t.client.CallTool(ctx.Ctx, t.rawName, args)
 	if err != nil {
-		return &tool.Result{
+		return &tools.Result{
 			Content: fmt.Sprintf("mcp tool error: %v", err),
 			IsError: true,
 		}, nil
@@ -131,7 +131,7 @@ func (t *mcpTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgress
 		}
 	}
 	content := strings.Join(parts, "\n")
-	return &tool.Result{
+	return &tools.Result{
 		Content: content,
 		IsError: result.IsError,
 	}, nil
@@ -159,15 +159,15 @@ func (t *mcpTool) MapResultToToolResultBlock(output any, toolUseID string) (json
 	return json.Marshal(block)
 }
 
-func (t *mcpTool) ToAutoClassifierInput(_ tool.Input) string { return "" }
+func (t *mcpTool) ToAutoClassifierInput(_ tools.Input) string { return "" }
 
-func (t *mcpTool) UserFacingName(_ tool.Input) string {
+func (t *mcpTool) UserFacingName(_ tools.Input) string {
 	return fmt.Sprintf("MCP(%s::%s)", t.serverName, t.rawName)
 }
 
-// MCPInfo implements tool.MCPToolInfo.
-func (t *mcpTool) MCPInfo() tool.MCPInfo {
-	return tool.MCPInfo{
+// MCPInfo implements tools.MCPToolInfo.
+func (t *mcpTool) MCPInfo() tools.MCPInfo {
+	return tools.MCPInfo{
 		ServerName: t.serverName,
 		ToolName:   t.rawName,
 	}

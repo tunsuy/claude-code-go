@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/anthropics/claude-code-go/internal/engine"
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -50,7 +50,7 @@ func headlessRun(
 		}
 	}()
 
-	useCtx := &tool.UseContext{
+	useCtx := &tools.UseContext{
 		Ctx: ctx,
 	}
 

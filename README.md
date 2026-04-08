@@ -248,8 +248,15 @@ claude-code-go/
 │   ├── plugin/          # Plugin system
 │   ├── session/         # Session persistence
 │   ├── state/           # Application state
-│   ├── tool/            # Tool registry
-│   ├── tools/           # Built-in tool implementations
+│   ├── tools/           # Tool interface, registry & built-in implementations
+│   │   ├── agent/       #   sub-agent & send-message tools
+│   │   ├── fileops/     #   file read/write/edit/glob/grep tools
+│   │   ├── interact/    #   user-interaction & worktree tools
+│   │   ├── mcp/         #   MCP tool adapter
+│   │   ├── misc/        #   miscellaneous tools
+│   │   ├── shell/       #   Bash execution tool
+│   │   ├── tasks/       #   task-list tools
+│   │   └── web/         #   web fetch & search tools
 │   └── tui/             # Bubble Tea UI components
 ├── pkg/
 │   └── types/           # Shared public types

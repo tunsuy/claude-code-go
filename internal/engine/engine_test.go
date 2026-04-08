@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/anthropics/claude-code-go/internal/api"
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -227,7 +227,7 @@ func findMsg(msgs []Msg, t MsgType) (Msg, bool) {
 
 func TestNew_DefaultMaxTokens(t *testing.T) {
 	client := &mockClient{}
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	eng := New(Config{Client: client, Registry: reg, Model: "claude-test"})
 	impl := eng.(*engineImpl)
 	if impl.maxTokens != 8192 {
@@ -237,7 +237,7 @@ func TestNew_DefaultMaxTokens(t *testing.T) {
 
 func TestNew_CustomMaxTokens(t *testing.T) {
 	client := &mockClient{}
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	eng := New(Config{Client: client, Registry: reg, Model: "claude-test", MaxTokens: 4096})
 	impl := eng.(*engineImpl)
 	if impl.maxTokens != 4096 {
@@ -247,7 +247,7 @@ func TestNew_CustomMaxTokens(t *testing.T) {
 
 func TestNew_FieldsSet(t *testing.T) {
 	client := &mockClient{}
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	eng := New(Config{Client: client, Registry: reg, Model: "claude-opus-4"})
 	impl := eng.(*engineImpl)
 
@@ -276,7 +276,7 @@ func TestNew_FieldsSet(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestGetMessages_InitiallyEmpty(t *testing.T) {
-	eng := New(Config{Client: &mockClient{}, Registry: tool.NewRegistry()})
+	eng := New(Config{Client: &mockClient{}, Registry: tools.NewRegistry()})
 	msgs := eng.GetMessages()
 	if len(msgs) != 0 {
 		t.Errorf("expected empty messages, got %d", len(msgs))
@@ -284,7 +284,7 @@ func TestGetMessages_InitiallyEmpty(t *testing.T) {
 }
 
 func TestSetMessages_ThenGetMessages(t *testing.T) {
-	eng := New(Config{Client: &mockClient{}, Registry: tool.NewRegistry()})
+	eng := New(Config{Client: &mockClient{}, Registry: tools.NewRegistry()})
 	input := []types.Message{
 		{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("hello")}}},
 		{Role: types.RoleAssistant, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("world")}}},
@@ -303,7 +303,7 @@ func TestSetMessages_ThenGetMessages(t *testing.T) {
 }
 
 func TestSetMessages_IsolatedCopy(t *testing.T) {
-	eng := New(Config{Client: &mockClient{}, Registry: tool.NewRegistry()})
+	eng := New(Config{Client: &mockClient{}, Registry: tools.NewRegistry()})
 	input := []types.Message{
 		{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("original")}}},
 	}
@@ -317,7 +317,7 @@ func TestSetMessages_IsolatedCopy(t *testing.T) {
 }
 
 func TestGetMessages_ReturnsCopy(t *testing.T) {
-	eng := New(Config{Client: &mockClient{}, Registry: tool.NewRegistry()})
+	eng := New(Config{Client: &mockClient{}, Registry: tools.NewRegistry()})
 	eng.SetMessages([]types.Message{
 		{Role: types.RoleUser},
 	})
@@ -341,7 +341,7 @@ func TestGetMessages_AfterQuery_WritesBack(t *testing.T) {
 			return newStaticReader(events...), nil
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry(), Model: "claude-test"})
+	eng := New(Config{Client: client, Registry: tools.NewRegistry(), Model: "claude-test"})
 
 	initMsg := types.Message{
 		Role:    types.RoleUser,
@@ -349,7 +349,7 @@ func TestGetMessages_AfterQuery_WritesBack(t *testing.T) {
 	}
 	params := QueryParams{
 		Messages:       []types.Message{initMsg},
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 	}
 
 	ch, err := eng.Query(context.Background(), params)
@@ -376,7 +376,7 @@ func TestGetMessages_AfterQuery_WritesBack(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestSetModel(t *testing.T) {
-	eng := New(Config{Client: &mockClient{}, Registry: tool.NewRegistry(), Model: "old-model"})
+	eng := New(Config{Client: &mockClient{}, Registry: tools.NewRegistry(), Model: "old-model"})
 	eng.SetModel("new-model")
 	impl := eng.(*engineImpl)
 	if impl.model != "new-model" {
@@ -434,19 +434,19 @@ func TestMsgTypeToolUseInputDelta_NotToolUseStart(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestBaseTool_InterruptBehavior_DefaultBlock(t *testing.T) {
-	var b tool.BaseTool
+	var b tools.BaseTool
 	got := b.InterruptBehavior()
-	if got != tool.InterruptBehaviorBlock {
-		t.Errorf("BaseTool.InterruptBehavior() = %q, want %q", got, tool.InterruptBehaviorBlock)
+	if got != tools.InterruptBehaviorBlock {
+		t.Errorf("BaseTool.InterruptBehavior() = %q, want %q", got, tools.InterruptBehaviorBlock)
 	}
 }
 
 func TestInterruptBehaviorConst_Values(t *testing.T) {
-	if tool.InterruptBehaviorBlock != "block" {
-		t.Errorf("InterruptBehaviorBlock = %q, want %q", tool.InterruptBehaviorBlock, "block")
+	if tools.InterruptBehaviorBlock != "block" {
+		t.Errorf("InterruptBehaviorBlock = %q, want %q", tools.InterruptBehaviorBlock, "block")
 	}
-	if tool.InterruptBehaviorCancel != "cancel" {
-		t.Errorf("InterruptBehaviorCancel = %q, want %q", tool.InterruptBehaviorCancel, "cancel")
+	if tools.InterruptBehaviorCancel != "cancel" {
+		t.Errorf("InterruptBehaviorCancel = %q, want %q", tools.InterruptBehaviorCancel, "cancel")
 	}
 }
 
@@ -455,7 +455,7 @@ func TestInterruptBehaviorConst_Values(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestBuildRequestWithModel_BasicFields(t *testing.T) {
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	eng := New(Config{Client: &mockClient{}, Registry: reg, Model: "claude-default", MaxTokens: 1024}).(*engineImpl)
 
 	messages := []types.Message{
@@ -463,7 +463,7 @@ func TestBuildRequestWithModel_BasicFields(t *testing.T) {
 	}
 	params := QueryParams{
 		SystemPrompt: SystemPrompt{Parts: []SystemPromptPart{{Text: "You are helpful."}}},
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 	}
 
 	req, err := eng.buildRequestWithModel(params, messages, "claude-override")
@@ -489,12 +489,12 @@ func TestBuildRequestWithModel_BasicFields(t *testing.T) {
 }
 
 func TestBuildRequestWithModel_MaxOutputTokensOverride(t *testing.T) {
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	eng := New(Config{Client: &mockClient{}, Registry: reg, MaxTokens: 2048}).(*engineImpl)
 
 	params := QueryParams{
 		MaxOutputTokensOverride: 512,
-		ToolUseContext:          &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext:          &tools.UseContext{Ctx: context.Background()},
 	}
 	req, err := eng.buildRequestWithModel(params, nil, "m")
 	if err != nil {
@@ -506,7 +506,7 @@ func TestBuildRequestWithModel_MaxOutputTokensOverride(t *testing.T) {
 }
 
 func TestBuildRequestWithModel_SystemPromptMultipleParts(t *testing.T) {
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	eng := New(Config{Client: &mockClient{}, Registry: reg}).(*engineImpl)
 
 	params := QueryParams{
@@ -515,7 +515,7 @@ func TestBuildRequestWithModel_SystemPromptMultipleParts(t *testing.T) {
 			{Text: ""},          // empty — should be skipped
 			{Text: "Part two."},
 		}},
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 	}
 	req, err := eng.buildRequestWithModel(params, nil, "m")
 	if err != nil {
@@ -534,7 +534,7 @@ func TestBuildRequestWithModel_WithTools(t *testing.T) {
 	)
 	eng := New(Config{Client: &mockClient{}, Registry: reg}).(*engineImpl)
 
-	params := QueryParams{ToolUseContext: &tool.UseContext{Ctx: context.Background()}}
+	params := QueryParams{ToolUseContext: &tools.UseContext{Ctx: context.Background()}}
 	req, err := eng.buildRequestWithModel(params, nil, "m")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -564,9 +564,9 @@ func TestBuildRequestWithModel_NilToolUseContext(t *testing.T) {
 }
 
 func TestBuildRequestWithModel_QuerySource(t *testing.T) {
-	reg := tool.NewRegistry()
+	reg := tools.NewRegistry()
 	eng := New(Config{Client: &mockClient{}, Registry: reg}).(*engineImpl)
-	params := QueryParams{QuerySource: "background", ToolUseContext: &tool.UseContext{}}
+	params := QueryParams{QuerySource: "background", ToolUseContext: &tools.UseContext{}}
 	req, err := eng.buildRequestWithModel(params, nil, "m")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
@@ -752,7 +752,7 @@ func TestSendSystem_EmitsMsg(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestInterrupt_NoOpWhenIdle(t *testing.T) {
-	eng := New(Config{Client: &mockClient{}, Registry: tool.NewRegistry()})
+	eng := New(Config{Client: &mockClient{}, Registry: tools.NewRegistry()})
 	// Must not panic when abortFn is nil.
 	eng.Interrupt(context.Background())
 }
@@ -774,10 +774,10 @@ func TestInterrupt_CancelsRunningQuery(t *testing.T) {
 			}
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry(), Model: "m"})
+	eng := New(Config{Client: client, Registry: tools.NewRegistry(), Model: "m"})
 	params := QueryParams{
 		Messages:       []types.Message{{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("hi")}}}},
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 	}
 	ch, err := eng.Query(context.Background(), params)
 	if err != nil {
@@ -808,12 +808,12 @@ func TestQuery_EndTurn_Events(t *testing.T) {
 			return newStaticReader(events...), nil
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry(), Model: "claude-test"})
+	eng := New(Config{Client: client, Registry: tools.NewRegistry(), Model: "claude-test"})
 	params := QueryParams{
 		Messages: []types.Message{
 			{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("hi")}}},
 		},
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 	}
 
 	ch, err := eng.Query(context.Background(), params)
@@ -849,8 +849,8 @@ func TestQuery_ChannelClosedOnCompletion(t *testing.T) {
 			return newStaticReader(events...), nil
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry()})
-	params := QueryParams{ToolUseContext: &tool.UseContext{Ctx: context.Background()}}
+	eng := New(Config{Client: client, Registry: tools.NewRegistry()})
+	params := QueryParams{ToolUseContext: &tools.UseContext{Ctx: context.Background()}}
 	ch, _ := eng.Query(context.Background(), params)
 
 	// drainMsgs returns once channel is closed.
@@ -873,8 +873,8 @@ func TestQuery_StreamError_EmitsErrorMsg(t *testing.T) {
 			return nil, errors.New("network error")
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry()})
-	params := QueryParams{ToolUseContext: &tool.UseContext{Ctx: context.Background()}}
+	eng := New(Config{Client: client, Registry: tools.NewRegistry()})
+	params := QueryParams{ToolUseContext: &tools.UseContext{Ctx: context.Background()}}
 	ch, _ := eng.Query(context.Background(), params)
 	msgs := drainMsgs(ch)
 
@@ -898,8 +898,8 @@ func TestQuery_ContextCancellation(t *testing.T) {
 			return newStaticReader(events...), nil
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry()})
-	params := QueryParams{ToolUseContext: &tool.UseContext{Ctx: context.Background()}}
+	eng := New(Config{Client: client, Registry: tools.NewRegistry()})
+	params := QueryParams{ToolUseContext: &tools.UseContext{Ctx: context.Background()}}
 	ch, _ := eng.Query(ctx, params)
 
 	// Channel must close (loop exits on cancelled ctx).
@@ -921,10 +921,10 @@ func TestQuery_MaxTurns_EmitsSystemMessage(t *testing.T) {
 			return newStaticReader(events...), nil
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry()})
+	eng := New(Config{Client: client, Registry: tools.NewRegistry()})
 	params := QueryParams{
 		MaxTurns:       1,
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 		Messages: []types.Message{
 			{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("go")}}},
 		},
@@ -968,10 +968,10 @@ func TestQuery_FallbackModel_OnContextWindowError(t *testing.T) {
 			return newStaticReader(successEvents...), nil
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry(), Model: "primary-model"})
+	eng := New(Config{Client: client, Registry: tools.NewRegistry(), Model: "primary-model"})
 	params := QueryParams{
 		FallbackModel:  "fallback-model",
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 		Messages: []types.Message{
 			{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("hi")}}},
 		},
@@ -1004,10 +1004,10 @@ func TestQuery_FallbackModel_NotUsed_OnOtherErrors(t *testing.T) {
 			return nil, otherErr
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry(), Model: "primary"})
+	eng := New(Config{Client: client, Registry: tools.NewRegistry(), Model: "primary"})
 	params := QueryParams{
 		FallbackModel:  "fallback",
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 		Messages: []types.Message{
 			{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("hi")}}},
 		},
@@ -1034,10 +1034,10 @@ func TestQuery_NoFallbackModel_OnContextWindowError(t *testing.T) {
 			return nil, contextErr
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry(), Model: "primary"})
+	eng := New(Config{Client: client, Registry: tools.NewRegistry(), Model: "primary"})
 	params := QueryParams{
 		FallbackModel:  "", // no fallback
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 		Messages: []types.Message{
 			{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("hi")}}},
 		},
@@ -1086,7 +1086,7 @@ func TestQuery_ToolUse_ThenEndTurn(t *testing.T) {
 		Messages: []types.Message{
 			{Role: types.RoleUser, Content: []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr("use Echo")}}},
 		},
-		ToolUseContext: &tool.UseContext{Ctx: context.Background()},
+		ToolUseContext: &tools.UseContext{Ctx: context.Background()},
 	}
 
 	ch, err := eng.Query(context.Background(), params)
@@ -1140,7 +1140,7 @@ func TestMsgBufSize_InvalidEnv(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 func TestGetSetMessages_ConcurrentAccess(t *testing.T) {
-	eng := New(Config{Client: &mockClient{}, Registry: tool.NewRegistry()})
+	eng := New(Config{Client: &mockClient{}, Registry: tools.NewRegistry()})
 	const n = 50
 
 	var wg sync.WaitGroup
@@ -1169,7 +1169,7 @@ func TestStreamResponse_ReadError(t *testing.T) {
 			return &errorStreamReader{err: readErr}, nil
 		},
 	}
-	eng := New(Config{Client: client, Registry: tool.NewRegistry()}).(*engineImpl)
+	eng := New(Config{Client: client, Registry: tools.NewRegistry()}).(*engineImpl)
 	req := &api.MessageRequest{Model: "m", MaxTokens: 100}
 	ch := make(chan Msg, 32)
 	_, _, _, _, err := eng.streamResponse(context.Background(), req, ch)

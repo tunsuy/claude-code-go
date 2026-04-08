@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
@@ -49,16 +49,16 @@ const maxFileReadLines = 20_000
 
 // ── Tool implementation ───────────────────────────────────────────────────────
 
-type fileReadTool struct{ tool.BaseTool }
+type fileReadTool struct{ tools.BaseTool }
 
 // FileReadTool is the exported singleton instance.
-// It implements tool.PathTool (the engine can call GetPath via type assertion).
-var FileReadTool tool.Tool = &fileReadTool{}
+// It implements tools.PathTool (the engine can call GetPath via type assertion).
+var FileReadTool tools.Tool = &fileReadTool{}
 
 func (t *fileReadTool) Name() string { return "Read" }
 
-func (t *fileReadTool) Description(_ tool.Input, _ tool.PermissionContext) string {
-	return `Reads a file from the local filesystem. You can access any file directly by using this tool.
+func (t *fileReadTool) Description(_ tools.Input, _ tools.PermissionContext) string {
+	return `Reads a file from the local filesystem. You can access any file directly by using this tools.
 Assume this tool is able to read all files on the machine. If the User provides a path to a file assume that path is valid. It is okay to read a file that does not exist; an error will be returned.
 
 Usage:
@@ -70,18 +70,18 @@ Usage:
 - This tool can only read files, not directories`
 }
 
-func (t *fileReadTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *fileReadTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"file_path": tool.PropSchema(map[string]any{
+			"file_path": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The absolute path to the file to read",
 			}),
-			"offset": tool.PropSchema(map[string]any{
+			"offset": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": "The line number to start reading from (1-indexed). Only provide if the file is too large to read at once.",
 			}),
-			"limit": tool.PropSchema(map[string]any{
+			"limit": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": "The number of lines to read. Only provide if the file is too large to read at once.",
 			}),
@@ -90,11 +90,11 @@ func (t *fileReadTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *fileReadTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *fileReadTool) IsReadOnly(_ tool.Input) bool         { return true }
+func (t *fileReadTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *fileReadTool) IsReadOnly(_ tools.Input) bool         { return true }
 func (t *fileReadTool) SearchHint() string                   { return "read file open view cat" }
 
-func (t *fileReadTool) UserFacingName(input tool.Input) string {
+func (t *fileReadTool) UserFacingName(input tools.Input) string {
 	var in FileReadInput
 	if json.Unmarshal(input, &in) == nil && in.FilePath != "" {
 		return fmt.Sprintf("Read(%s)", in.FilePath)
@@ -102,8 +102,8 @@ func (t *fileReadTool) UserFacingName(input tool.Input) string {
 	return "Read"
 }
 
-// GetPath implements tool.PathTool.
-func (t *fileReadTool) GetPath(input tool.Input) string {
+// GetPath implements tools.PathTool.
+func (t *fileReadTool) GetPath(input tools.Input) string {
 	var in FileReadInput
 	if json.Unmarshal(input, &in) == nil {
 		return expandPath(in.FilePath)
@@ -111,47 +111,47 @@ func (t *fileReadTool) GetPath(input tool.Input) string {
 	return ""
 }
 
-func (t *fileReadTool) ValidateInput(input tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
+func (t *fileReadTool) ValidateInput(input tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	var in FileReadInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
 	}
 	if strings.TrimSpace(in.FilePath) == "" {
-		return tool.ValidationResult{OK: false, Reason: "file_path is required"}, nil
+		return tools.ValidationResult{OK: false, Reason: "file_path is required"}, nil
 	}
 	if in.Offset != nil && *in.Offset < 1 {
-		return tool.ValidationResult{OK: false, Reason: "offset must be ≥ 1"}, nil
+		return tools.ValidationResult{OK: false, Reason: "offset must be ≥ 1"}, nil
 	}
 	if in.Limit != nil && *in.Limit < 1 {
-		return tool.ValidationResult{OK: false, Reason: "limit must be ≥ 1"}, nil
+		return tools.ValidationResult{OK: false, Reason: "limit must be ≥ 1"}, nil
 	}
-	return tool.ValidationResult{OK: true}, nil
+	return tools.ValidationResult{OK: true}, nil
 }
 
-// Call executes the FileRead tool.
-func (t *fileReadTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+// Call executes the FileRead tools.
+func (t *fileReadTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var in FileReadInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return &tool.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
+		return &tools.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
 	}
 
 	fullPath := expandPath(in.FilePath)
 
 	// Block device files.
 	if isBlockedDevicePath(fullPath) {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("cannot read device file: %s", fullPath)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("cannot read device file: %s", fullPath)}, nil
 	}
 
 	// Verify path exists and is a regular file.
 	info, err := os.Stat(fullPath)
 	if os.IsNotExist(err) {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("file does not exist: %s", fullPath)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("file does not exist: %s", fullPath)}, nil
 	}
 	if err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("cannot stat file: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("cannot stat file: %v", err)}, nil
 	}
 	if info.IsDir() {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("%s is a directory, not a file", fullPath)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("%s is a directory, not a file", fullPath)}, nil
 	}
 
 	ext := strings.ToLower(filepath.Ext(fullPath))
@@ -166,10 +166,10 @@ func (t *fileReadTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnPro
 }
 
 // readText reads a plain text file, optionally within a line range.
-func (t *fileReadTool) readText(fullPath string, in FileReadInput, ctx *tool.UseContext) (*tool.Result, error) {
+func (t *fileReadTool) readText(fullPath string, in FileReadInput, ctx *tools.UseContext) (*tools.Result, error) {
 	f, err := os.Open(fullPath)
 	if err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("cannot open file: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("cannot open file: %v", err)}, nil
 	}
 	defer f.Close()
 
@@ -195,7 +195,7 @@ func (t *fileReadTool) readText(fullPath string, in FileReadInput, ctx *tool.Use
 		if ctx != nil {
 			select {
 			case <-ctx.Ctx.Done():
-				return &tool.Result{IsError: true, Content: "read cancelled"}, nil
+				return &tools.Result{IsError: true, Content: "read cancelled"}, nil
 			default:
 			}
 		}
@@ -212,7 +212,7 @@ func (t *fileReadTool) readText(fullPath string, in FileReadInput, ctx *tool.Use
 		lineNum++
 	}
 	if err := scanner.Err(); err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("error reading file: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("error reading file: %v", err)}, nil
 	}
 
 	out := FileReadOutput{
@@ -223,14 +223,14 @@ func (t *fileReadTool) readText(fullPath string, in FileReadInput, ctx *tool.Use
 		StartLine:  offset + 1,
 		TotalLines: totalLines,
 	}
-	return &tool.Result{Content: out}, nil
+	return &tools.Result{Content: out}, nil
 }
 
 // readImage reads an image file and returns it as a base64-encoded block.
-func (t *fileReadTool) readImage(fullPath string) (*tool.Result, error) {
+func (t *fileReadTool) readImage(fullPath string) (*tools.Result, error) {
 	data, err := os.ReadFile(fullPath)
 	if err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("cannot read image: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("cannot read image: %v", err)}, nil
 	}
 
 	ext := strings.ToLower(filepath.Ext(fullPath))
@@ -242,7 +242,7 @@ func (t *fileReadTool) readImage(fullPath string) (*tool.Result, error) {
 		Base64:    base64.StdEncoding.EncodeToString(data),
 		MediaType: mediaType,
 	}
-	return &tool.Result{Content: out}, nil
+	return &tools.Result{Content: out}, nil
 }
 
 // extToMIME maps image file extensions to MIME types.

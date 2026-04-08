@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
-// stubTool is a minimal tool.Tool implementation for testing.
+// stubTool is a minimal tools.Tool implementation for testing.
 type stubTool struct {
 	name   string
 	safe   bool
@@ -17,47 +17,47 @@ type stubTool struct {
 
 func (s *stubTool) Name() string                                     { return s.name }
 func (s *stubTool) Aliases() []string                                { return nil }
-func (s *stubTool) Description(_ tool.Input, _ tool.PermissionContext) string { return "" }
-func (s *stubTool) InputSchema() tool.InputSchema                    { return tool.InputSchema{Type: "object"} }
-func (s *stubTool) Prompt(_ context.Context, _ tool.PermissionContext) (string, error) {
+func (s *stubTool) Description(_ tools.Input, _ tools.PermissionContext) string { return "" }
+func (s *stubTool) InputSchema() tools.InputSchema                    { return tools.InputSchema{Type: "object"} }
+func (s *stubTool) Prompt(_ context.Context, _ tools.PermissionContext) (string, error) {
 	return "", nil
 }
 func (s *stubTool) MaxResultSizeChars() int                        { return -1 }
 func (s *stubTool) SearchHint() string                             { return "" }
-func (s *stubTool) IsConcurrencySafe(_ tool.Input) bool            { return s.safe }
-func (s *stubTool) IsReadOnly(_ tool.Input) bool                   { return s.readOnly }
-func (s *stubTool) IsDestructive(_ tool.Input) bool                { return false }
+func (s *stubTool) IsConcurrencySafe(_ tools.Input) bool            { return s.safe }
+func (s *stubTool) IsReadOnly(_ tools.Input) bool                   { return s.readOnly }
+func (s *stubTool) IsDestructive(_ tools.Input) bool                { return false }
 func (s *stubTool) IsEnabled() bool                                { return true }
-func (s *stubTool) InterruptBehavior() tool.InterruptBehavior      { return tool.InterruptBehaviorCancel }
-func (s *stubTool) ValidateInput(_ tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
-	return tool.ValidationResult{OK: true}, nil
+func (s *stubTool) InterruptBehavior() tools.InterruptBehavior      { return tools.InterruptBehaviorCancel }
+func (s *stubTool) ValidateInput(_ tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
+	return tools.ValidationResult{OK: true}, nil
 }
-func (s *stubTool) CheckPermissions(_ tool.Input, _ *tool.UseContext) (tool.PermissionResult, error) {
-	return tool.PermissionResult{Behavior: tool.PermissionPassthrough}, nil
+func (s *stubTool) CheckPermissions(_ tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	return tools.PermissionResult{Behavior: tools.PermissionPassthrough}, nil
 }
-func (s *stubTool) PreparePermissionMatcher(_ tool.Input) (func(string) bool, error) {
+func (s *stubTool) PreparePermissionMatcher(_ tools.Input) (func(string) bool, error) {
 	return nil, nil
 }
-func (s *stubTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
-	return &tool.Result{Content: "ok"}, nil
+func (s *stubTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	return &tools.Result{Content: "ok"}, nil
 }
 func (s *stubTool) MapResultToToolResultBlock(_ any, _ string) (json.RawMessage, error) {
 	return json.RawMessage(`"ok"`), nil
 }
-func (s *stubTool) ToAutoClassifierInput(_ tool.Input) string { return "" }
-func (s *stubTool) UserFacingName(_ tool.Input) string        { return s.name }
+func (s *stubTool) ToAutoClassifierInput(_ tools.Input) string { return "" }
+func (s *stubTool) UserFacingName(_ tools.Input) string        { return s.name }
 
-// newTestRegistry builds a *tool.Registry populated with the provided tools.
-func newTestRegistry(tools ...tool.Tool) *tool.Registry {
-	r := tool.NewRegistry()
-	for _, t := range tools {
+// newTestRegistry builds a *tools.Registry populated with the provided tools.
+func newTestRegistry(ts ...tools.Tool) *tools.Registry {
+	r := tools.NewRegistry()
+	for _, t := range ts {
 		r.Register(t)
 	}
 	return r
 }
 
 // newInput marshals v into a json.RawMessage, panicking on error.
-func newInput(v any) tool.Input {
+func newInput(v any) tools.Input {
 	b, err := json.Marshal(v)
 	if err != nil {
 		panic(err)

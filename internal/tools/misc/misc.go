@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── SkillTool ─────────────────────────────────────────────────────────────────
@@ -20,24 +20,24 @@ type SkillInput struct {
 // SkillTool_ is the exported singleton instance.
 // (Trailing underscore avoids collision with the 'tool' package import alias.)
 // TODO(dep): Requires Agent-Core skill registry and loader.
-var SkillTool tool.Tool = &skillTool{}
+var SkillTool tools.Tool = &skillTool{}
 
-type skillTool struct{ tool.BaseTool }
+type skillTool struct{ tools.BaseTool }
 
 func (t *skillTool) Name() string { return "Skill" }
 
-func (t *skillTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *skillTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Invokes a named skill (slash command) within the current session.`
 }
 
-func (t *skillTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *skillTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"skill": tool.PropSchema(map[string]any{
+			"skill": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The skill name or slash-command path to invoke",
 			}),
-			"args": tool.PropSchema(map[string]any{
+			"args": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "Optional arguments to pass to the skill",
 			}),
@@ -46,10 +46,10 @@ func (t *skillTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *skillTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *skillTool) IsReadOnly(_ tool.Input) bool        { return false }
+func (t *skillTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *skillTool) IsReadOnly(_ tools.Input) bool        { return false }
 
-func (t *skillTool) UserFacingName(input tool.Input) string {
+func (t *skillTool) UserFacingName(input tools.Input) string {
 	var in SkillInput
 	if json.Unmarshal(input, &in) == nil && in.Skill != "" {
 		return fmt.Sprintf("Skill(%s)", in.Skill)
@@ -57,9 +57,9 @@ func (t *skillTool) UserFacingName(input tool.Input) string {
 	return "Skill"
 }
 
-func (t *skillTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *skillTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core skill registry.
-	return &tool.Result{IsError: true, Content: "Skill tool not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "Skill tool not yet implemented (TODO(dep))"}, nil
 }
 
 // ── BriefTool ─────────────────────────────────────────────────────────────────
@@ -72,20 +72,20 @@ type BriefInput struct {
 
 // BriefTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core summarisation pipeline.
-var BriefTool tool.Tool = &briefTool{}
+var BriefTool tools.Tool = &briefTool{}
 
-type briefTool struct{ tool.BaseTool }
+type briefTool struct{ tools.BaseTool }
 
 func (t *briefTool) Name() string { return "Brief" }
 
-func (t *briefTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *briefTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Generates a concise summary (brief) of the provided content.`
 }
 
-func (t *briefTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *briefTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"content": tool.PropSchema(map[string]any{
+			"content": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The content to summarise",
 			}),
@@ -94,13 +94,13 @@ func (t *briefTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *briefTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *briefTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (t *briefTool) UserFacingName(_ tool.Input) string  { return "Brief" }
+func (t *briefTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *briefTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (t *briefTool) UserFacingName(_ tools.Input) string  { return "Brief" }
 
-func (t *briefTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *briefTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core summarisation pipeline.
-	return &tool.Result{IsError: true, Content: "Brief tool not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "Brief tool not yet implemented (TODO(dep))"}, nil
 }
 
 // ── ToolSearch ────────────────────────────────────────────────────────────────
@@ -113,20 +113,20 @@ type ToolSearchInput struct {
 
 // ToolSearchTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core tool registry and search index.
-var ToolSearchTool tool.Tool = &toolSearchTool{}
+var ToolSearchTool tools.Tool = &toolSearchTool{}
 
-type toolSearchTool struct{ tool.BaseTool }
+type toolSearchTool struct{ tools.BaseTool }
 
 func (t *toolSearchTool) Name() string { return "ToolSearch" }
 
-func (t *toolSearchTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *toolSearchTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Searches the tool registry for tools matching a natural-language query.`
 }
 
-func (t *toolSearchTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *toolSearchTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"query": tool.PropSchema(map[string]any{
+			"query": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "Natural-language description of the desired tool",
 			}),
@@ -135,10 +135,10 @@ func (t *toolSearchTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *toolSearchTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *toolSearchTool) IsReadOnly(_ tool.Input) bool        { return true }
+func (t *toolSearchTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *toolSearchTool) IsReadOnly(_ tools.Input) bool        { return true }
 
-func (t *toolSearchTool) UserFacingName(input tool.Input) string {
+func (t *toolSearchTool) UserFacingName(input tools.Input) string {
 	var in ToolSearchInput
 	if json.Unmarshal(input, &in) == nil && in.Query != "" {
 		return fmt.Sprintf("ToolSearch(%s)", in.Query)
@@ -146,9 +146,9 @@ func (t *toolSearchTool) UserFacingName(input tool.Input) string {
 	return "ToolSearch"
 }
 
-func (t *toolSearchTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *toolSearchTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core tool registry search index.
-	return &tool.Result{IsError: true, Content: "ToolSearch not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "ToolSearch not yet implemented (TODO(dep))"}, nil
 }
 
 // ── SleepTool ─────────────────────────────────────────────────────────────────
@@ -161,20 +161,20 @@ type SleepInput struct {
 
 // SleepTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core task scheduler integration.
-var SleepTool tool.Tool = &sleepTool{}
+var SleepTool tools.Tool = &sleepTool{}
 
-type sleepTool struct{ tool.BaseTool }
+type sleepTool struct{ tools.BaseTool }
 
 func (t *sleepTool) Name() string { return "Sleep" }
 
-func (t *sleepTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *sleepTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Pauses execution for the specified number of milliseconds.`
 }
 
-func (t *sleepTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *sleepTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"milliseconds": tool.PropSchema(map[string]any{
+			"milliseconds": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": "Number of milliseconds to sleep",
 				"minimum":     0,
@@ -184,10 +184,10 @@ func (t *sleepTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *sleepTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *sleepTool) IsReadOnly(_ tool.Input) bool        { return true }
+func (t *sleepTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *sleepTool) IsReadOnly(_ tools.Input) bool        { return true }
 
-func (t *sleepTool) UserFacingName(input tool.Input) string {
+func (t *sleepTool) UserFacingName(input tools.Input) string {
 	var in SleepInput
 	if json.Unmarshal(input, &in) == nil {
 		return fmt.Sprintf("Sleep(%dms)", in.Milliseconds)
@@ -195,9 +195,9 @@ func (t *sleepTool) UserFacingName(input tool.Input) string {
 	return "Sleep"
 }
 
-func (t *sleepTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *sleepTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement with context-aware sleep.
-	return &tool.Result{IsError: true, Content: "Sleep tool not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "Sleep tool not yet implemented (TODO(dep))"}, nil
 }
 
 // ── SyntheticOutput ───────────────────────────────────────────────────────────
@@ -212,24 +212,24 @@ type SyntheticOutputInput struct {
 
 // SyntheticOutputTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core turn / conversation manipulation layer.
-var SyntheticOutputTool tool.Tool = &syntheticOutputTool{}
+var SyntheticOutputTool tools.Tool = &syntheticOutputTool{}
 
-type syntheticOutputTool struct{ tool.BaseTool }
+type syntheticOutputTool struct{ tools.BaseTool }
 
 func (t *syntheticOutputTool) Name() string { return "SyntheticOutput" }
 
-func (t *syntheticOutputTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *syntheticOutputTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Injects a synthetic tool result into the conversation without executing a real tool call.`
 }
 
-func (t *syntheticOutputTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *syntheticOutputTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"content": tool.PropSchema(map[string]any{
+			"content": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The content to inject as a tool result",
 			}),
-			"is_error": tool.PropSchema(map[string]any{
+			"is_error": tools.PropSchema(map[string]any{
 				"type":        "boolean",
 				"description": "If true, marks the synthetic result as an error",
 			}),
@@ -238,11 +238,11 @@ func (t *syntheticOutputTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *syntheticOutputTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *syntheticOutputTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (t *syntheticOutputTool) UserFacingName(_ tool.Input) string  { return "SyntheticOutput" }
+func (t *syntheticOutputTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *syntheticOutputTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (t *syntheticOutputTool) UserFacingName(_ tools.Input) string  { return "SyntheticOutput" }
 
-func (t *syntheticOutputTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *syntheticOutputTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core conversation manipulation layer.
-	return &tool.Result{IsError: true, Content: "SyntheticOutput not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "SyntheticOutput not yet implemented (TODO(dep))"}, nil
 }

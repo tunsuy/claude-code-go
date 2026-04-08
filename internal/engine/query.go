@@ -11,7 +11,7 @@ import (
 
 	"github.com/anthropics/claude-code-go/internal/api"
 	"github.com/anthropics/claude-code-go/internal/compact"
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -423,15 +423,15 @@ func (e *engineImpl) buildRequestWithModel(params QueryParams, messages []types.
 	systemStr := joinStrings(systemParts, "\n\n")
 
 	// Build tool schemas.
-	tools := e.registry.All()
-	toolSchemas := make([]api.ToolSchema, 0, len(tools))
-	for _, t := range tools {
+	allTools := e.registry.All()
+	toolSchemas := make([]api.ToolSchema, 0, len(allTools))
+	for _, t := range allTools {
 		schema := t.InputSchema()
 		schemaRaw, err := json.Marshal(schema)
 		if err != nil {
 			return nil, fmt.Errorf("marshal tool schema for %s: %w", t.Name(), err)
 		}
-		var permCtx tool.PermissionContext
+		var permCtx tools.PermissionContext
 		if params.ToolUseContext != nil {
 			permCtx = params.ToolUseContext.PermCtx
 		}

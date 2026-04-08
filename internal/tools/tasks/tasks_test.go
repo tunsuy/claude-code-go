@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/tasks"
 )
 
@@ -288,10 +288,10 @@ func TestTaskOutputTool_Call_ReturnsError(t *testing.T) {
 // ── Interface compliance ──────────────────────────────────────────────────────
 
 func TestAllTaskTools_ImplementToolInterface(t *testing.T) {
-	var _ tool.Tool = tasks.TaskCreateTool
-	var _ tool.Tool = tasks.TaskGetTool
-	var _ tool.Tool = tasks.TaskListTool
-	var _ tool.Tool = tasks.TaskUpdateTool
-	var _ tool.Tool = tasks.TaskStopTool
-	var _ tool.Tool = tasks.TaskOutputTool
+	var _ tools.Tool = tasks.TaskCreateTool
+	var _ tools.Tool = tasks.TaskGetTool
+	var _ tools.Tool = tasks.TaskListTool
+	var _ tools.Tool = tasks.TaskUpdateTool
+	var _ tools.Tool = tasks.TaskStopTool
+	var _ tools.Tool = tasks.TaskOutputTool
 }

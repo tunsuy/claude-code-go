@@ -6,7 +6,7 @@ import (
 
 	"github.com/anthropics/claude-code-go/internal/api"
 	"github.com/anthropics/claude-code-go/internal/compact"
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -43,7 +43,7 @@ type QueryParams struct {
 	// SystemContext holds system-level key→value pairs injected into the prompt.
 	SystemContext map[string]string
 	// ToolUseContext is the per-call tool execution context (must not be nil).
-	ToolUseContext *tool.UseContext
+	ToolUseContext *tools.UseContext
 	// QuerySource tags the request for retry policy selection ("foreground" | "background").
 	QuerySource string
 	// MaxOutputTokensOverride overrides the model default when non-zero.
@@ -78,7 +78,7 @@ type SystemPromptPart struct {
 // engineImpl is the concrete QueryEngine implementation.
 type engineImpl struct {
 	client    api.Client
-	registry  *tool.Registry
+	registry  *tools.Registry
 	model     string
 	maxTokens int
 
@@ -106,7 +106,7 @@ type Config struct {
 	// Client is the Anthropic API client (required).
 	Client api.Client
 	// Registry is the tool registry (required).
-	Registry *tool.Registry
+	Registry *tools.Registry
 	// Model is the default LLM model identifier (e.g. "claude-opus-4-5").
 	Model string
 	// MaxTokens is the default max_tokens for API requests (0 → 8192).

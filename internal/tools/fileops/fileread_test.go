@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/fileops"
 )
 
@@ -230,7 +230,7 @@ func TestFileReadTool_Call_CancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
 
-	uc := &tool.UseContext{Ctx: ctx}
+	uc := &tools.UseContext{Ctx: ctx}
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path})
 	result, err := fileops.FileReadTool.Call(in, uc, nil)
 	if err != nil {
@@ -308,5 +308,5 @@ func TestFileReadTool_MapResultToToolResultBlock_Image(t *testing.T) {
 }
 
 func TestFileReadTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = fileops.FileReadTool
+	var _ tools.Tool = fileops.FileReadTool
 }

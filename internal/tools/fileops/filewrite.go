@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// FileWriteInput is the input schema for the Write tool.
+// FileWriteInput is the input schema for the Write tools.
 type FileWriteInput struct {
 	// FilePath is the absolute path to write (required).
 	FilePath string `json:"file_path"`
@@ -19,15 +19,15 @@ type FileWriteInput struct {
 
 // ── Tool implementation ───────────────────────────────────────────────────────
 
-type fileWriteTool struct{ tool.BaseTool }
+type fileWriteTool struct{ tools.BaseTool }
 
 // FileWriteTool is the exported singleton instance.
-// It implements tool.PathTool.
-var FileWriteTool tool.Tool = &fileWriteTool{}
+// It implements tools.PathTool.
+var FileWriteTool tools.Tool = &fileWriteTool{}
 
 func (t *fileWriteTool) Name() string { return "Write" }
 
-func (t *fileWriteTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *fileWriteTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Writes a file to the local filesystem.
 
 Usage:
@@ -37,14 +37,14 @@ Usage:
 - The file_path parameter must be an absolute path, not a relative path`
 }
 
-func (t *fileWriteTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *fileWriteTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"file_path": tool.PropSchema(map[string]any{
+			"file_path": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The absolute path to the file to write (must be absolute, not relative)",
 			}),
-			"content": tool.PropSchema(map[string]any{
+			"content": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The content to write to the file",
 			}),
@@ -53,11 +53,11 @@ func (t *fileWriteTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *fileWriteTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *fileWriteTool) IsReadOnly(_ tool.Input) bool         { return false }
-func (t *fileWriteTool) IsDestructive(_ tool.Input) bool      { return true }
+func (t *fileWriteTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *fileWriteTool) IsReadOnly(_ tools.Input) bool         { return false }
+func (t *fileWriteTool) IsDestructive(_ tools.Input) bool      { return true }
 
-func (t *fileWriteTool) UserFacingName(input tool.Input) string {
+func (t *fileWriteTool) UserFacingName(input tools.Input) string {
 	var in FileWriteInput
 	if json.Unmarshal(input, &in) == nil && in.FilePath != "" {
 		return fmt.Sprintf("Write(%s)", in.FilePath)
@@ -65,8 +65,8 @@ func (t *fileWriteTool) UserFacingName(input tool.Input) string {
 	return "Write"
 }
 
-// GetPath implements tool.PathTool.
-func (t *fileWriteTool) GetPath(input tool.Input) string {
+// GetPath implements tools.PathTool.
+func (t *fileWriteTool) GetPath(input tools.Input) string {
 	var in FileWriteInput
 	if json.Unmarshal(input, &in) == nil {
 		return expandPath(in.FilePath)
@@ -74,30 +74,30 @@ func (t *fileWriteTool) GetPath(input tool.Input) string {
 	return ""
 }
 
-// Call executes the FileWrite tool.
+// Call executes the FileWrite tools.
 // TODO(dep): full implementation requires the permissions system (Agent-Core).
 // Path conflict detection with other write tools requires PathTool sub-interface
 // support in the engine's partitionToolCalls.
-func (t *fileWriteTool) Call(input tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *fileWriteTool) Call(input tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var in FileWriteInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return &tool.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
+		return &tools.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
 	}
 	if in.FilePath == "" {
-		return &tool.Result{IsError: true, Content: "file_path is required"}, nil
+		return &tools.Result{IsError: true, Content: "file_path is required"}, nil
 	}
 
 	fullPath := expandPath(in.FilePath)
 
 	if isBlockedDevicePath(fullPath) {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("cannot write to device file: %s", fullPath)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("cannot write to device file: %s", fullPath)}, nil
 	}
 
 	// TODO(dep): permission check via UseContext.PermCtx before writing.
 
 	if err := writeFileAtomic(fullPath, []byte(in.Content)); err != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("write failed: %v", err)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("write failed: %v", err)}, nil
 	}
 
-	return &tool.Result{Content: fmt.Sprintf("File written successfully: %s", fullPath)}, nil
+	return &tools.Result{Content: fmt.Sprintf("File written successfully: %s", fullPath)}, nil
 }

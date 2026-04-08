@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/fileops"
 )
 
@@ -194,5 +194,5 @@ func TestFileEditTool_Call_DeleteText(t *testing.T) {
 }
 
 func TestFileEditTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = fileops.FileEditTool
+	var _ tools.Tool = fileops.FileEditTool
 }

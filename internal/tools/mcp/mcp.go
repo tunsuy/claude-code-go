@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── MCPTool (proxy) ───────────────────────────────────────────────────────────
@@ -16,10 +16,10 @@ type MCPToolInput struct {
 	Params json.RawMessage `json:"params,omitempty"`
 }
 
-// MCPProxyTool is a runtime-instantiated proxy for a single MCP server tool.
+// MCPProxyTool is a runtime-instantiated proxy for a single MCP server tools.
 // TODO(dep): Requires Agent-Core MCP client and server registry.
 type MCPProxyTool struct {
-	tool.BaseTool
+	tools.BaseTool
 	// name is the canonical tool name (e.g. "mcp__server__toolName").
 	name string
 	// serverName is the human-readable MCP server name.
@@ -27,11 +27,11 @@ type MCPProxyTool struct {
 	// description is the upstream tool description.
 	description string
 	// schema is the upstream tool's input schema.
-	schema tool.InputSchema
+	schema tools.InputSchema
 }
 
-// NewMCPProxyTool constructs a proxy tool for a single MCP server tool.
-func NewMCPProxyTool(name, serverName, description string, schema tool.InputSchema) *MCPProxyTool {
+// NewMCPProxyTool constructs a proxy tool for a single MCP server tools.
+func NewMCPProxyTool(name, serverName, description string, schema tools.InputSchema) *MCPProxyTool {
 	return &MCPProxyTool{
 		name:        name,
 		serverName:  serverName,
@@ -42,27 +42,27 @@ func NewMCPProxyTool(name, serverName, description string, schema tool.InputSche
 
 func (t *MCPProxyTool) Name() string { return t.name }
 
-func (t *MCPProxyTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *MCPProxyTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return t.description
 }
 
-func (t *MCPProxyTool) InputSchema() tool.InputSchema { return t.schema }
+func (t *MCPProxyTool) InputSchema() tools.InputSchema { return t.schema }
 
-func (t *MCPProxyTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *MCPProxyTool) IsReadOnly(_ tool.Input) bool        { return false }
+func (t *MCPProxyTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *MCPProxyTool) IsReadOnly(_ tools.Input) bool        { return false }
 
-func (t *MCPProxyTool) UserFacingName(_ tool.Input) string {
+func (t *MCPProxyTool) UserFacingName(_ tools.Input) string {
 	return fmt.Sprintf("mcp__%s", t.serverName)
 }
 
-// MCPInfo implements tool.MCPToolInfo.
-func (t *MCPProxyTool) MCPInfo() tool.MCPInfo {
-	return tool.MCPInfo{ServerName: t.serverName}
+// MCPInfo implements tools.MCPToolInfo.
+func (t *MCPProxyTool) MCPInfo() tools.MCPInfo {
+	return tools.MCPInfo{ServerName: t.serverName}
 }
 
-func (t *MCPProxyTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *MCPProxyTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Forward call to the MCP server via Agent-Core MCP client.
-	return &tool.Result{
+	return &tools.Result{
 		IsError: true,
 		Content: fmt.Sprintf("MCPProxyTool(%s): MCP client not yet implemented (TODO(dep))", t.name),
 	}, nil
@@ -78,13 +78,13 @@ type ListMcpResourcesInput struct {
 
 // ListMcpResourcesTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core MCP client.
-var ListMcpResourcesTool tool.Tool = &listMcpResourcesTool{}
+var ListMcpResourcesTool tools.Tool = &listMcpResourcesTool{}
 
-type listMcpResourcesTool struct{ tool.BaseTool }
+type listMcpResourcesTool struct{ tools.BaseTool }
 
 func (t *listMcpResourcesTool) Name() string { return "ListMcpResources" }
 
-func (t *listMcpResourcesTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *listMcpResourcesTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Lists all available resources from connected MCP servers.
 
 Usage notes:
@@ -92,10 +92,10 @@ Usage notes:
 - Returns resource URIs, names, and descriptions`
 }
 
-func (t *listMcpResourcesTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *listMcpResourcesTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"server_name": tool.PropSchema(map[string]any{
+			"server_name": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "Optional MCP server name to filter results",
 			}),
@@ -104,13 +104,13 @@ func (t *listMcpResourcesTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *listMcpResourcesTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *listMcpResourcesTool) IsReadOnly(_ tool.Input) bool        { return true }
-func (t *listMcpResourcesTool) UserFacingName(_ tool.Input) string  { return "ListMcpResources" }
+func (t *listMcpResourcesTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *listMcpResourcesTool) IsReadOnly(_ tools.Input) bool        { return true }
+func (t *listMcpResourcesTool) UserFacingName(_ tools.Input) string  { return "ListMcpResources" }
 
-func (t *listMcpResourcesTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *listMcpResourcesTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core MCP client.
-	return &tool.Result{IsError: true, Content: "ListMcpResources not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "ListMcpResources not yet implemented (TODO(dep))"}, nil
 }
 
 // ── ReadMcpResource ───────────────────────────────────────────────────────────
@@ -125,24 +125,24 @@ type ReadMcpResourceInput struct {
 
 // ReadMcpResourceTool is the exported singleton instance.
 // TODO(dep): Requires Agent-Core MCP client.
-var ReadMcpResourceTool tool.Tool = &readMcpResourceTool{}
+var ReadMcpResourceTool tools.Tool = &readMcpResourceTool{}
 
-type readMcpResourceTool struct{ tool.BaseTool }
+type readMcpResourceTool struct{ tools.BaseTool }
 
 func (t *readMcpResourceTool) Name() string { return "ReadMcpResource" }
 
-func (t *readMcpResourceTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *readMcpResourceTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Reads the contents of a specific MCP resource by URI.`
 }
 
-func (t *readMcpResourceTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *readMcpResourceTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"server_name": tool.PropSchema(map[string]any{
+			"server_name": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The MCP server name",
 			}),
-			"uri": tool.PropSchema(map[string]any{
+			"uri": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The resource URI to read",
 			}),
@@ -151,10 +151,10 @@ func (t *readMcpResourceTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *readMcpResourceTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *readMcpResourceTool) IsReadOnly(_ tool.Input) bool        { return true }
+func (t *readMcpResourceTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *readMcpResourceTool) IsReadOnly(_ tools.Input) bool        { return true }
 
-func (t *readMcpResourceTool) UserFacingName(input tool.Input) string {
+func (t *readMcpResourceTool) UserFacingName(input tools.Input) string {
 	var in ReadMcpResourceInput
 	if json.Unmarshal(input, &in) == nil && in.URI != "" {
 		return fmt.Sprintf("ReadMcpResource(%s)", in.URI)
@@ -162,7 +162,7 @@ func (t *readMcpResourceTool) UserFacingName(input tool.Input) string {
 	return "ReadMcpResource"
 }
 
-func (t *readMcpResourceTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *readMcpResourceTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core MCP client.
-	return &tool.Result{IsError: true, Content: "ReadMcpResource not yet implemented (TODO(dep))"}, nil
+	return &tools.Result{IsError: true, Content: "ReadMcpResource not yet implemented (TODO(dep))"}, nil
 }

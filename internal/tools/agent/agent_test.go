@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/agent"
 )
 
@@ -123,7 +123,7 @@ func TestAgentTool_AgentInput_MaxTurnsField(t *testing.T) {
 }
 
 func TestAgentTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = agent.AgentTool
+	var _ tools.Tool = agent.AgentTool
 }
 
 // ── SendMessageTool ───────────────────────────────────────────────────────────
@@ -206,5 +206,5 @@ func TestSendMessageTool_Call_ReturnsError(t *testing.T) {
 }
 
 func TestSendMessageTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = agent.SendMessageTool
+	var _ tools.Tool = agent.SendMessageTool
 }

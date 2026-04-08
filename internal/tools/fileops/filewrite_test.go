@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/fileops"
 )
 
@@ -205,5 +205,5 @@ func TestFileWriteTool_Call_SuccessMessage(t *testing.T) {
 }
 
 func TestFileWriteTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = fileops.FileWriteTool
+	var _ tools.Tool = fileops.FileWriteTool
 }

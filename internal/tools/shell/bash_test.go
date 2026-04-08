@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/shell"
 )
 
@@ -230,5 +230,5 @@ func TestBashTool_Constants(t *testing.T) {
 }
 
 func TestBashTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = shell.BashTool
+	var _ tools.Tool = shell.BashTool
 }

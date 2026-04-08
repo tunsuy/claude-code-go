@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
@@ -93,60 +93,60 @@ func TestMatchPattern_WrongToolName(t *testing.T) {
 // Checker / CanUseTool tests
 // ─────────────────────────────────────────────────────────────────
 
-// stubPermTool is a minimal tool.Tool for permission testing.
+// stubPermTool is a minimal tools.Tool for permission testing.
 type stubPermTool struct {
 	name         string
 	readOnly     bool
-	permBehavior tool.PermissionBehavior
+	permBehavior tools.PermissionBehavior
 }
 
 func (s *stubPermTool) Name() string    { return s.name }
 func (s *stubPermTool) Aliases() []string { return nil }
-func (s *stubPermTool) Description(_ tool.Input, _ tool.PermissionContext) string { return "" }
-func (s *stubPermTool) InputSchema() tool.InputSchema { return tool.InputSchema{Type: "object"} }
-func (s *stubPermTool) Prompt(_ context.Context, _ tool.PermissionContext) (string, error) {
+func (s *stubPermTool) Description(_ tools.Input, _ tools.PermissionContext) string { return "" }
+func (s *stubPermTool) InputSchema() tools.InputSchema { return tools.InputSchema{Type: "object"} }
+func (s *stubPermTool) Prompt(_ context.Context, _ tools.PermissionContext) (string, error) {
 	return "", nil
 }
 func (s *stubPermTool) MaxResultSizeChars() int                     { return -1 }
 func (s *stubPermTool) SearchHint() string                         { return "" }
-func (s *stubPermTool) IsConcurrencySafe(_ tool.Input) bool        { return s.readOnly }
-func (s *stubPermTool) IsReadOnly(_ tool.Input) bool               { return s.readOnly }
-func (s *stubPermTool) IsDestructive(_ tool.Input) bool            { return false }
+func (s *stubPermTool) IsConcurrencySafe(_ tools.Input) bool        { return s.readOnly }
+func (s *stubPermTool) IsReadOnly(_ tools.Input) bool               { return s.readOnly }
+func (s *stubPermTool) IsDestructive(_ tools.Input) bool            { return false }
 func (s *stubPermTool) IsEnabled() bool                            { return true }
-func (s *stubPermTool) InterruptBehavior() tool.InterruptBehavior  { return tool.InterruptBehaviorCancel }
-func (s *stubPermTool) ValidateInput(_ tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
-	return tool.ValidationResult{OK: true}, nil
+func (s *stubPermTool) InterruptBehavior() tools.InterruptBehavior  { return tools.InterruptBehaviorCancel }
+func (s *stubPermTool) ValidateInput(_ tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
+	return tools.ValidationResult{OK: true}, nil
 }
-func (s *stubPermTool) CheckPermissions(_ tool.Input, _ *tool.UseContext) (tool.PermissionResult, error) {
+func (s *stubPermTool) CheckPermissions(_ tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
 	if s.permBehavior == "" {
-		return tool.PermissionResult{Behavior: tool.PermissionPassthrough}, nil
+		return tools.PermissionResult{Behavior: tools.PermissionPassthrough}, nil
 	}
-	return tool.PermissionResult{Behavior: s.permBehavior}, nil
+	return tools.PermissionResult{Behavior: s.permBehavior}, nil
 }
-func (s *stubPermTool) PreparePermissionMatcher(_ tool.Input) (func(string) bool, error) {
+func (s *stubPermTool) PreparePermissionMatcher(_ tools.Input) (func(string) bool, error) {
 	return nil, nil
 }
-func (s *stubPermTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
-	return &tool.Result{Content: "ok"}, nil
+func (s *stubPermTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	return &tools.Result{Content: "ok"}, nil
 }
 func (s *stubPermTool) MapResultToToolResultBlock(_ any, _ string) (json.RawMessage, error) {
 	return json.RawMessage(`"ok"`), nil
 }
-func (s *stubPermTool) ToAutoClassifierInput(_ tool.Input) string { return "" }
-func (s *stubPermTool) UserFacingName(_ tool.Input) string        { return s.name }
+func (s *stubPermTool) ToAutoClassifierInput(_ tools.Input) string { return "" }
+func (s *stubPermTool) UserFacingName(_ tools.Input) string        { return s.name }
 
 type stubRegistry struct {
-	tools map[string]tool.Tool
+	tools map[string]tools.Tool
 }
 
-func (r *stubRegistry) Get(name string) (tool.Tool, bool) {
+func (r *stubRegistry) Get(name string) (tools.Tool, bool) {
 	t, ok := r.tools[name]
 	return t, ok
 }
 
-func newStubRegistry(tools ...tool.Tool) *stubRegistry {
-	r := &stubRegistry{tools: make(map[string]tool.Tool)}
-	for _, t := range tools {
+func newStubRegistry(ts ...tools.Tool) *stubRegistry {
+	r := &stubRegistry{tools: make(map[string]tools.Tool)}
+	for _, t := range ts {
 		r.tools[t.Name()] = t
 	}
 	return r
@@ -160,7 +160,7 @@ func TestCanUseTool_BypassPermissions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionAllow {
+	if result.Behavior != tools.PermissionAllow {
 		t.Errorf("expected Allow in bypass mode, got %q", result.Behavior)
 	}
 }
@@ -178,7 +178,7 @@ func TestCanUseTool_AlwaysDeny(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionDeny {
+	if result.Behavior != tools.PermissionDeny {
 		t.Errorf("expected Deny from alwaysDeny rule, got %q", result.Behavior)
 	}
 }
@@ -196,7 +196,7 @@ func TestCanUseTool_AlwaysAllow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionAllow {
+	if result.Behavior != tools.PermissionAllow {
 		t.Errorf("expected Allow from alwaysAllow rule, got %q", result.Behavior)
 	}
 }
@@ -214,7 +214,7 @@ func TestCanUseTool_AlwaysAsk(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionAsk {
+	if result.Behavior != tools.PermissionAsk {
 		t.Errorf("expected Ask from alwaysAsk rule, got %q", result.Behavior)
 	}
 }
@@ -227,7 +227,7 @@ func TestCanUseTool_DontAskMode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionAllow {
+	if result.Behavior != tools.PermissionAllow {
 		t.Errorf("expected Allow in dontAsk mode, got %q", result.Behavior)
 	}
 }
@@ -242,7 +242,7 @@ func TestCanUseTool_PlanMode_ReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionAllow {
+	if result.Behavior != tools.PermissionAllow {
 		t.Errorf("expected Allow for read tool in plan mode, got %q", result.Behavior)
 	}
 }
@@ -257,7 +257,7 @@ func TestCanUseTool_PlanMode_WriteBlocked(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionDeny {
+	if result.Behavior != tools.PermissionDeny {
 		t.Errorf("expected Deny for write tool in plan mode, got %q", result.Behavior)
 	}
 }
@@ -301,7 +301,7 @@ func TestRequestPermission_AskNilChannels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionDeny {
+	if result.Behavior != tools.PermissionDeny {
 		t.Errorf("expected Deny when ask channels are nil, got %q", result.Behavior)
 	}
 	if c.GetDenialCount() != 1 {
@@ -325,7 +325,7 @@ func TestRequestPermission_AskUserApproves(t *testing.T) {
 	})
 
 	// Pre-feed the response before calling (buffered channels).
-	respCh <- AskResponse{ID: "u3", Decision: tool.PermissionAllow}
+	respCh <- AskResponse{ID: "u3", Decision: tools.PermissionAllow}
 
 	result, err := c.RequestPermission(context.Background(), PermissionRequest{
 		ToolName:  "Write",
@@ -334,7 +334,7 @@ func TestRequestPermission_AskUserApproves(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.Behavior != tool.PermissionAllow {
+	if result.Behavior != tools.PermissionAllow {
 		t.Errorf("expected Allow after user approval, got %q", result.Behavior)
 	}
 }

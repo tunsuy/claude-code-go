@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// AgentInput is the input schema for the Agent tool.
+// AgentInput is the input schema for the Agent tools.
 type AgentInput struct {
 	// Prompt is the task or question for the sub-agent (required).
 	Prompt string `json:"prompt"`
@@ -21,7 +21,7 @@ type AgentInput struct {
 	MaxTurns *int `json:"max_turns,omitempty"`
 }
 
-// AgentOutput is the structured output of the Agent tool.
+// AgentOutput is the structured output of the Agent tools.
 type AgentOutput struct {
 	// Response is the sub-agent's final response text.
 	Response string `json:"response"`
@@ -32,13 +32,13 @@ type AgentOutput struct {
 // AgentTool is the exported singleton instance.
 // TODO(dep): Full implementation requires Agent-Core's orchestrator and
 // session-management layer (SubAgentManager).
-var AgentTool tool.Tool = &agentTool{}
+var AgentTool tools.Tool = &agentTool{}
 
-type agentTool struct{ tool.BaseTool }
+type agentTool struct{ tools.BaseTool }
 
 func (t *agentTool) Name() string { return "Agent" }
 
-func (t *agentTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *agentTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `Launches a sub-agent to handle a complex sub-task autonomously.
 
 Usage notes:
@@ -47,23 +47,23 @@ Usage notes:
 - Returns the sub-agent's final response`
 }
 
-func (t *agentTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *agentTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"prompt": tool.PropSchema(map[string]any{
+			"prompt": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The task or question to send to the sub-agent",
 			}),
-			"system_prompt": tool.PropSchema(map[string]any{
+			"system_prompt": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "Optional system prompt override for the sub-agent",
 			}),
-			"allowed_tools": tool.PropSchema(map[string]any{
+			"allowed_tools": tools.PropSchema(map[string]any{
 				"type":        "array",
 				"items":       map[string]any{"type": "string"},
 				"description": "Optional list of tool names the sub-agent is allowed to use",
 			}),
-			"max_turns": tool.PropSchema(map[string]any{
+			"max_turns": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": "Optional maximum number of turns the sub-agent may take",
 			}),
@@ -72,10 +72,10 @@ func (t *agentTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *agentTool) IsConcurrencySafe(_ tool.Input) bool { return false }
-func (t *agentTool) IsReadOnly(_ tool.Input) bool        { return false }
+func (t *agentTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *agentTool) IsReadOnly(_ tools.Input) bool        { return false }
 
-func (t *agentTool) UserFacingName(input tool.Input) string {
+func (t *agentTool) UserFacingName(input tools.Input) string {
 	var in AgentInput
 	if json.Unmarshal(input, &in) == nil && in.Prompt != "" {
 		prompt := in.Prompt
@@ -87,9 +87,9 @@ func (t *agentTool) UserFacingName(input tool.Input) string {
 	return "Agent"
 }
 
-func (t *agentTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+func (t *agentTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	// TODO(dep): Implement via Agent-Core SubAgentManager.
-	return &tool.Result{
+	return &tools.Result{
 		IsError: true,
 		Content: "Agent tool not yet implemented: requires Agent-Core orchestrator (TODO(dep))",
 	}, nil

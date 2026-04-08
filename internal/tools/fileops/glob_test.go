@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/fileops"
 )
 
@@ -246,5 +246,5 @@ func TestGlobTool_InputSchema(t *testing.T) {
 // ── GlobTool interface compliance ─────────────────────────────────────────────
 
 func TestGlobTool_ImplementsToolInterface(t *testing.T) {
-	var _ tool.Tool = fileops.GlobTool
+	var _ tools.Tool = fileops.GlobTool
 }

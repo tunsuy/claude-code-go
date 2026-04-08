@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	toolpkg "github.com/anthropics/claude-code-go/internal/tool"
+	toolpkg "github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ─── NormalizeToolName ────────────────────────────────────────────────────────
@@ -442,112 +442,112 @@ func newTestMCPTool(serverName, toolName string, client MCPClient) *mcpTool {
 }
 
 func TestMCPTool_Aliases(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	if aliases := tool.Aliases(); aliases != nil {
+	mt := newTestMCPTool("srv", "tool", nil)
+	if aliases := mt.Aliases(); aliases != nil {
 		t.Errorf("expected nil aliases, got %v", aliases)
 	}
 }
 
 func TestMCPTool_Description(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	desc := tool.Description(nil, nil)
+	mt := newTestMCPTool("srv", "tool", nil)
+	desc := mt.Description(nil, nil)
 	if desc != "test tool description" {
 		t.Errorf("expected description, got %q", desc)
 	}
 }
 
 func TestMCPTool_Prompt(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	s, err := tool.Prompt(context.Background(), nil)
+	mt := newTestMCPTool("srv", "tool", nil)
+	s, err := mt.Prompt(context.Background(), nil)
 	if err != nil || s != "" {
 		t.Errorf("expected empty prompt, got %q err=%v", s, err)
 	}
 }
 
 func TestMCPTool_MaxResultSizeChars(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	if tool.MaxResultSizeChars() != -1 {
+	mt := newTestMCPTool("srv", "tool", nil)
+	if mt.MaxResultSizeChars() != -1 {
 		t.Error("expected -1")
 	}
 }
 
 func TestMCPTool_SearchHint(t *testing.T) {
-	tool := newTestMCPTool("srv", "mytool", nil)
-	hint := tool.SearchHint()
+	mt := newTestMCPTool("srv", "mytool", nil)
+	hint := mt.SearchHint()
 	if !strings.Contains(hint, "srv") || !strings.Contains(hint, "mytool") {
 		t.Errorf("expected server and tool name in hint, got %q", hint)
 	}
 }
 
 func TestMCPTool_ConcurrencyAndSafety(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	if tool.IsConcurrencySafe(nil) {
+	mt := newTestMCPTool("srv", "tool", nil)
+	if mt.IsConcurrencySafe(nil) {
 		t.Error("expected IsConcurrencySafe=false")
 	}
-	if tool.IsReadOnly(nil) {
+	if mt.IsReadOnly(nil) {
 		t.Error("expected IsReadOnly=false")
 	}
-	if tool.IsDestructive(nil) {
+	if mt.IsDestructive(nil) {
 		t.Error("expected IsDestructive=false")
 	}
-	if !tool.IsEnabled() {
+	if !mt.IsEnabled() {
 		t.Error("expected IsEnabled=true")
 	}
-	if tool.InterruptBehavior() != "cancel" {
-		t.Errorf("expected cancel, got %q", tool.InterruptBehavior())
+	if mt.InterruptBehavior() != "cancel" {
+		t.Errorf("expected cancel, got %q", mt.InterruptBehavior())
 	}
 }
 
 func TestMCPTool_ValidateInput(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	result, err := tool.ValidateInput(nil, nil)
+	mt := newTestMCPTool("srv", "tool", nil)
+	result, err := mt.ValidateInput(nil, nil)
 	if err != nil || !result.OK {
 		t.Errorf("expected OK=true, err=nil; got %v %v", result, err)
 	}
 }
 
 func TestMCPTool_CheckPermissions(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	result, err := tool.CheckPermissions(nil, nil)
+	mt := newTestMCPTool("srv", "tool", nil)
+	result, err := mt.CheckPermissions(nil, nil)
 	if err != nil || result.Behavior != "ask" {
 		t.Errorf("unexpected: %v %v", result, err)
 	}
 }
 
 func TestMCPTool_PreparePermissionMatcher(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	fn, err := tool.PreparePermissionMatcher(nil)
+	mt := newTestMCPTool("srv", "tool", nil)
+	fn, err := mt.PreparePermissionMatcher(nil)
 	if err != nil || fn != nil {
 		t.Errorf("expected nil fn and nil err, got fn=<func> err=%v", err)
 	}
 }
 
 func TestMCPTool_ToAutoClassifierInput(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	if s := tool.ToAutoClassifierInput(nil); s != "" {
+	mt := newTestMCPTool("srv", "tool", nil)
+	if s := mt.ToAutoClassifierInput(nil); s != "" {
 		t.Errorf("expected empty, got %q", s)
 	}
 }
 
 func TestMCPTool_UserFacingName(t *testing.T) {
-	tool := newTestMCPTool("myserver", "my/tool", nil)
-	name := tool.UserFacingName(nil)
+	mt := newTestMCPTool("myserver", "my/tool", nil)
+	name := mt.UserFacingName(nil)
 	if !strings.Contains(name, "myserver") || !strings.Contains(name, "my/tool") {
 		t.Errorf("unexpected user-facing name: %q", name)
 	}
 }
 
 func TestMCPTool_MCPInfo(t *testing.T) {
-	tool := newTestMCPTool("myserver", "my/tool", nil)
-	info := tool.MCPInfo()
+	mt := newTestMCPTool("myserver", "my/tool", nil)
+	info := mt.MCPInfo()
 	if info.ServerName != "myserver" || info.ToolName != "my/tool" {
 		t.Errorf("unexpected MCPInfo: %+v", info)
 	}
 }
 
 func TestMCPTool_MapResultToToolResultBlock_String(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	raw, err := tool.MapResultToToolResultBlock("hello output", "tool-use-id-1")
+	mt := newTestMCPTool("srv", "tool", nil)
+	raw, err := mt.MapResultToToolResultBlock("hello output", "tool-use-id-1")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -560,8 +560,8 @@ func TestMCPTool_MapResultToToolResultBlock_String(t *testing.T) {
 }
 
 func TestMCPTool_MapResultToToolResultBlock_NonString(t *testing.T) {
-	tool := newTestMCPTool("srv", "tool", nil)
-	raw, err := tool.MapResultToToolResultBlock(map[string]string{"k": "v"}, "id-2")
+	mt := newTestMCPTool("srv", "tool", nil)
+	raw, err := mt.MapResultToToolResultBlock(map[string]string{"k": "v"}, "id-2")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

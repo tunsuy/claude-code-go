@@ -10,12 +10,12 @@ import (
 	"sort"
 	"strings"
 
-	tool "github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────
 
-// GrepInput is the validated input for the Grep tool.
+// GrepInput is the validated input for the Grep tools.
 type GrepInput struct {
 	// Pattern is the regular expression to search for (required).
 	Pattern string `json:"pattern"`
@@ -58,14 +58,14 @@ const (
 
 // ── Tool implementation ───────────────────────────────────────────────────────
 
-type grepTool struct{ tool.BaseTool }
+type grepTool struct{ tools.BaseTool }
 
 // GrepTool is the exported singleton instance.
-var GrepTool tool.Tool = &grepTool{}
+var GrepTool tools.Tool = &grepTool{}
 
 func (t *grepTool) Name() string { return "Grep" }
 
-func (t *grepTool) Description(_ tool.Input, _ tool.PermissionContext) string {
+func (t *grepTool) Description(_ tools.Input, _ tools.PermissionContext) string {
 	return `A powerful search tool that searches file contents using regular expressions.
 - Supports full regex syntax (e.g. "log.*Error", "function\\s+\\w+")
 - Filter files with the include parameter (e.g. "*.go", "**/*.tsx")
@@ -74,27 +74,27 @@ func (t *grepTool) Description(_ tool.Input, _ tool.PermissionContext) string {
 - Results are truncated at 10,000 matches`
 }
 
-func (t *grepTool) InputSchema() tool.InputSchema {
-	return tool.NewInputSchema(
+func (t *grepTool) InputSchema() tools.InputSchema {
+	return tools.NewInputSchema(
 		map[string]json.RawMessage{
-			"pattern": tool.PropSchema(map[string]any{
+			"pattern": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The regular expression pattern to search for in file contents",
 			}),
-			"path": tool.PropSchema(map[string]any{
+			"path": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "File or directory to search (defaults to current working directory)",
 			}),
-			"include": tool.PropSchema(map[string]any{
+			"include": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": `Glob pattern to filter which files are searched (e.g. "*.go", "**/*.ts")`,
 			}),
-			"output_mode": tool.PropSchema(map[string]any{
+			"output_mode": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"enum":        []string{"content", "files_with_matches", "count"},
 				"description": `Output mode: "content" (default), "files_with_matches", or "count"`,
 			}),
-			"max_results": tool.PropSchema(map[string]any{
+			"max_results": tools.PropSchema(map[string]any{
 				"type":        "integer",
 				"description": "Maximum number of results to return",
 			}),
@@ -103,11 +103,11 @@ func (t *grepTool) InputSchema() tool.InputSchema {
 	)
 }
 
-func (t *grepTool) IsConcurrencySafe(_ tool.Input) bool { return true }
-func (t *grepTool) IsReadOnly(_ tool.Input) bool         { return true }
+func (t *grepTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *grepTool) IsReadOnly(_ tools.Input) bool         { return true }
 func (t *grepTool) SearchHint() string                   { return "grep search content regex pattern find" }
 
-func (t *grepTool) UserFacingName(input tool.Input) string {
+func (t *grepTool) UserFacingName(input tools.Input) string {
 	var in GrepInput
 	if json.Unmarshal(input, &in) == nil && in.Pattern != "" {
 		return fmt.Sprintf("Grep(%s)", in.Pattern)
@@ -115,37 +115,37 @@ func (t *grepTool) UserFacingName(input tool.Input) string {
 	return "Grep"
 }
 
-func (t *grepTool) ValidateInput(input tool.Input, _ *tool.UseContext) (tool.ValidationResult, error) {
+func (t *grepTool) ValidateInput(input tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	var in GrepInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "invalid JSON: " + err.Error()}, nil
 	}
 	if strings.TrimSpace(in.Pattern) == "" {
-		return tool.ValidationResult{OK: false, Reason: "pattern is required and must be non-empty"}, nil
+		return tools.ValidationResult{OK: false, Reason: "pattern is required and must be non-empty"}, nil
 	}
 	if _, err := regexp.Compile(in.Pattern); err != nil {
-		return tool.ValidationResult{OK: false, Reason: "invalid regular expression: " + err.Error()}, nil
+		return tools.ValidationResult{OK: false, Reason: "invalid regular expression: " + err.Error()}, nil
 	}
 	if in.OutputMode != "" && in.OutputMode != outputModeContent &&
 		in.OutputMode != outputModeFilesWithMatches && in.OutputMode != outputModeCount {
-		return tool.ValidationResult{
+		return tools.ValidationResult{
 			OK:     false,
 			Reason: fmt.Sprintf("output_mode must be one of %q, %q, %q", outputModeContent, outputModeFilesWithMatches, outputModeCount),
 		}, nil
 	}
-	return tool.ValidationResult{OK: true}, nil
+	return tools.ValidationResult{OK: true}, nil
 }
 
-// Call executes the Grep tool.
-func (t *grepTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgressFn) (*tool.Result, error) {
+// Call executes the Grep tools.
+func (t *grepTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
 	var in GrepInput
 	if err := json.Unmarshal(input, &in); err != nil {
-		return &tool.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
+		return &tools.Result{IsError: true, Content: "invalid input: " + err.Error()}, nil
 	}
 
 	re, err := regexp.Compile(in.Pattern)
 	if err != nil {
-		return &tool.Result{IsError: true, Content: "invalid regex: " + err.Error()}, nil
+		return &tools.Result{IsError: true, Content: "invalid regex: " + err.Error()}, nil
 	}
 
 	// Resolve search root.
@@ -153,7 +153,7 @@ func (t *grepTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 	if root == "" {
 		root, err = os.Getwd()
 		if err != nil {
-			return &tool.Result{IsError: true, Content: "could not determine working directory: " + err.Error()}, nil
+			return &tools.Result{IsError: true, Content: "could not determine working directory: " + err.Error()}, nil
 		}
 	} else {
 		root = expandPath(root)
@@ -178,7 +178,7 @@ func (t *grepTool) Call(input tool.Input, ctx *tool.UseContext, _ tool.OnProgres
 
 	info, statErr := os.Stat(root)
 	if statErr != nil {
-		return &tool.Result{IsError: true, Content: fmt.Sprintf("cannot access path %s: %v", root, statErr)}, nil
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("cannot access path %s: %v", root, statErr)}, nil
 	}
 
 	var candidates []fileInfo
@@ -277,7 +277,7 @@ done:
 		out.Counts = nil
 	}
 
-	return &tool.Result{Content: out}, nil
+	return &tools.Result{Content: out}, nil
 }
 
 // grepFile returns all matching lines in a file.

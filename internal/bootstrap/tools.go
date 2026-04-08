@@ -1,7 +1,7 @@
 package bootstrap
 
 import (
-	"github.com/anthropics/claude-code-go/internal/tool"
+	"github.com/anthropics/claude-code-go/internal/tools"
 	"github.com/anthropics/claude-code-go/internal/tools/agent"
 	"github.com/anthropics/claude-code-go/internal/tools/fileops"
 	"github.com/anthropics/claude-code-go/internal/tools/interact"
@@ -14,7 +14,7 @@ import (
 
 // RegisterBuiltinTools registers all built-in tool singletons into reg.
 // Order follows the canonical tool ordering in the TS implementation.
-func RegisterBuiltinTools(reg *tool.Registry) {
+func RegisterBuiltinTools(reg *tools.Registry) {
 	// ── File operations ──────────────────────────────────────────────────────
 	reg.Register(fileops.FileReadTool)
 	reg.Register(fileops.FileWriteTool)

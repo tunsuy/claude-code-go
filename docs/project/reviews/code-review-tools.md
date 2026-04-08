@@ -371,3 +371,12 @@ func RegisterAll(r *tool.Registry) {
 The `internal/tool` contract layer (interface, `BaseTool`, `Registry`) is production-quality and requires no rework. Bash, WebFetch, and WebSearch have solid real implementations that correctly follow the interface contract and should serve as the pattern for all future tool implementations.
 
 Merge is contingent on resolving **P0-1** (HTML content loss), **P0-2** (domain filter bypass), **P0-3** (gzip decoding), and **P1-1** (Agent/SendMessage concurrency flag). P1-2 through P1-6 must be tracked as follow-up issues and resolved before the tools layer is considered release-ready.
+
+## 修复跟踪记录
+
+| 问题编号 | 级别 | 描述摘要 | 状态 | 复核时间 | 备注 |
+|---------|------|---------|------|---------|------|
+| P0-CR-7 | P0 | `removeTagBlock` 索引错误导致 HTML 内容丢失 | ✅ 已修复 | 2026-04-03 | 使用预计算 `lower`，`end<0` 分支补写剩余 html |
+| P0-CR-8 | P0 | `domainAllowed` `HasSuffix` 可被子串绕过 | ✅ 已修复 | 2026-04-03 | 改为 `host == d \|\| HasSuffix(host, "."+d)` |
+
+> **本层评审通过，通知 PM。**

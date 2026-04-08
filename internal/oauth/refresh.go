@@ -35,7 +35,17 @@ func (g *singleflightGroup) Do(key string, fn func() (interface{}, error)) (inte
 	g.m[key] = c
 	g.mu.Unlock()
 
-	c.val, c.err = fn()
+	// Wrap the call body with panic recovery (P1-4).
+	// Without this, a panic in fn() would leave c.wg.Done() uncalled and
+	// crash the entire process.
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				c.err = fmt.Errorf("singleflight: panic recovered: %v", r)
+			}
+		}()
+		c.val, c.err = fn()
+	}()
 	c.wg.Done()
 
 	g.mu.Lock()

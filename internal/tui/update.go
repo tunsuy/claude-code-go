@@ -2,6 +2,7 @@ package tui
 
 import (
 	"github.com/anthropics/claude-code-go/internal/commands"
+	"github.com/anthropics/claude-code-go/internal/memdir"
 	"github.com/anthropics/claude-code-go/internal/state"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -27,7 +28,10 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// --- Memdir load complete ---
 	case MemdirLoadedMsg:
-		// Paths are available here; no action needed for display.
+		// P1-E fix: store paths and eagerly load the concatenated CLAUDE.md content
+		// so startQueryCmd can inject it as a system prompt on every query.
+		m.memdirPaths = msg.Paths
+		m.memdirPrompt = memdir.LoadMemoryPrompt(msg.Paths)
 		return m, nil
 
 	// --- Internal: stream channel ready ---
@@ -206,14 +210,21 @@ func (m AppModel) applyCommandResult(result commands.Result, name string) (AppMo
 		})
 	}
 
-	// Handle /compact sentinel.
-	if name == "compact" {
-		m.activeDialog = dialogCompact
+	// P1-B fix: use semantic OpenDialog field instead of magic name=="compact" string.
+	if result.OpenDialog != "" {
+		switch result.OpenDialog {
+		case "compact":
+			m.activeDialog = dialogCompact
+		case "exit":
+			m.activeDialog = dialogExit
+		case "config":
+			m.activeDialog = dialogConfig
+		}
 		return m, nil
 	}
 
-	// Handle /clear: reset messages.
-	if name == "clear" {
+	// P1-B fix: use ClearHistory field instead of magic name=="clear" string.
+	if result.ClearHistory {
 		m.messages = nil
 		m.queryEngine.SetMessages(nil)
 		m.streamingText = ""
@@ -222,7 +233,7 @@ func (m AppModel) applyCommandResult(result commands.Result, name string) (AppMo
 
 	switch result.Display {
 	case commands.DisplayMessage:
-		if result.Text != "" && name != "clear" {
+		if result.Text != "" {
 			m.messages = append(m.messages, newSystemMessage(result.Text))
 		}
 	case commands.DisplayError:

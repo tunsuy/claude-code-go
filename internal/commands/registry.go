@@ -37,6 +37,11 @@ type Result struct {
 	NewModel string
 	// ToggleVim is set by /vim.
 	ToggleVim bool
+	// OpenDialog is set to a dialog name to open a specific modal dialog.
+	// Recognised values: "compact", "exit", "config".
+	OpenDialog string
+	// ClearHistory signals the TUI to wipe the conversation history.
+	ClearHistory bool
 }
 
 // CommandContext carries the read-only application context available to commands.

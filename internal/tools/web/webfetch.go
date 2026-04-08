@@ -64,9 +64,22 @@ func setCached(rawURL string, out WebFetchOutput) {
 	fetchCache[rawURL] = cacheEntry{out: out, expiresAt: time.Now().Add(webFetchCacheTTL)}
 }
 
+// ClearFetchCache removes all entries from the in-memory fetch cache.
+// Intended for use in tests to prevent cross-test pollution.
+func ClearFetchCache() {
+	fetchCacheMu.Lock()
+	defer fetchCacheMu.Unlock()
+	fetchCache = make(map[string]cacheEntry)
+}
+
 // ── HTTP client ───────────────────────────────────────────────────────────────
 
-var defaultHTTPClient = &http.Client{
+// HTTPClient is the interface satisfied by *http.Client and any test double.
+type HTTPClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+var defaultHTTPClient HTTPClient = &http.Client{
 	Timeout: 30 * time.Second,
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
 		if len(via) >= 5 {

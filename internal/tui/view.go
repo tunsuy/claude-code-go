@@ -23,7 +23,7 @@ func (m AppModel) View() string {
 
 	// --- Message list ---
 	msgs := m.visibleMessages()
-	msgView := MessageListView(msgs, m.termWidth, m.darkMode, m.theme)
+	msgView := MessageListView(msgs, m.termWidth, m.darkMode, m.theme, m.markdownRenderer())
 
 	// Apply scroll offset if not pinned to bottom.
 	if m.pinnedToBottom || m.scrollOffset == 0 {
@@ -37,7 +37,18 @@ func (m AppModel) View() string {
 				start = 0
 			}
 		}
-		visible := lines[start:]
+		// P1-A fix: clamp the visible window to the available viewport height so
+		// the message list never overflows the terminal.
+		const reservedLines = 5 // status bar (1) + input (2) + spinner (1) + padding (1)
+		viewH := m.termHeight - reservedLines
+		if viewH < 1 {
+			viewH = 1
+		}
+		end := start + viewH
+		if end > len(lines) {
+			end = len(lines)
+		}
+		visible := lines[start:end]
 		sb.WriteString(strings.Join(visible, "\n"))
 	}
 

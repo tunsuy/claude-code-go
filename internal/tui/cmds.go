@@ -34,12 +34,27 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 	messages := m.queryEngine.GetMessages()
 	messages = append(messages, userMsg)
 
+	// F-1 fix: build a complete QueryParams, not just Messages.
+	// Inject the CLAUDE.md system prompt when available.
+	var sysPrompt engine.SystemPrompt
+	if m.memdirPrompt != "" {
+		sysPrompt = engine.SystemPrompt{
+			Parts: []engine.SystemPromptPart{
+				{Text: m.memdirPrompt, CacheControl: "ephemeral"},
+			},
+		}
+	}
+
+	params := engine.QueryParams{
+		Messages:    messages,
+		SystemPrompt: sysPrompt,
+		QuerySource: "foreground",
+	}
+
 	qe := m.queryEngine
 
 	return func() tea.Msg {
-		ch, err := qe.Query(ctx, engine.QueryParams{
-			Messages: messages,
-		})
+		ch, err := qe.Query(ctx, params)
 		if err != nil {
 			return StreamErrorMsg{Err: err}
 		}

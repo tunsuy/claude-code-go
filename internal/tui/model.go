@@ -10,6 +10,7 @@ import (
 	"github.com/anthropics/claude-code-go/internal/state"
 	"github.com/anthropics/claude-code-go/pkg/types"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 )
 
 // dialogKind enumerates active modal dialogs.
@@ -83,6 +84,18 @@ type AppModel struct {
 
 	// --- Active stream channel (for pull-loop) ---
 	streamCh <-chan engine.Msg
+
+	// --- CLAUDE.md memory ---
+	// memdirPaths holds the discovered CLAUDE.md file paths (set by MemdirLoadedMsg).
+	memdirPaths []string
+	// memdirPrompt is the concatenated text of all CLAUDE.md files.
+	memdirPrompt string
+
+	// --- Markdown renderer cache (P1-C) ---
+	// mdRenderer is rebuilt whenever termWidth or darkMode changes.
+	mdRenderer      *glamour.TermRenderer
+	mdRendererWidth int
+	mdRendererDark  bool
 }
 
 // slashSuggestions holds the current Tab-completion candidates.
@@ -190,6 +203,35 @@ func newUserMessage(text string) types.Message {
 }
 
 func strPtr(s string) *string { return &s }
+
+// markdownRenderer returns a cached *glamour.TermRenderer, rebuilding it only
+// when termWidth or darkMode have changed since the last call (P1-C fix).
+func (m *AppModel) markdownRenderer() *glamour.TermRenderer {
+	if m.mdRenderer != nil &&
+		m.mdRendererWidth == m.termWidth &&
+		m.mdRendererDark == m.darkMode {
+		return m.mdRenderer
+	}
+	style := "dark"
+	if !m.darkMode {
+		style = "light"
+	}
+	width := m.termWidth - 2
+	if width <= 0 {
+		width = 80
+	}
+	r, err := glamour.NewTermRenderer(
+		glamour.WithStylePath(style),
+		glamour.WithWordWrap(width),
+	)
+	if err != nil {
+		return nil
+	}
+	m.mdRenderer = r
+	m.mdRendererWidth = m.termWidth
+	m.mdRendererDark = m.darkMode
+	return m.mdRenderer
+}
 
 // IsSlashCommand returns true if text starts with '/'.
 func IsSlashCommand(text string) bool {

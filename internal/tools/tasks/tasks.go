@@ -33,7 +33,11 @@ type Task struct {
 
 // TaskCreateInput is the input schema for TaskCreate.
 type TaskCreateInput struct {
-	Description string `json:"description"`
+	Description string   `json:"description"`
+	// Tools is an optional list of tool names available to this task (optional).
+	Tools []string `json:"tools,omitempty"`
+	// Priority is an optional integer priority for the task (optional).
+	Priority *int `json:"priority,omitempty"`
 }
 
 // TaskCreateTool is the exported singleton instance.
@@ -54,6 +58,15 @@ func (t *taskCreateTool) InputSchema() tool.InputSchema {
 			"description": tool.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "A human-readable description of the task",
+			}),
+			"tools": tool.PropSchema(map[string]any{
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
+				"description": "Optional list of tool names available to this task",
+			}),
+			"priority": tool.PropSchema(map[string]any{
+				"type":        "integer",
+				"description": "Optional task priority (higher number = higher priority)",
 			}),
 		},
 		[]string{"description"},
@@ -279,6 +292,8 @@ func (t *taskStopTool) Call(_ tool.Input, _ *tool.UseContext, _ tool.OnProgressF
 // TaskOutputInput is the input schema for TaskOutput.
 type TaskOutputInput struct {
 	ID string `json:"id"`
+	// Since is an optional byte offset; only output after this offset is returned (optional).
+	Since *int `json:"since,omitempty"`
 }
 
 // TaskOutputTool is the exported singleton instance.
@@ -299,6 +314,10 @@ func (t *taskOutputTool) InputSchema() tool.InputSchema {
 			"id": tool.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The task ID whose output to retrieve",
+			}),
+			"since": tool.PropSchema(map[string]any{
+				"type":        "integer",
+				"description": "Optional byte offset; only output after this position is returned",
 			}),
 		},
 		[]string{"id"},

@@ -9,18 +9,22 @@ import (
 
 // renderMarkdown converts a Markdown string to an ANSI-colored string
 // suitable for terminal display using charmbracelet/glamour.
-func renderMarkdown(md string, width int, dark bool) string {
-	style := "dark"
-	if !dark {
-		style = "light"
-	}
-
-	r, err := glamour.NewTermRenderer(
-		glamour.WithStylePath(style),
-		glamour.WithWordWrap(width),
-	)
-	if err != nil {
-		return md // fall back to raw markdown
+// Pass a non-nil renderer to reuse a cached instance (P1-C fix).
+func renderMarkdown(md string, width int, dark bool, r *glamour.TermRenderer) string {
+	if r == nil {
+		// Fall back: build a one-shot renderer.
+		style := "dark"
+		if !dark {
+			style = "light"
+		}
+		var err error
+		r, err = glamour.NewTermRenderer(
+			glamour.WithStylePath(style),
+			glamour.WithWordWrap(width),
+		)
+		if err != nil {
+			return md
+		}
 	}
 	out, err := r.Render(md)
 	if err != nil {
@@ -30,27 +34,29 @@ func renderMarkdown(md string, width int, dark bool) string {
 }
 
 // MessageListView renders all messages to a single string.
+// Pass a non-nil mdRenderer to reuse a cached glamour renderer (P1-C).
 func MessageListView(
 	messages []types.Message,
 	width int,
 	darkMode bool,
 	theme Theme,
+	mdRenderer *glamour.TermRenderer,
 ) string {
 	var sb strings.Builder
 	for _, msg := range messages {
-		sb.WriteString(renderMessage(msg, width, darkMode, theme))
+		sb.WriteString(renderMessage(msg, width, darkMode, theme, mdRenderer))
 		sb.WriteString("\n")
 	}
 	return sb.String()
 }
 
 // renderMessage dispatches to the appropriate renderer for a single message.
-func renderMessage(msg types.Message, width int, darkMode bool, theme Theme) string {
+func renderMessage(msg types.Message, width int, darkMode bool, theme Theme, mdRenderer *glamour.TermRenderer) string {
 	switch msg.Role {
 	case types.RoleUser:
 		return renderUserMessage(msg, theme)
 	case types.RoleAssistant:
-		return renderAssistantMessage(msg, width, darkMode, theme)
+		return renderAssistantMessage(msg, width, darkMode, theme, mdRenderer)
 	default:
 		return renderSystemMessage(msg, theme)
 	}
@@ -75,7 +81,7 @@ func renderUserMessage(msg types.Message, theme Theme) string {
 
 // renderAssistantMessage renders an assistant turn, including markdown and tool
 // use blocks.
-func renderAssistantMessage(msg types.Message, width int, darkMode bool, theme Theme) string {
+func renderAssistantMessage(msg types.Message, width int, darkMode bool, theme Theme, mdRenderer *glamour.TermRenderer) string {
 	var sb strings.Builder
 	prefix := secondaryStyle(theme).Bold(true).Render("Claude: ")
 	firstText := true
@@ -87,7 +93,7 @@ func renderAssistantMessage(msg types.Message, width int, darkMode bool, theme T
 					sb.WriteString(prefix)
 					firstText = false
 				}
-				sb.WriteString(renderMarkdown(*blk.Text, width-2, darkMode))
+				sb.WriteString(renderMarkdown(*blk.Text, width-2, darkMode, mdRenderer))
 			}
 		case types.ContentTypeThinking:
 			if blk.Thinking != nil && *blk.Thinking != "" {

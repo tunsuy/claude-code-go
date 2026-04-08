@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 )
 
 // AuthCodeListener starts a temporary local HTTP server to capture the OAuth callback.
@@ -15,7 +16,7 @@ import (
 type AuthCodeListener struct {
 	server        *http.Server
 	port          int
-	expectedState string
+	expectedState atomic.Value // string — written by WaitForCode, read by handleCallback (P1-3 fix)
 	codeCh        chan string
 	errCh         chan error
 	callbackPath  string
@@ -28,11 +29,13 @@ func NewAuthCodeListener(callbackPath string) *AuthCodeListener {
 	if callbackPath == "" {
 		callbackPath = "/callback"
 	}
-	return &AuthCodeListener{
+	l := &AuthCodeListener{
 		callbackPath: callbackPath,
 		codeCh:       make(chan string, 1),
 		errCh:        make(chan error, 1),
 	}
+	l.expectedState.Store("") // initialise so Load() is always safe (P1-3)
+	return l
 }
 
 // Start starts the listener on the given port.
@@ -102,7 +105,7 @@ func (l *AuthCodeListener) handleCallback(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if state != l.expectedState {
+	if state != l.expectedState.Load().(string) {
 		l.errCh <- fmt.Errorf("oauth: state mismatch (CSRF check failed)")
 		http.Error(w, "State mismatch", http.StatusBadRequest)
 		return
@@ -132,7 +135,8 @@ func (l *AuthCodeListener) handleCallback(w http.ResponseWriter, r *http.Request
 // WaitForCode blocks until the authorization code arrives or ctx is cancelled.
 // state must match the state parameter used when building the auth URL (CSRF protection).
 func (l *AuthCodeListener) WaitForCode(ctx context.Context, state string) (string, error) {
-	l.expectedState = state
+	// Store state atomically so handleCallback can read it safely from a different goroutine (P1-3).
+	l.expectedState.Store(state)
 	select {
 	case <-ctx.Done():
 		return "", ctx.Err()

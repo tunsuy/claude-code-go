@@ -34,9 +34,10 @@ func cmdClear() *Command {
 		Description: "Clear the conversation history",
 		Execute: func(ctx CommandContext, args string) Result {
 			return Result{
-				Text:        "Conversation cleared.",
-				Display:     DisplayMessage,
-				NewMessages: []interface{}{}, // signal to clear; tui layer type-asserts
+				Text:         "Conversation cleared.",
+				Display:      DisplayMessage,
+				ClearHistory: true,
+				NewMessages:  []interface{}{}, // signal to clear; tui layer type-asserts
 			}
 		},
 	}
@@ -206,10 +207,10 @@ func cmdCompact() *Command {
 		Execute: func(ctx CommandContext, args string) Result {
 			// The actual compact logic is handled in the TUI update loop
 			// because it needs access to the query engine.
-			// Here we return a sentinel result the TUI layer recognises.
+			// OpenDialog tells the TUI to show the compact confirmation dialog.
 			return Result{
-				Text:    "compact",
-				Display: DisplayNone,
+				Display:    DisplayNone,
+				OpenDialog: "compact",
 			}
 		},
 	}

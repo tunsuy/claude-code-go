@@ -120,12 +120,21 @@ func NewTransport(t TransportType, cfg any) (Transport, error) {
 
 // ─── stdio transport ──────────────────────────────────────────────────────────
 
+// stdioRecvResult is a single line result from the background reader.
+type stdioRecvResult struct {
+	msg *JSONRPCMessage
+	err error
+}
+
 type stdioTransport struct {
-	cmd    *exec.Cmd
-	stdin  io.WriteCloser
-	stdout *bufio.Reader
-	mu     sync.Mutex
-	closed bool
+	cmd       *exec.Cmd
+	stdin     io.WriteCloser
+	recvCh    chan stdioRecvResult
+	errCh     chan error
+	closeOnce sync.Once
+	closed    chan struct{}
+	mu        sync.Mutex
+	isClosed  bool
 }
 
 func newStdioTransport(cfg StdioTransportConfig) (*stdioTransport, error) {
@@ -148,17 +157,51 @@ func newStdioTransport(cfg StdioTransportConfig) (*stdioTransport, error) {
 	if err := cmd.Start(); err != nil {
 		return nil, fmt.Errorf("mcp: stdio: start process: %w", err)
 	}
-	return &stdioTransport{
+	t := &stdioTransport{
 		cmd:    cmd,
 		stdin:  stdin,
-		stdout: bufio.NewReader(stdout),
-	}, nil
+		recvCh: make(chan stdioRecvResult, 64),
+		errCh:  make(chan error, 1),
+		closed: make(chan struct{}),
+	}
+	// Start a single persistent background reader goroutine (fixes P1-1 goroutine leak).
+	go t.readLoop(bufio.NewReader(stdout))
+	return t, nil
+}
+
+// readLoop is the single persistent goroutine that reads from stdout.
+// It exits when the process stdout closes or the transport is closed.
+func (t *stdioTransport) readLoop(r *bufio.Reader) {
+	for {
+		line, err := r.ReadString('\n')
+		if err != nil {
+			select {
+			case t.errCh <- fmt.Errorf("mcp: stdio: read: %w", err):
+			default:
+			}
+			return
+		}
+		var msg JSONRPCMessage
+		if unmarshalErr := json.Unmarshal([]byte(strings.TrimSpace(line)), &msg); unmarshalErr != nil {
+			select {
+			case t.recvCh <- stdioRecvResult{nil, fmt.Errorf("mcp: stdio: unmarshal: %w", unmarshalErr)}:
+			case <-t.closed:
+				return
+			}
+			continue
+		}
+		select {
+		case t.recvCh <- stdioRecvResult{&msg, nil}:
+		case <-t.closed:
+			return
+		}
+	}
 }
 
 func (t *stdioTransport) Send(_ context.Context, msg *JSONRPCMessage) error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.closed {
+	if t.isClosed {
 		return fmt.Errorf("mcp: stdio: transport closed")
 	}
 	data, err := json.Marshal(msg)
@@ -171,39 +214,29 @@ func (t *stdioTransport) Send(_ context.Context, msg *JSONRPCMessage) error {
 }
 
 func (t *stdioTransport) Recv(ctx context.Context) (*JSONRPCMessage, error) {
-	type result struct {
-		msg *JSONRPCMessage
-		err error
-	}
-	ch := make(chan result, 1)
-	go func() {
-		line, err := t.stdout.ReadString('\n')
-		if err != nil {
-			ch <- result{nil, err}
-			return
-		}
-		var msg JSONRPCMessage
-		if err := json.Unmarshal([]byte(strings.TrimSpace(line)), &msg); err != nil {
-			ch <- result{nil, fmt.Errorf("mcp: stdio: unmarshal: %w", err)}
-			return
-		}
-		ch <- result{&msg, nil}
-	}()
 	select {
 	case <-ctx.Done():
 		return nil, ctx.Err()
-	case r := <-ch:
+	case r := <-t.recvCh:
 		return r.msg, r.err
+	case err := <-t.errCh:
+		// Re-broadcast for other waiters
+		select {
+		case t.errCh <- err:
+		default:
+		}
+		return nil, err
 	}
 }
 
 func (t *stdioTransport) Close() error {
 	t.mu.Lock()
 	defer t.mu.Unlock()
-	if t.closed {
+	if t.isClosed {
 		return nil
 	}
-	t.closed = true
+	t.isClosed = true
+	t.closeOnce.Do(func() { close(t.closed) })
 	t.stdin.Close()
 	return t.cmd.Process.Kill()
 }

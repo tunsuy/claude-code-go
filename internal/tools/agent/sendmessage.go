@@ -13,8 +13,8 @@ import (
 type SendMessageInput struct {
 	// AgentID is the target sub-agent identifier (required).
 	AgentID string `json:"agent_id"`
-	// Message is the message to send (required).
-	Message string `json:"message"`
+	// Content is the message content to send (required).
+	Content string `json:"content"`
 }
 
 // SendMessageOutput is the structured output of SendMessage.
@@ -48,22 +48,22 @@ func (t *sendMessageTool) InputSchema() tool.InputSchema {
 				"type":        "string",
 				"description": "The identifier of the target sub-agent",
 			}),
-			"message": tool.PropSchema(map[string]any{
+			"content": tool.PropSchema(map[string]any{
 				"type":        "string",
-				"description": "The message to send to the sub-agent",
+				"description": "The message content to send to the sub-agent",
 			}),
 		},
-		[]string{"agent_id", "message"},
+		[]string{"agent_id", "content"},
 	)
 }
 
-func (t *sendMessageTool) IsConcurrencySafe(_ tool.Input) bool { return true }
+func (t *sendMessageTool) IsConcurrencySafe(_ tool.Input) bool { return false }
 func (t *sendMessageTool) IsReadOnly(_ tool.Input) bool        { return false }
 
 func (t *sendMessageTool) UserFacingName(input tool.Input) string {
 	var in SendMessageInput
 	if json.Unmarshal(input, &in) == nil && in.AgentID != "" {
-		msg := in.Message
+		msg := in.Content
 		if len(msg) > 40 {
 			msg = msg[:40] + "…"
 		}

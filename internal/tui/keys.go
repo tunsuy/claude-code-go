@@ -208,5 +208,8 @@ func (m AppModel) doAbort() (tea.Model, tea.Cmd) {
 	m.isLoading = false
 	m.showSpinner = false
 	m.spinner = m.spinner.Reset()
+	// P1-D fix: clear abort handle and stream channel so stale events are ignored.
+	m.abortFn = nil
+	m.streamCh = nil
 	return m, abortCmd
 }

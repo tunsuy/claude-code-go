@@ -15,6 +15,10 @@ type AgentInput struct {
 	Prompt string `json:"prompt"`
 	// SystemPrompt is an optional override for the sub-agent system prompt.
 	SystemPrompt string `json:"system_prompt,omitempty"`
+	// AllowedTools restricts which tools the sub-agent may use (optional).
+	AllowedTools []string `json:"allowed_tools,omitempty"`
+	// MaxTurns limits the number of turns the sub-agent may take (optional).
+	MaxTurns *int `json:"max_turns,omitempty"`
 }
 
 // AgentOutput is the structured output of the Agent tool.
@@ -54,12 +58,21 @@ func (t *agentTool) InputSchema() tool.InputSchema {
 				"type":        "string",
 				"description": "Optional system prompt override for the sub-agent",
 			}),
+			"allowed_tools": tool.PropSchema(map[string]any{
+				"type":        "array",
+				"items":       map[string]any{"type": "string"},
+				"description": "Optional list of tool names the sub-agent is allowed to use",
+			}),
+			"max_turns": tool.PropSchema(map[string]any{
+				"type":        "integer",
+				"description": "Optional maximum number of turns the sub-agent may take",
+			}),
 		},
 		[]string{"prompt"},
 	)
 }
 
-func (t *agentTool) IsConcurrencySafe(_ tool.Input) bool { return true }
+func (t *agentTool) IsConcurrencySafe(_ tool.Input) bool { return false }
 func (t *agentTool) IsReadOnly(_ tool.Input) bool        { return false }
 
 func (t *agentTool) UserFacingName(input tool.Input) string {

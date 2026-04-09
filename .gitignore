@@ -3,3 +3,6 @@ coverage.out
 coverage.html
 *.test
 .DS_Store
+
+# Local Claude Code settings (machine-specific permissions)
+.claude/settings.local.json

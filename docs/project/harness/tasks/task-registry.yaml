@@ -1,5 +1,6 @@
 # Claude Code Go — Task Registry
-# 结构化任务注册表，替代手动维护的 status.md
+# 结构化任务注册表（项目任务唯一数据源）：每个任务必须声明 role、artifacts、acceptance_criteria、depends_on
+# 这些字段是约束机制，强制 PM 派发任务时明确交付边界，Agent 才知道自己负责什么、交付什么、验收标准是什么
 # 格式遵循 docs/project/harness/protocols/agent-output.md 中的任务数据结构
 
 project: "claude-code-go"

@@ -131,6 +131,6 @@
 
 | 文档 | 说明 |
 |------|------|
-| [status.md](status.md) | 任务状态总览（实时更新） |
+| [harness/tasks/task-registry.yaml](harness/tasks/task-registry.yaml) | 结构化任务注册表（唯一数据源，含完整状态） |
 | [log.md](log.md) | PM 巡检日志（按时间倒序） |
 | [doc-sync-policy.md](doc-sync-policy.md) | 设计文档同步规范（代码变更后必读） |

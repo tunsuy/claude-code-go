@@ -10,6 +10,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -1224,6 +1225,3 @@ func TestE2E_UnknownTool_GracefulRecovery(t *testing.T) {
 // ─────────────────────────────────────────────────────────────────────────────
 // filepath import needed for sessionFilePath helper
 // ─────────────────────────────────────────────────────────────────────────────
-
-// Ensure filepath is imported (used in sessionFilePath above via Glob).
-var _ = filepath.Glob

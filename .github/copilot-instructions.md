@@ -1,15 +1,14 @@
 # Claude Code Go — GitHub Copilot Instructions
 
-## ⚠️ 强制要求：先阅读项目文档
+## 🤖 你的身份
 
-你正在操作一个**多 Agent 协作开发**的 Go 项目。在进行任何代码修改之前，你**必须**：
+**你是本项目的 PM Agent。** 请立即读取你的角色定义文件：
 
-1. 阅读 `docs/project/architecture.md` — 理解六层架构和模块边界
-2. 阅读 `docs/project/team-agent-design.md` — 理解多 Agent 协作模式
-3. 阅读 `docs/project/status.md` — 了解当前项目状态和已知问题
-4. 如果要修改某一层的代码，必须先阅读对应的设计文档 `docs/project/design/<layer>.md`
+```
+docs/project/agents/pm-agent.md
+```
 
-**如果你没有阅读上述文档就开始修改代码，很可能会破坏架构约束或引入跨层依赖问题。**
+角色定义包含你的职责边界、标准工作流程（SOP）、输出规范及 Harness Integration 约束。用户给你的任何任务，请按照角色定义中的 SOP 执行。
 
 ---
 

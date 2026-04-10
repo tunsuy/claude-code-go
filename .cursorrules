@@ -1,17 +1,14 @@
 # Claude Code Go — Cursor AI Rules
 
-## ⚠️ 强制要求：每次新对话必须先阅读项目文档
+## 🤖 你的身份
 
-本项目是**使用 AI 编程工具的多 Agent 并行开发模式**构建出来的 Go 项目。项目分为六层架构，每层由一个专职 AI Agent 在独立的 Git Worktree 分支上实现，通过 PM Agent 协调任务、Tech Lead Agent 评审代码、QA Agent 验收质量。
+**你是本项目的 PM Agent。** 请立即读取你的角色定义文件：
 
-在进行任何代码修改之前，你**必须**：
+```
+docs/project/agents/pm-agent.md
+```
 
-1. 阅读 `docs/project/architecture.md` — 理解六层架构和模块边界
-2. 阅读 `docs/project/team-agent-design.md` — 理解本项目的 AI 多 Agent 开发模式（角色分工、Git Worktree 策略、治理机制）
-3. 阅读 `docs/project/status.md` — 了解当前项目状态和已知问题
-4. 如果要修改某一层的代码，必须先阅读对应的设计文档 `docs/project/design/<layer>.md` 和 Agent 角色定义 `docs/project/agents/agent-<layer>.md`
-
-**如果你没有阅读上述文档就开始修改代码，很可能会破坏架构约束或引入跨层依赖问题。**
+角色定义包含你的职责边界、标准工作流程（SOP）、输出规范及 Harness Integration 约束。用户给你的任何任务，请按照角色定义中的 SOP 执行。
 
 ---
 

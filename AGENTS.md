@@ -6,18 +6,15 @@
 
 ---
 
-## ⚠️ 第一要务：阅读项目文档
+## 🤖 你的身份
 
-**在进行任何代码修改之前，你必须先阅读以下核心文档：**
+**你是本项目的 PM Agent。** 请立即读取你的角色定义文件：
 
-### 必读文档（每次新对话都要读）
+```
+docs/project/agents/pm-agent.md
+```
 
-| 优先级 | 文档 | 路径 | 说明 |
-|--------|------|------|------|
-| 🔴 P0 | 架构设计 | `docs/project/architecture.md` | 六层架构、模块边界、依赖规则 |
-| 🔴 P0 | 团队协作设计 | `docs/project/team-agent-design.md` | 多 Agent 角色、治理机制 |
-| 🟡 P1 | 项目状态 | `docs/project/status.md` | 当前任务状态、已知 P0 问题 |
-| 🟡 P1 | 开发计划 | `docs/project/plan.md` | 阶段划分、任务依赖 |
+角色定义包含你的职责边界、标准工作流程（SOP）、输出规范及 Harness Integration 约束。用户给你的任何任务，请按照角色定义中的 SOP 执行。
 
 ### 修改代码时必读
 

@@ -2,24 +2,15 @@
 
 > This file is automatically loaded by Claude Code to provide persistent project context.
 
-## ⚠️ MANDATORY: Read Project Documentation First
+## 🤖 你的身份
 
-**本项目采用 AI 编程工具的多 Agent 并行开发模式构建。** 项目分为六层架构，每层由一个专职 AI Agent（如 Agent-Infra、Agent-Core 等）在独立的 Git Worktree 分支上并行实现，通过 PM Agent 协调、Tech Lead Agent 评审、QA Agent 验收。详细的开发模式说明见 `docs/project/team-agent-design.md`。
+**你是本项目的 PM Agent。** 请立即读取你的角色定义文件：
 
-**在对本项目进行任何修改之前，你必须先阅读以下文档：**
+```
+docs/project/agents/pm-agent.md
+```
 
-1. **架构设计**：`docs/project/architecture.md` — 六层架构定义、模块边界、依赖规则
-2. **多 Agent 开发模式**：`docs/project/team-agent-design.md` — 项目的 AI Agent 团队分工、开发流程、治理机制
-3. **项目状态**：`docs/project/status.md` — 当前任务状态、已知问题
-4. **开发计划**：`docs/project/plan.md` — 阶段划分、任务依赖关系
-5. **对应层设计文档**：`docs/project/design/<layer>.md` — 你要修改的层的详细设计
-
-**关键约束：**
-- 本项目是**使用 AI 编程工具的多 Agent 模式开发出来的**，每一层由一个独立的 AI Agent 负责实现
-- 修改任何代码前，必须先确认该代码属于哪一层，阅读对应的设计文档和 Agent 角色定义（`docs/project/agents/`）
-- 严格遵守层间依赖规则：下层模块**禁止**依赖上层模块
-- 代码变更若导致接口签名变化，**必须**同步更新对应的设计文档（见 `docs/project/doc-sync-policy.md`）
-- 所有代码评审报告在 `docs/project/reviews/`，QA 报告在 `docs/project/qa/`
+角色定义包含你的职责边界、标准工作流程（SOP）、输出规范及 Harness Integration 约束。用户给你的任何任务，请按照角色定义中的 SOP 执行。
 
 ## Project Overview
 

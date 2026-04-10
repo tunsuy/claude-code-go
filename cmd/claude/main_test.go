@@ -41,3 +41,53 @@ func TestMain_VersionFlag(t *testing.T) {
 		t.Error("HandleFastPath returned false for --version, expected true")
 	}
 }
+
+// TestMain_NoFastPath verifies that HandleFastPath returns false for regular flags.
+func TestMain_NoFastPath(t *testing.T) {
+	handled := bootstrap.HandleFastPath([]string{"claude", "--print", "hello"})
+	if handled {
+		t.Error("HandleFastPath returned true for non-version flag, expected false")
+	}
+}
+
+// TestMain_ShortVersionFlag verifies that -v is treated as the version flag.
+func TestMain_ShortVersionFlag(t *testing.T) {
+	handled := bootstrap.HandleFastPath([]string{"claude", "-v"})
+	if !handled {
+		t.Error("HandleFastPath returned false for -v, expected true")
+	}
+}
+
+// TestMain_RunUnknownSubcommand verifies that Run with an unknown subcommand
+// returns an error (and does not panic).
+func TestMain_RunUnknownSubcommand(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("bootstrap.Run panicked: %v", r)
+		}
+	}()
+
+	// An unknown subcommand should return an error without panicking.
+	err := bootstrap.Run([]string{"claude", "unknown-subcommand-xyz"})
+	if err == nil {
+		t.Error("expected error for unknown subcommand, got nil")
+	}
+}
+
+// TestMainFunc_Help exercises main() directly with --help to get coverage.
+// We set os.Args before the call so cobra prints help and returns nil.
+// main() will NOT call os.Exit in this path.
+func TestMainFunc_Help(t *testing.T) {
+	origArgs := os.Args
+	t.Cleanup(func() { os.Args = origArgs })
+
+	os.Args = []string{"claude", "--help"}
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Errorf("main() panicked: %v", r)
+		}
+	}()
+
+	main()
+}

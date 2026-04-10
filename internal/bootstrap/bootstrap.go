@@ -24,9 +24,6 @@ import (
 // Overridden at link-time via -ldflags "-X bootstrap.appVersion=x.y.z".
 var appVersion = "0.1.0"
 
-// rootCmd is the cobra root command.  It is constructed by buildRootCmd.
-var rootCmd *cobra.Command
-
 // HandleFastPath inspects raw os.Args and handles zero-dependency flags
 // (--version, -v) before cobra is initialised.
 // Returns true if the process should exit immediately (clean exit).
@@ -52,7 +49,10 @@ func Run(args []string) error {
 	// optimisation mirroring the TS ~65 ms saving for -p mode).
 	headless := isPrintMode(args)
 
-	rootCmd = buildRootCmd(headless)
+	// P1-A: rootCmd is a local variable — no concurrent access issue.
+	// Each call to Run() creates its own cobra.Command tree; there is no
+	// package-level rootCmd variable that goroutines could race on.
+	rootCmd := buildRootCmd(headless)
 
 	// Pass the raw args through (cobra uses os.Args by default but we set
 	// them explicitly so tests can override easily).

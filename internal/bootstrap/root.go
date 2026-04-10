@@ -201,6 +201,13 @@ func runInteractive(f *rootFlags, opts ContainerOptions) error {
 	// Apply permission flags to the app state.
 	applyPermissionFlags(container, f)
 
+	// Restore session history if --resume or --continue was requested.
+	if msgs, err := loadSessionMessages(opts.WorkingDir, f); err != nil {
+		return err
+	} else if len(msgs) > 0 {
+		container.QueryEngine.SetMessages(msgs)
+	}
+
 	// Set up graceful shutdown on SIGINT / SIGTERM.
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
@@ -228,6 +235,13 @@ func runHeadless(f *rootFlags, extraArgs []string, opts ContainerOptions) error 
 	}
 
 	applyPermissionFlags(container, f)
+
+	// Restore session history if --resume or --continue was requested.
+	if msgs, err := loadSessionMessages(opts.WorkingDir, f); err != nil {
+		return err
+	} else if len(msgs) > 0 {
+		container.QueryEngine.SetMessages(msgs)
+	}
 
 	// Collect the prompt: positional args, then fall back to stdin.
 	prompt, err := collectHeadlessPrompt(extraArgs)

@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/anthropics/claude-code-go/internal/mcp"
+	"github.com/anthropics/claude-code-go/internal/tools"
 )
 
 // newMCPCmd creates the `claude mcp` subcommand tree.
@@ -37,13 +39,35 @@ func newMCPServeCmd() *cobra.Command {
 		Use:   "serve",
 		Short: "Start Claude as an MCP server on stdin/stdout",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runMCPServe()
+			// Build a minimal container so we can expose the tool registry.
+			cwd, err := os.Getwd()
+			if err != nil {
+				return fmt.Errorf("mcp serve: get working directory: %w", err)
+			}
+			homeDir, err := os.UserHomeDir()
+			if err != nil {
+				return fmt.Errorf("mcp serve: get home directory: %w", err)
+			}
+			container, err := BuildContainer(ContainerOptions{
+				HomeDir:    homeDir,
+				WorkingDir: cwd,
+			})
+			if err != nil {
+				return fmt.Errorf("mcp serve: build container: %w", err)
+			}
+			return runMCPServe(container)
 		},
 	}
 }
 
-func runMCPServe() error {
-	// Serve Claude as an MCP server over stdin/stdout.
+// runMCPServe serves Claude's built-in tool registry as an MCP server over stdin/stdout.
+func runMCPServe(container *AppContainer) error {
+	// P1-D: Set ENTRYPOINT so all downstream components know we are running
+	// as an MCP server.  This must happen before any tool or engine code is
+	// reached so that entrypoint-specific behaviour (e.g. logging, permission
+	// defaults) is applied consistently.
+	os.Setenv("CLAUDE_CODE_ENTRYPOINT", "mcp") //nolint:errcheck
+
 	enc := json.NewEncoder(os.Stdout)
 	dec := json.NewDecoder(os.Stdin)
 	for {
@@ -61,11 +85,29 @@ func runMCPServe() error {
 				ID:      req.ID,
 				Result: mustMarshalJSON(map[string]any{
 					"protocolVersion": "2024-11-05",
-					"serverInfo":      map[string]any{"name": "claude-code-go", "version": "0.1.0"},
+					"serverInfo":      map[string]any{"name": "claude-code-go", "version": appVersion},
 					"capabilities":    map[string]any{"tools": map[string]any{}},
 				}),
 			}
 			enc.Encode(resp) //nolint:errcheck
+
+		case "tools/list":
+			// P1-E: tools/list — return the registry's full tool list formatted
+			// according to the MCP protocol schema.
+			toolList := buildMCPToolList(container.ToolRegistry)
+			resp := &mcp.JSONRPCMessage{
+				JSONRPC: "2.0",
+				ID:      req.ID,
+				Result:  mustMarshalJSON(map[string]any{"tools": toolList}),
+			}
+			enc.Encode(resp) //nolint:errcheck
+
+		case "tools/call":
+			// P1-E: tools/call — dispatch to the matching registered tool and
+			// return the result (or a structured JSON-RPC error on failure).
+			result := handleMCPToolCall(req, container.ToolRegistry)
+			enc.Encode(result) //nolint:errcheck
+
 		default:
 			resp := &mcp.JSONRPCMessage{
 				JSONRPC: "2.0",
@@ -74,6 +116,86 @@ func runMCPServe() error {
 			}
 			enc.Encode(resp) //nolint:errcheck
 		}
+	}
+}
+
+// mcpToolEntry is the MCP-protocol representation of a single tool.
+type mcpToolEntry struct {
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	InputSchema json.RawMessage `json:"inputSchema"`
+}
+
+// buildMCPToolList converts the tool registry into the MCP tools/list response payload.
+func buildMCPToolList(reg *tools.Registry) []mcpToolEntry {
+	all := reg.All()
+	entries := make([]mcpToolEntry, 0, len(all))
+	for _, t := range all {
+		schema := t.InputSchema()
+		schemaBytes, _ := json.Marshal(schema)
+		entries = append(entries, mcpToolEntry{
+			Name:        t.Name(),
+			Description: t.Description(nil, nil),
+			InputSchema: schemaBytes,
+		})
+	}
+	return entries
+}
+
+// handleMCPToolCall dispatches a tools/call request to the registered tool.
+func handleMCPToolCall(req mcp.JSONRPCMessage, reg *tools.Registry) *mcp.JSONRPCMessage {
+	// Decode the params: { "name": "...", "arguments": {...} }
+	var params struct {
+		Name      string          `json:"name"`
+		Arguments json.RawMessage `json:"arguments"`
+	}
+	if err := json.Unmarshal(req.Params, &params); err != nil {
+		return &mcp.JSONRPCMessage{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &mcp.JSONRPCError{Code: -32600, Message: "Invalid params: " + err.Error()},
+		}
+	}
+
+	t, ok := reg.Get(params.Name)
+	if !ok {
+		return &mcp.JSONRPCMessage{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &mcp.JSONRPCError{Code: -32601, Message: "Tool not found: " + params.Name},
+		}
+	}
+
+	useCtx := &tools.UseContext{
+		Ctx:     context.Background(),
+		AbortCh: make(chan struct{}),
+	}
+
+	result, err := t.Call(params.Arguments, useCtx, nil)
+	if err != nil {
+		return &mcp.JSONRPCMessage{
+			JSONRPC: "2.0",
+			ID:      req.ID,
+			Error:   &mcp.JSONRPCError{Code: -32603, Message: "Tool execution error: " + err.Error()},
+		}
+	}
+
+	// Format the result as an MCP tool_result content block.
+	isError := result.IsError
+	contentStr := fmt.Sprintf("%v", result.Content)
+	if raw, ok := result.Content.(string); ok {
+		contentStr = raw
+	}
+
+	return &mcp.JSONRPCMessage{
+		JSONRPC: "2.0",
+		ID:      req.ID,
+		Result: mustMarshalJSON(map[string]any{
+			"content": []map[string]any{
+				{"type": "text", "text": contentStr},
+			},
+			"isError": isError,
+		}),
 	}
 }
 

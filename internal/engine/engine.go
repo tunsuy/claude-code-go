@@ -113,6 +113,9 @@ type Config struct {
 	MaxTokens int
 }
 
+// Compile-time interface assertion: engineImpl must satisfy QueryEngine.
+var _ QueryEngine = (*engineImpl)(nil)
+
 // New constructs and returns a new QueryEngine.
 func New(cfg Config) QueryEngine {
 	maxTokens := cfg.MaxTokens

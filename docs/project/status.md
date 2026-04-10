@@ -1,7 +1,7 @@
 # Claude Code Go — 任务状态总览
 
 > 维护人：PM Agent
-> 最后更新：2026-04-03（第 9 次巡检）
+> 最后更新：2026-04-10（第 10 次巡检）
 
 ---
 
@@ -57,25 +57,20 @@
 | #45 | 【Tech Lead】代码评审：TUI 层（#17） | ✅ 已完成 | Tech Lead | 见 code-review-tui.md；P0×0，P1×5，P2×10 |
 | #47 | 【Tech Lead】代码评审：服务层（#14） | ✅ 已完成 | Tech Lead | 见 code-review-services.md；P0×0，P1×4，P2×9 |
 | #50 | 【Tech Lead】代码评审：工具层（#16） | ✅ 已完成 | Tech Lead | 见 code-review-tools.md；P0×2，P1×5，P2×9 |
-| #26 | 执行集成测试，出具最终验收报告 | 🚫 阻塞 | QA | 阻塞于代码评审 P0 修复 |
+| #26 | 执行集成测试，出具最终验收报告 | 🔄 进行中 | QA | P0 全清，集成测试已启动 |
+| #51 | Fix CLI-P1-A: rootCmd 全局变量并发问题 | 🔄 进行中 | Agent-CLI | |
+| #52 | Fix CLI-P1-D/E: mcp serve ENTRYPOINT + tools 实现 | 🔄 进行中 | Agent-CLI | |
+| #53 | Fix CLI-P1-F: wire.go 编译期接口断言 | 🔄 进行中 | Agent-CLI | |
+| #54 | 第 10 次巡检 QA 报告 | 🔄 进行中 | QA | 覆盖率对比 + P1 修复确认 |
 
 ---
 
-## 当前阻塞项（代码评审新发现）
+## 当前阻塞项
 
-> 原 P0-A～P0-H（QA 验收阶段发现）均已修复。以下为 Tech Lead 代码评审新发现的 P0 问题。
+✅ **所有 P0 已清零，#26 集成测试进行中。**
 
-| 编号 | 严重级别 | 层 | 描述 | 影响任务 | 负责解决方 |
-|------|----------|----|------|----------|------------|
-| P0-CR-1 | P0 | 核心层 | `e.messages` 从未在 `runQueryLoop` 后写回，`GetMessages()` 永远返回初始空历史 | #26 | Agent-Core |
-| P0-CR-2 | P0 | 核心层 | `BaseTool.InterruptBehavior()` 默认返回 `InterruptBehaviorCancel`，设计要求 `InterruptBlock` | #26 | Agent-Core |
-| P0-CR-3 | P0 | 核心层 | `input_json_delta` 事件发送 `MsgTypeToolUseStart`（错误类型），TUI 产生重复 start 事件渲染 | #26 | Agent-Core |
-| P0-CR-4 | P0 | 核心层 | `buildRequest` 调用所有工具的 `Description(nil, nil)`，若工具未兼容 nil 参数则 nil panic | #26 | Agent-Core |
-| P0-CR-5 | P0 | 核心层 | `buildRequest` 中 `FallbackModel != ""` 时无条件替换主模型，主模型永远不被使用 | #26 | Agent-Core |
-| P0-CR-6 | P0 | 核心层 | 压缩流水线（snip→micro→auto）完全未在查询循环中调用，上下文无限增长 | #26 | Agent-Core |
-| P0-CR-7 | P0 | 工具层 | `removeTagBlock`（`web/webfetch.go`）index 偏移 bug，缺少结束标签时截断整段 HTML | #26 | Agent-Tools |
-| P0-CR-8 | P0 | 工具层 | `domainAllowed`（`web/websearch.go`）使用裸 `HasSuffix`，`notevil.com` 可绕过 `evil.com` 封锁 | #26 | Agent-Tools |
-| P0-CR-9 | P0 | 基础设施层 | `session.newSessionId()` 仅用毫秒时间戳，无随机后缀，同毫秒并发创建导致 SessionId 碰撞 | #26 | Agent-Infra |
+> 原 P0-A～P0-H（QA 验收阶段）及 P0-CR-1~9（Tech Lead 代码评审阶段）均已全部修复，无任何 P0 阻塞项。
+> CLI P1-A/D/E/F 为 P1 级，由 Agent-CLI 处理中，不阻塞集成测试。
 
 ---
 

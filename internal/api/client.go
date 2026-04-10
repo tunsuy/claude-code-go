@@ -82,6 +82,9 @@ type MessageResponse struct {
 	Usage      Usage          `json:"usage"`
 }
 
+// Compile-time interface assertion: directClient must satisfy Client.
+var _ Client = (*directClient)(nil)
+
 // directClient implements Client using the Anthropic Direct API.
 type directClient struct {
 	apiKey     string

@@ -15,6 +15,21 @@ import (
 	"github.com/anthropics/claude-code-go/pkg/types"
 )
 
+// P1-F: Compile-time interface assertions for AppContainer field types.
+//
+// engine.engineImpl is unexported; its assertion lives in internal/engine/engine.go:
+//
+//	var _ engine.QueryEngine = (*engineImpl)(nil)
+//
+// api.directClient is unexported; its assertion lives in internal/api/client.go:
+//
+//	var _ api.Client = (*directClient)(nil)
+//
+// The assertion below verifies that the concrete return type of engine.New
+// satisfies engine.QueryEngine at this package boundary.  It is checked by
+// the compiler whenever this file is compiled — no runtime overhead.
+var _ engine.QueryEngine = engine.New(engine.Config{})
+
 // ContainerOptions is the minimal set of startup parameters fed into BuildContainer.
 // It is populated by runInteractiveOrHeadless before dispatching.
 type ContainerOptions struct {

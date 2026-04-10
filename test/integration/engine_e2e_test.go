@@ -473,12 +473,16 @@ func TestE2E_ToolDispatch(t *testing.T) {
 		}
 	}
 
-	// Final TurnComplete.
-	tc, ok := findMsg(msgs, engine.MsgTypeTurnComplete)
-	if !ok {
+	// Final TurnComplete — take the last one, as the engine emits one per LLM
+	// call (the first has stopReason="tool_use"; the last has "end_turn").
+	tcMsgs := filterMsgs(msgs, engine.MsgTypeTurnComplete)
+	if len(tcMsgs) == 0 {
 		t.Error("expected final MsgTypeTurnComplete")
-	} else if tc.StopReason != "end_turn" {
-		t.Errorf("final StopReason: want end_turn, got %q", tc.StopReason)
+	} else {
+		tc := tcMsgs[len(tcMsgs)-1]
+		if tc.StopReason != "end_turn" {
+			t.Errorf("final StopReason: want end_turn, got %q", tc.StopReason)
+		}
 	}
 
 	// No error events.

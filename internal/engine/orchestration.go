@@ -205,8 +205,20 @@ func executeOneTool(
 ) (types.ContentBlock, error) {
 	t, ok := registry.Get(tc.name)
 	if !ok {
-		// Unknown tool — return an error result block so the LLM can recover.
+		// Unknown tool — emit a ToolResult event so callers/tests can observe
+		// the error, then return an error result block so the LLM can recover.
 		errMsg := fmt.Sprintf("unknown tool: %q", tc.name)
+		select {
+		case msgCh <- Msg{
+			Type: MsgTypeToolResult,
+			ToolResult: &ToolResultMsg{
+				ToolUseID: tc.id,
+				Content:   errMsg,
+				IsError:   true,
+			},
+		}:
+		case <-ctx.Done():
+		}
 		trueVal := true
 		return types.ContentBlock{
 			Type:      types.ContentTypeToolResult,

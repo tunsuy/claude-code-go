@@ -9,6 +9,34 @@
 - `docs/project/team-agent-design.md` — 了解本项目的 AI 多 Agent 开发模式（角色分工、开发流程、治理机制）
 - 修改某一层时，读 `docs/project/design/<layer>.md` 和 `docs/project/agents/agent-<layer>.md`
 
+## 🤖 Multi-Agent Session Start Checklist
+
+**以 Agent 角色参与本项目时，每次新对话必须执行以下步骤：**
+
+1. **读取项目状态快照**（机器可读，跨会话持久化）：
+   ```
+   .claude/harness/state.json
+   ```
+   该文件包含当前里程碑、任务状态、测试通过情况，是恢复上下文的最快入口。
+
+2. **读取你的角色定义**（含 Harness Integration 章节）：
+   ```
+   docs/project/agents/<your-role>.md
+   ```
+   例如：`docs/project/agents/pm-agent.md`、`docs/project/agents/agent-cli.md`
+
+3. **查阅任务注册表**（如需了解任务详情或更新任务状态）：
+   ```
+   docs/project/harness/tasks/task-registry.yaml
+   ```
+
+4. **完成任务后按输出协议汇报**：
+   ```
+   docs/project/harness/protocols/agent-output.md
+   ```
+
+> **为何不在 `.claude/` 目录**：Harness 文档（角色定义、任务注册表、输出协议）存放在 `docs/project/` 下，以确保非 Claude Code CLI 工具（如 Cursor、Windsurf）的用户也能访问这些协作规范。只有 Claude Code 运行时文件（`state.json`、`settings.local.json`、hooks）保留在 `.claude/` 下。
+
 ## Environment Setup
 
 ```bash

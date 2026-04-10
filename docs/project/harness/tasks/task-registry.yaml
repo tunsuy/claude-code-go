@@ -1,0 +1,762 @@
+# Claude Code Go — Task Registry
+# 结构化任务注册表，替代手动维护的 status.md
+# 格式遵循 docs/project/harness/protocols/agent-output.md 中的任务数据结构
+
+project: "claude-code-go"
+last_updated: "2026-04-10"
+version: "1.0"
+
+tasks:
+  # ─────────────────────────────────────────────────────────────
+  # M0 · 启动阶段
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-002"
+    title: "输出项目计划表"
+    description: "PM Agent 根据架构文档制定完整的项目开发计划，包含任务分解、依赖关系、里程碑划分"
+    role: "pm"
+    status: "completed"
+    priority: "P0"
+    milestone: "M0"
+    depends_on: []
+    artifacts:
+      - "docs/project/plan.md"
+    acceptance_criteria:
+      - "计划表包含所有里程碑（M0/M1/M2/M3）"
+      - "所有任务有明确的负责方和依赖关系"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  - id: "T-003"
+    title: "初始化项目骨架"
+    description: "初始化 go.mod、Makefile、目录结构，确保 go build 可通过"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P0"
+    milestone: "M0"
+    depends_on: []
+    artifacts:
+      - "go.mod"
+      - "go.sum"
+      - "Makefile"
+      - "cmd/claude/main.go"
+    acceptance_criteria:
+      - "go build ./... 通过"
+      - "目录结构符合六层架构规范"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  - id: "T-019"
+    title: "输出测试策略文档，搭建测试基础设施"
+    description: "QA Agent 制定测试策略，搭建测试辅助工具（pkg/testutil/）"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M0"
+    depends_on: []
+    artifacts:
+      - "docs/project/test-strategy.md"
+      - "pkg/testutil/"
+    acceptance_criteria:
+      - "测试策略文档涵盖单元测试、集成测试规范"
+      - "testutil 包提供 mock 辅助工具"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  # ─────────────────────────────────────────────────────────────
+  # M1 · 并行开发阶段 — 第一批：设计文档
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-004"
+    title: "输出基础设施层详细设计文档"
+    description: "Agent-Infra 输出 pkg/types、pkg/utils、internal/config、internal/state、internal/session、internal/memdir 的详细设计"
+    role: "agent-infra"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: []
+    artifacts:
+      - "docs/project/design/infra.md"
+    acceptance_criteria:
+      - "涵盖所有模块的接口定义"
+      - "pkg/types 零依赖约束明确说明"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  - id: "T-005"
+    title: "输出服务层详细设计文档"
+    description: "Agent-Services 输出 internal/api、internal/oauth、internal/mcp、internal/compact 的详细设计"
+    role: "agent-services"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: []
+    artifacts:
+      - "docs/project/design/services.md"
+    acceptance_criteria:
+      - "API 客户端接口定义完整"
+      - "MCP 协议交互流程描述清晰"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  - id: "T-006"
+    title: "输出核心层详细设计文档（含 Tool 接口）"
+    description: "Agent-Core 输出 internal/engine、internal/permissions、internal/hooks、internal/coordinator 的详细设计，含 Tool 接口契约"
+    role: "agent-core"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: []
+    artifacts:
+      - "docs/project/design/core.md"
+    acceptance_criteria:
+      - "Tool 接口契约完整定义（~20 个方法）"
+      - "9 层权限管道清晰描述"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  - id: "T-007"
+    title: "输出工具层详细设计文档"
+    description: "Agent-Tools 输出 internal/tools/ 所有子包的详细设计"
+    role: "agent-tools"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: []
+    artifacts:
+      - "docs/project/design/tools.md"
+    acceptance_criteria:
+      - "所有内置工具（~15个）的接口和行为描述完整"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  - id: "T-008"
+    title: "输出 TUI 层详细设计文档"
+    description: "Agent-TUI 输出 internal/tui、internal/commands、internal/plugin 的详细设计"
+    role: "agent-tui"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: []
+    artifacts:
+      - "docs/project/design/tui.md"
+    acceptance_criteria:
+      - "MVU 消息流描述完整"
+      - "Slash 命令注册机制清晰"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  - id: "T-009"
+    title: "输出 CLI 入口层详细设计文档"
+    description: "Agent-CLI 输出 cmd/claude、internal/bootstrap 的详细设计"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: []
+    artifacts:
+      - "docs/project/design/cli.md"
+    acceptance_criteria:
+      - "6 阶段 Bootstrap 流程描述完整"
+      - "依赖注入容器设计清晰"
+    completed_at: "2026-04-02"
+    notes: ""
+
+  # ─────────────────────────────────────────────────────────────
+  # M1 · 并行开发阶段 — 第二批：Tech Lead 设计评审
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-010"
+    title: "评审基础设施层设计文档"
+    description: "Tech Lead 评审 infra.md，确认层间依赖合规，pkg/types 零依赖约束满足"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-004"]
+    artifacts:
+      - "docs/project/reviews/review-infra.md"
+    acceptance_criteria:
+      - "评审报告输出，无 P0 阻塞项"
+    completed_at: "2026-04-03"
+    notes: "见 review-infra.md"
+
+  - id: "T-011"
+    title: "评审核心层设计文档（含 Tool 接口契约确认）"
+    description: "Tech Lead 评审 core.md，正式确认 Tool 接口契约，供 Agent-Tools 据此实现"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-006"]
+    artifacts:
+      - "docs/project/reviews/review-core.md"
+    acceptance_criteria:
+      - "Tool 接口正式确认"
+      - "权限管道设计通过"
+    completed_at: "2026-04-03"
+    notes: "Tool 接口正式确认，见 review-core.md"
+
+  - id: "T-012"
+    title: "评审服务/工具/TUI/CLI 四份设计文档"
+    description: "Tech Lead 一次性评审剩余四份设计文档，输出综合评审报告"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-005", "T-007", "T-008", "T-009"]
+    artifacts:
+      - "docs/project/reviews/review-services.md"
+      - "docs/project/reviews/review-tools.md"
+      - "docs/project/reviews/review-tui.md"
+      - "docs/project/reviews/review-cli.md"
+    acceptance_criteria:
+      - "四份设计文档均通过评审"
+    completed_at: "2026-04-03"
+    notes: ""
+
+  # ─────────────────────────────────────────────────────────────
+  # M1 · 并行开发阶段 — 第三批：并行编码实现
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-013"
+    title: "实现基础设施层所有模块"
+    description: "Agent-Infra 实现 pkg/types、pkg/utils、internal/config、internal/state、internal/session、internal/memdir"
+    role: "agent-infra"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-010"]
+    artifacts:
+      - "pkg/types/"
+      - "pkg/utils/"
+      - "internal/config/"
+      - "internal/state/"
+      - "internal/session/"
+      - "internal/memdir/"
+    acceptance_criteria:
+      - "go test ./pkg/... ./internal/config/... ./internal/state/... 通过"
+      - "覆盖率 ≥60%"
+    completed_at: "2026-04-05"
+    notes: "P0-2/P0-3/P0-1 均已修复，全部测试通过"
+
+  - id: "T-014"
+    title: "实现服务层所有模块"
+    description: "Agent-Services 实现 internal/api（SSE 流式）、internal/oauth（AES-256-GCM）、internal/mcp（JSON-RPC）、internal/compact"
+    role: "agent-services"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-012", "T-013"]
+    artifacts:
+      - "internal/api/"
+      - "internal/oauth/"
+      - "internal/mcp/"
+      - "internal/compact/"
+    acceptance_criteria:
+      - "go test ./internal/api/... ./internal/mcp/... 通过"
+      - "AES-256-GCM token store 通过安全测试"
+    completed_at: "2026-04-06"
+    notes: "AES-256-GCM token store, singleflight token refresh, MCP adapter"
+
+  - id: "T-015"
+    title: "实现核心层所有模块"
+    description: "Agent-Core 实现 internal/engine（LLM loop）、internal/permissions（9层）、internal/hooks、internal/coordinator"
+    role: "agent-core"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-011", "T-013", "T-014"]
+    artifacts:
+      - "internal/engine/"
+      - "internal/permissions/"
+      - "internal/hooks/"
+      - "internal/coordinator/"
+    acceptance_criteria:
+      - "go test ./internal/engine/... ./internal/permissions/... 通过"
+      - "覆盖率 ≥60%"
+    completed_at: "2026-04-07"
+    notes: "QueryEngine、权限决策链、对话压缩，全部测试通过"
+
+  - id: "T-016"
+    title: "实现所有内置工具"
+    description: "Agent-Tools 实现 internal/tools/ 下所有内置工具（fileops、shell、web、agent、tasks 等）"
+    role: "agent-tools"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-011"]
+    artifacts:
+      - "internal/tools/"
+    acceptance_criteria:
+      - "go test ./internal/tools/... 通过"
+      - "所有工具实现 Tool 接口"
+    completed_at: "2026-04-07"
+    notes: "B-1 已修复（GetPath 已从 Tool 主接口移除），所有工具实现完成"
+
+  - id: "T-017"
+    title: "实现 TUI 层所有模块"
+    description: "Agent-TUI 实现 internal/tui（Bubble Tea MVU）、internal/commands（Slash 命令）、internal/plugin"
+    role: "agent-tui"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-012", "T-015"]
+    artifacts:
+      - "internal/tui/"
+      - "internal/commands/"
+      - "internal/plugin/"
+    acceptance_criteria:
+      - "go test ./internal/tui/... ./internal/commands/... 通过"
+      - "流式事件循环正常工作"
+    completed_at: "2026-04-08"
+    notes: "BubbleTea MVU，流式事件循环，vim 模式，权限对话框，全部测试通过"
+
+  - id: "T-018"
+    title: "实现 CLI 入口层"
+    description: "Agent-CLI 实现 cmd/claude（Cobra）和 internal/bootstrap（6 阶段启动、AppContainer）"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P0"
+    milestone: "M1"
+    depends_on: ["T-012", "T-017"]
+    artifacts:
+      - "cmd/claude/"
+      - "internal/bootstrap/"
+    acceptance_criteria:
+      - "go build ./... 通过"
+      - "claude chat、claude version、claude config 命令正常运行"
+    completed_at: "2026-04-08"
+    notes: "cobra v1.8.1，chat/version/config/mcp 命令，bootstrap 连线，go build ./... 通过"
+
+  # ─────────────────────────────────────────────────────────────
+  # M1 · 并行开发阶段 — 第四批：Tech Lead 代码评审
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-042"
+    title: "代码评审：基础设施层（#13）"
+    description: "Tech Lead 评审 Agent-Infra 实现的所有代码"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P1"
+    milestone: "M1"
+    depends_on: ["T-013"]
+    artifacts:
+      - "docs/project/reviews/code-review-infra.md"
+    acceptance_criteria:
+      - "评审报告输出，P0 问题清单明确"
+    completed_at: "2026-04-09"
+    notes: "P0×1，P1×4，P2×6"
+
+  - id: "T-047"
+    title: "代码评审：服务层（#14）"
+    description: "Tech Lead 评审 Agent-Services 实现的所有代码"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P1"
+    milestone: "M1"
+    depends_on: ["T-014"]
+    artifacts:
+      - "docs/project/reviews/code-review-services.md"
+    acceptance_criteria:
+      - "评审报告输出"
+    completed_at: "2026-04-09"
+    notes: "P0×0，P1×4，P2×9"
+
+  - id: "T-043"
+    title: "代码评审：核心层（#15）"
+    description: "Tech Lead 评审 Agent-Core 实现的所有代码"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P1"
+    milestone: "M1"
+    depends_on: ["T-015"]
+    artifacts:
+      - "docs/project/reviews/code-review-core.md"
+    acceptance_criteria:
+      - "评审报告输出"
+    completed_at: "2026-04-09"
+    notes: "P0×6，P1×6，P2×7"
+
+  - id: "T-050"
+    title: "代码评审：工具层（#16）"
+    description: "Tech Lead 评审 Agent-Tools 实现的所有代码"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P1"
+    milestone: "M1"
+    depends_on: ["T-016"]
+    artifacts:
+      - "docs/project/reviews/code-review-tools.md"
+    acceptance_criteria:
+      - "评审报告输出"
+    completed_at: "2026-04-09"
+    notes: "P0×2，P1×5，P2×9"
+
+  - id: "T-045"
+    title: "代码评审：TUI 层（#17）"
+    description: "Tech Lead 评审 Agent-TUI 实现的所有代码"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P1"
+    milestone: "M1"
+    depends_on: ["T-017"]
+    artifacts:
+      - "docs/project/reviews/code-review-tui.md"
+    acceptance_criteria:
+      - "评审报告输出"
+    completed_at: "2026-04-09"
+    notes: "P0×0，P1×5，P2×10"
+
+  - id: "T-044"
+    title: "代码评审：CLI 层（#18）"
+    description: "Tech Lead 评审 Agent-CLI 实现的所有代码"
+    role: "tech-lead"
+    status: "completed"
+    priority: "P1"
+    milestone: "M1"
+    depends_on: ["T-018"]
+    artifacts:
+      - "docs/project/reviews/code-review-cli.md"
+    acceptance_criteria:
+      - "评审报告输出"
+    completed_at: "2026-04-09"
+    notes: "P0×0，P1×6，P2×8"
+
+  # ─────────────────────────────────────────────────────────────
+  # M2 · 验收与集成阶段
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-020"
+    title: "验收基础设施层"
+    description: "QA Agent 验收 Agent-Infra 实现，输出 QA 报告"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M2"
+    depends_on: ["T-013"]
+    artifacts:
+      - "docs/project/qa/qa-infra.md"
+    acceptance_criteria:
+      - "无 P0 阻塞问题"
+      - "覆盖率报告输出"
+    completed_at: "2026-04-09"
+    notes: "有条件通过；0 P0，1 P1，4 P2"
+
+  - id: "T-021"
+    title: "验收服务层"
+    description: "QA Agent 验收 Agent-Services 实现，输出 QA 报告"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M2"
+    depends_on: ["T-014"]
+    artifacts:
+      - "docs/project/qa/qa-services.md"
+    acceptance_criteria:
+      - "无 P0 阻塞问题（或 P0 已有修复计划）"
+    completed_at: "2026-04-09"
+    notes: "有条件通过；1 P0（MCP 并发竞争），8 P1，10 P2"
+
+  - id: "T-022"
+    title: "验收核心层"
+    description: "QA Agent 验收 Agent-Core 实现，输出 QA 报告"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M2"
+    depends_on: ["T-015"]
+    artifacts:
+      - "docs/project/qa/qa-core.md"
+    acceptance_criteria:
+      - "无 P0 阻塞问题（或 P0 已有修复计划）"
+    completed_at: "2026-04-09"
+    notes: "有条件通过；2 P0（abortFn data race + MicroCompactor 接口不匹配），3 P1，5 P2"
+
+  - id: "T-023"
+    title: "验收工具层"
+    description: "QA Agent 验收 Agent-Tools 实现，输出 QA 报告"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M2"
+    depends_on: ["T-016"]
+    artifacts:
+      - "docs/project/qa/qa-tools.md"
+    acceptance_criteria:
+      - "无 P0 阻塞问题"
+    completed_at: "2026-04-09"
+    notes: "有条件通过；0 P0，4 P1（并发分类×3+测试缺失），3 P2"
+
+  - id: "T-024"
+    title: "验收 TUI 层"
+    description: "QA Agent 验收 Agent-TUI 实现，输出 QA 报告"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M2"
+    depends_on: ["T-017"]
+    artifacts:
+      - "docs/project/qa/qa-tui.md"
+    acceptance_criteria:
+      - "无 P0 阻塞问题（或 P0 已有修复计划）"
+    completed_at: "2026-04-09"
+    notes: "有条件通过；1 P0（/model 结果未应用），3 P1，5 P2"
+
+  - id: "T-025"
+    title: "验收 CLI 入口层"
+    description: "QA Agent 验收 Agent-CLI 实现，输出 QA 报告"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M2"
+    depends_on: ["T-018"]
+    artifacts:
+      - "docs/project/qa/qa-cli.md"
+    acceptance_criteria:
+      - "无 P0 阻塞问题（或 P0 已有修复计划）"
+    completed_at: "2026-04-09"
+    notes: "有条件通过；4 P0（零测试/os.Setenv/os.Exit/mcp unimplemented），6 P1，6 P2"
+
+  # ─────────────────────────────────────────────────────────────
+  # M2/M3 · P0 缺陷修复
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-031"
+    title: "Fix P0-B: engine abortFn data race"
+    description: "使用 abortMu sync.Mutex 保护 abortFn 读写，消除 -race 检测到的数据竞争"
+    role: "agent-core"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-022"]
+    artifacts:
+      - "internal/engine/engine.go"
+    acceptance_criteria:
+      - "go test -race ./internal/engine/... 通过"
+    completed_at: "2026-04-10"
+    notes: "abortMu sync.Mutex 保护 abortFn 读写"
+
+  - id: "T-033"
+    title: "Fix P0-C: CLI layer zero tests"
+    description: "为 CLI 层（cmd/claude/、internal/bootstrap/）补充单元测试，覆盖率达标"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-025"]
+    artifacts:
+      - "internal/bootstrap/"
+      - "cmd/claude/"
+    acceptance_criteria:
+      - "go test ./internal/bootstrap/... ./cmd/claude/... 通过"
+      - "覆盖率 ≥30%"
+    completed_at: "2026-04-10"
+    notes: ""
+
+  - id: "T-034"
+    title: "Fix P0-F: implement mcp serve subcommand"
+    description: "实现 claude mcp serve 子命令，包含 ENTRYPOINT 设置、tools/list、tools/call"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-025"]
+    artifacts:
+      - "internal/bootstrap/mcp.go"
+    acceptance_criteria:
+      - "claude mcp serve 命令可运行"
+      - "go test ./internal/bootstrap/... 通过"
+    completed_at: "2026-04-10"
+    notes: "ENTRYPOINT 设置 + tools/list + tools/call 全部实现"
+
+  - id: "T-035"
+    title: "Fix P0-A: MCP jsonRPC concurrent Recv data race"
+    description: "修复 MCP JSON-RPC 并发接收的数据竞争问题"
+    role: "agent-services"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-021"]
+    artifacts:
+      - "internal/mcp/"
+    acceptance_criteria:
+      - "go test -race ./internal/mcp/... 通过"
+    completed_at: "2026-04-10"
+    notes: ""
+
+  - id: "T-038"
+    title: "Fix P0-H: MicroCompactor interface mismatch"
+    description: "修复 MicroCompactor 未实现 Compactor 接口的编译错误"
+    role: "agent-core"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-022"]
+    artifacts:
+      - "internal/compact/"
+    acceptance_criteria:
+      - "go build ./... 通过"
+      - "MicroCompactor 正确实现 Compactor 接口"
+    completed_at: "2026-04-10"
+    notes: ""
+
+  - id: "T-040"
+    title: "Fix P0-G: TUI /model command not applied"
+    description: "修复 /model 命令设置后未实际应用到后续 API 请求的问题"
+    role: "agent-tui"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-024"]
+    artifacts:
+      - "internal/tui/"
+    acceptance_criteria:
+      - "/model 命令后的 API 请求使用新 model"
+      - "go test ./internal/tui/... 通过"
+    completed_at: "2026-04-10"
+    notes: ""
+
+  - id: "T-041"
+    title: "Fix P0-D/E: bootstrap os.Setenv and os.Exit"
+    description: "重构 bootstrap 中的 os.Setenv（改为环境配置注入）和 os.Exit（改为错误返回）"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-025"]
+    artifacts:
+      - "internal/bootstrap/"
+    acceptance_criteria:
+      - "bootstrap 代码不再直接调用 os.Exit"
+      - "go test ./internal/bootstrap/... 通过"
+    completed_at: "2026-04-10"
+    notes: ""
+
+  - id: "T-051"
+    title: "Fix CLI-P1-A: rootCmd 全局变量并发问题"
+    description: "将 rootCmd 从包级全局变量改为局部变量，消除并发安全隐患"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P1"
+    milestone: "M3"
+    depends_on: ["T-044"]
+    artifacts:
+      - "internal/bootstrap/root.go"
+    acceptance_criteria:
+      - "rootCmd 为局部变量"
+      - "go test -race ./internal/bootstrap/... 通过"
+    completed_at: "2026-04-10"
+    notes: "rootCmd 已为局部变量，添加 P1-A 说明注释"
+
+  - id: "T-052"
+    title: "Fix CLI-P1-D/E: mcp serve ENTRYPOINT + tools 实现"
+    description: "完善 mcp serve 的 ENTRYPOINT 设置和 tools/list、tools/call 方法实现"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P1"
+    milestone: "M3"
+    depends_on: ["T-034"]
+    artifacts:
+      - "internal/bootstrap/mcp.go"
+    acceptance_criteria:
+      - "tools/list 返回注册的所有工具"
+      - "tools/call 正确调度工具"
+    completed_at: "2026-04-10"
+    notes: ""
+
+  - id: "T-053"
+    title: "Fix CLI-P1-F: wire.go 编译期接口断言"
+    description: "在 wire.go 中添加编译期接口断言，防止接口不匹配在运行时才发现"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P1"
+    milestone: "M3"
+    depends_on: ["T-044"]
+    artifacts:
+      - "internal/bootstrap/wire.go"
+    acceptance_criteria:
+      - "wire.go 包含跨包边界的编译期接口断言"
+      - "go build ./... 通过"
+    completed_at: "2026-04-10"
+    notes: "wire.go 添加跨包边界断言，engine.go/client.go 内部断言确认"
+
+  - id: "T-055"
+    title: "Fix CLI-P1-C: --resume/--continue 会话恢复接线"
+    description: "实现 --resume 和 --continue flag，将历史会话消息加载到引擎"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P1"
+    milestone: "M3"
+    depends_on: ["T-044"]
+    artifacts:
+      - "internal/bootstrap/session.go"
+      - "internal/bootstrap/root.go"
+    acceptance_criteria:
+      - "claude chat --resume <session-id> 可恢复历史会话"
+      - "go test ./internal/bootstrap/... 通过"
+    completed_at: "2026-04-10"
+    notes: "新增 session.go，root.go 接线到引擎 SetMessages"
+
+  - id: "T-056"
+    title: "提升 bootstrap/cmd 覆盖率"
+    description: "为 internal/bootstrap 和 cmd/claude 补充测试，提升覆盖率"
+    role: "agent-cli"
+    status: "completed"
+    priority: "P1"
+    milestone: "M3"
+    depends_on: ["T-033"]
+    artifacts:
+      - "internal/bootstrap/"
+      - "cmd/claude/"
+    acceptance_criteria:
+      - "bootstrap 覆盖率 ≥40%"
+      - "cmd/claude 覆盖率 ≥40%"
+    completed_at: "2026-04-10"
+    notes: "bootstrap 46.1%，cmd/claude 50%"
+
+  # ─────────────────────────────────────────────────────────────
+  # M3 · 交付阶段
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-026"
+    title: "执行集成测试，出具最终验收报告"
+    description: "QA Agent 执行完整的集成测试套件，出具 M3 最终验收报告"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-020", "T-021", "T-022", "T-023", "T-024", "T-025",
+                 "T-031", "T-033", "T-034", "T-035", "T-038", "T-040", "T-041"]
+    artifacts:
+      - "docs/project/qa/2026-04-10-m3-final.md"
+    acceptance_criteria:
+      - "go test -race ./... 全部通过"
+      - "综合覆盖率 ≥60%"
+      - "go build ./... 通过"
+    completed_at: "2026-04-10"
+    notes: "26/26 包 PASS，race-free，综合覆盖率 69.4%"
+
+  - id: "T-054"
+    title: "第 10 次巡检 QA 报告"
+    description: "QA Agent 输出第 10 次巡检报告，综合验证所有 P0/P1 修复"
+    role: "qa"
+    status: "completed"
+    priority: "P1"
+    milestone: "M3"
+    depends_on: ["T-051", "T-052", "T-053"]
+    artifacts:
+      - "docs/project/qa/2026-04-10-patrol10.md"
+    acceptance_criteria:
+      - "所有 P1 问题验证通过"
+      - "综合覆盖率 ≥60%"
+    completed_at: "2026-04-10"
+    notes: "综合覆盖率 69.4%，TUI P1 全绿"
+
+  - id: "T-057"
+    title: "M3 最终交付 QA 报告"
+    description: "QA Agent 出具 M3 里程碑最终交付报告，确认所有交付条件满足"
+    role: "qa"
+    status: "completed"
+    priority: "P0"
+    milestone: "M3"
+    depends_on: ["T-026", "T-054"]
+    artifacts:
+      - "docs/project/qa/2026-04-10-m3-final.md"
+    acceptance_criteria:
+      - "26/26 包测试通过"
+      - "全量交付条件确认"
+    completed_at: "2026-04-10"
+    notes: "26/26 PASS，全量交付条件满足"

@@ -80,3 +80,53 @@ Agent-Infra
 - [ ] 基础设施层所有模块实现完毕，`go build` 通过，`go vet` 无警告
 - [ ] 单元测试覆盖率 ≥ 80%，`go test -race` 通过
 - [ ] QA Agent 验收通过
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `pkg/types/` — 零依赖共享类型（Message、ContentBlock 等）
+- `pkg/utils/` — 工具函数包（env、fs、ids、jsonutil、permission matcher）
+- `pkg/testutil/` — 测试辅助工具
+- `internal/config/` — 三级配置加载（global/project/local）
+- `internal/state/` — 泛型状态存储（AppState）
+- `internal/session/` — 会话持久化
+- `internal/memdir/` — CLAUDE.md 发现与加载
+
+### Forbidden Actions
+
+- 不得在 `pkg/types/` 中引入任何外部依赖（必须保持零依赖）
+- 不得在 `pkg/types/` 中引入任何 `internal/` 包的依赖
+- 不得修改 `internal/engine/`、`internal/tui/`、`internal/tools/`（上层包）
+- 不得在 Infra 层实现任何业务逻辑
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `pkg/types/` — 零依赖共享类型（Message、ContentBlock 等）
+- `pkg/utils/` — 工具函数包（env、fs、ids、jsonutil、permission matcher）
+- `pkg/testutil/` — 测试辅助工具
+- `internal/config/` — 三级配置加载（global/project/local）
+- `internal/state/` — 泛型状态存储（AppState）
+- `internal/session/` — 会话持久化
+- `internal/memdir/` — CLAUDE.md 发现与加载
+
+### Forbidden Actions
+
+- 不得在 `pkg/types/` 中引入任何外部依赖（必须保持零依赖）
+- 不得在 `pkg/types/` 中引入任何 `internal/` 包的依赖
+- 不得修改 `internal/engine/`、`internal/tui/`、`internal/tools/`（上层包）
+- 不得在 Infra 层实现任何业务逻辑
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。

@@ -84,3 +84,43 @@ Agent-CLI
 - [ ] 测试覆盖率 ≥ 60%，`go test -race` 通过
 - [ ] 端到端验证通过（交互模式 + 非交互模式）
 - [ ] QA Agent 验收通过
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `cmd/` — CLI 入口（main.go、cobra 命令）
+- `internal/bootstrap/` — 启动引导、依赖注入、根命令
+
+### Forbidden Actions
+
+- 不得修改 `internal/engine/`、`internal/tui/`、`internal/tools/` 等其他层的代码
+- 不得修改 `pkg/types/`（零依赖类型包，由 Agent-Infra 负责）
+- 不得在 `internal/bootstrap/` 中引入上层初始化逻辑以外的业务代码
+- 不得直接调用 API 客户端（需通过 Engine 层）
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `cmd/` — CLI 入口（main.go、cobra 命令）
+- `internal/bootstrap/` — 启动引导、依赖注入、根命令
+
+### Forbidden Actions
+
+- 不得修改 `internal/engine/`、`internal/tui/`、`internal/tools/` 等其他层的代码
+- 不得修改 `pkg/types/`（零依赖类型包，由 Agent-Infra 负责）
+- 不得在 `internal/bootstrap/` 中引入上层初始化逻辑以外的业务代码
+- 不得直接调用 API 客户端（需通过 Engine 层）
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。

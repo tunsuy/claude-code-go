@@ -87,3 +87,47 @@ Agent-TUI
 - [ ] 测试覆盖率 ≥ 60%，`go test -race` 通过
 - [ ] 端到端交互测试通过
 - [ ] QA Agent 验收通过
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `internal/tui/` — Bubble Tea TUI 组件（model、update、view）
+- `internal/commands/` — Slash 命令注册表和内置命令处理器
+- `internal/plugin/` — 插件系统
+
+### Forbidden Actions
+
+- 不得修改 `internal/engine/`（Engine 层，由 Agent-Core 负责）
+- 不得修改 `internal/tools/`（工具层，由 Agent-Tools 负责）
+- 不得在 TUI 层直接调用 API 客户端（需通过 Engine 层）
+- 不得在 TUI 层实现业务逻辑（如工具调度、权限判断）
+- 不得在 `Update()` 函数中直接修改共享状态（必须通过 `tea.Cmd` 和消息传递）
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `internal/tui/` — Bubble Tea TUI 组件（model、update、view）
+- `internal/commands/` — Slash 命令注册表和内置命令处理器
+- `internal/plugin/` — 插件系统
+
+### Forbidden Actions
+
+- 不得修改 `internal/engine/`（Engine 层，由 Agent-Core 负责）
+- 不得修改 `internal/tools/`（工具层，由 Agent-Tools 负责）
+- 不得在 TUI 层直接调用 API 客户端（需通过 Engine 层）
+- 不得在 TUI 层实现业务逻辑（如工具调度、权限判断）
+- 不得在 `Update()` 函数中直接修改共享状态（必须通过 `tea.Cmd` 和消息传递）
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。

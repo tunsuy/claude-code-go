@@ -88,3 +88,49 @@ Agent-Core
 - [ ] 核心层所有模块实现完毕，`go build` 通过，`go vet` 无警告
 - [ ] 单元测试覆盖率 ≥ 75%，`go test -race` 通过
 - [ ] QA Agent 验收通过
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `internal/engine/` — 核心查询引擎（LLM loop、工具调度、上下文压缩调度）
+- `internal/permissions/` — 权限决策管道（9 层权限链）
+- `internal/hooks/` — Pre/PostToolUse 钩子系统
+- `internal/coordinator/` — 多 Agent 协调（spawn、消息路由）
+
+### Forbidden Actions
+
+- 不得修改 `internal/tui/`（TUI 层，由 Agent-TUI 负责）
+- 不得修改 `internal/tools/`（工具层，由 Agent-Tools 负责）
+- 不得修改 `internal/api/`、`internal/oauth/`、`internal/mcp/`（Services 层，由 Agent-Services 负责）
+- 不得修改 `pkg/types/`（Infra 层，由 Agent-Infra 负责）
+- 不得在 Engine 中嵌入 TUI 渲染逻辑
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `internal/engine/` — 核心查询引擎（LLM loop、工具调度、上下文压缩调度）
+- `internal/permissions/` — 权限决策管道（9 层权限链）
+- `internal/hooks/` — Pre/PostToolUse 钩子系统
+- `internal/coordinator/` — 多 Agent 协调（spawn、消息路由）
+
+### Forbidden Actions
+
+- 不得修改 `internal/tui/`（TUI 层，由 Agent-TUI 负责）
+- 不得修改 `internal/tools/`（工具层，由 Agent-Tools 负责）
+- 不得修改 `internal/api/`、`internal/oauth/`、`internal/mcp/`（Services 层，由 Agent-Services 负责）
+- 不得修改 `pkg/types/`（Infra 层，由 Agent-Infra 负责）
+- 不得在 Engine 中嵌入 TUI 渲染逻辑
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。

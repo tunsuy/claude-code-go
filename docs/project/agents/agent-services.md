@@ -82,3 +82,49 @@ Agent-Services
 - [ ] 服务层所有模块实现完毕，`go build` 通过，`go vet` 无警告
 - [ ] 单元测试覆盖率 ≥ 70%，`go test -race` 通过
 - [ ] QA Agent 验收通过
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `internal/api/` — Anthropic API 客户端（SSE 流式、重试、用量统计）
+- `internal/oauth/` — OAuth2 认证流程（macOS Keychain 支持）
+- `internal/mcp/` — MCP 协议客户端（连接池、JSON-RPC）
+- `internal/compact/` — 上下文压缩策略（auto/micro/snip）
+
+### Forbidden Actions
+
+- 不得修改 `internal/engine/`（调用方，由 Agent-Core 负责）
+- 不得修改 `internal/tui/`（TUI 层，由 Agent-TUI 负责）
+- 不得修改 `internal/tools/`（工具层，由 Agent-Tools 负责）
+- 不得在 Services 层实现任何工具调度逻辑
+- 不得硬编码 API Key（必须从环境变量或 OAuth 读取）
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
+
+---
+
+## Harness Integration
+
+### Allowed Write Paths
+
+- `internal/api/` — Anthropic API 客户端（SSE 流式、重试、用量统计）
+- `internal/oauth/` — OAuth2 认证流程（macOS Keychain 支持）
+- `internal/mcp/` — MCP 协议客户端（连接池、JSON-RPC）
+- `internal/compact/` — 上下文压缩策略（auto/micro/snip）
+
+### Forbidden Actions
+
+- 不得修改 `internal/engine/`（调用方，由 Agent-Core 负责）
+- 不得修改 `internal/tui/`（TUI 层，由 Agent-TUI 负责）
+- 不得修改 `internal/tools/`（工具层，由 Agent-Tools 负责）
+- 不得在 Services 层实现任何工具调度逻辑
+- 不得硬编码 API Key（必须从环境变量或 OAuth 读取）
+
+### Output Protocol
+
+完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。

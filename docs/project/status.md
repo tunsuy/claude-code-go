@@ -1,7 +1,7 @@
 # Claude Code Go — 任务状态总览
 
 > 维护人：PM Agent
-> 最后更新：2026-04-10（第 10 次巡检）
+> 最后更新：2026-04-10（第 12 次巡检，M3 交付完成）
 
 ---
 
@@ -57,20 +57,23 @@
 | #45 | 【Tech Lead】代码评审：TUI 层（#17） | ✅ 已完成 | Tech Lead | 见 code-review-tui.md；P0×0，P1×5，P2×10 |
 | #47 | 【Tech Lead】代码评审：服务层（#14） | ✅ 已完成 | Tech Lead | 见 code-review-services.md；P0×0，P1×4，P2×9 |
 | #50 | 【Tech Lead】代码评审：工具层（#16） | ✅ 已完成 | Tech Lead | 见 code-review-tools.md；P0×2，P1×5，P2×9 |
-| #26 | 执行集成测试，出具最终验收报告 | 🔄 进行中 | QA | P0 全清，集成测试已启动 |
-| #51 | Fix CLI-P1-A: rootCmd 全局变量并发问题 | 🔄 进行中 | Agent-CLI | |
-| #52 | Fix CLI-P1-D/E: mcp serve ENTRYPOINT + tools 实现 | 🔄 进行中 | Agent-CLI | |
-| #53 | Fix CLI-P1-F: wire.go 编译期接口断言 | 🔄 进行中 | Agent-CLI | |
-| #54 | 第 10 次巡检 QA 报告 | 🔄 进行中 | QA | 覆盖率对比 + P1 修复确认 |
+| #26 | 执行集成测试，出具最终验收报告 | ✅ 已完成 | QA | 26/26 包 PASS，race-free，见 2026-04-10-m3-final.md |
+| #51 | Fix CLI-P1-A: rootCmd 全局变量并发问题 | ✅ 已完成 | Agent-CLI | rootCmd 已为局部变量，添加 P1-A 说明注释 |
+| #52 | Fix CLI-P1-D/E: mcp serve ENTRYPOINT + tools 实现 | ✅ 已完成 | Agent-CLI | ENTRYPOINT 设置 + tools/list + tools/call 全部实现 |
+| #53 | Fix CLI-P1-F: wire.go 编译期接口断言 | ✅ 已完成 | Agent-CLI | wire.go 添加跨包边界断言，engine.go/client.go 内部断言确认 |
+| #54 | 第 10 次巡检 QA 报告 | ✅ 已完成 | QA | 综合覆盖率 69.4%，TUI P1 全绿，见 2026-04-10-patrol10.md |
+| #55 | Fix CLI-P1-C: --resume/--continue 会话恢复接线 | ✅ 已完成 | Agent-CLI | 新增 session.go，root.go 接线到引擎 SetMessages |
+| #56 | 提升 bootstrap/cmd 覆盖率 | ✅ 已完成 | Agent-CLI | bootstrap 46.1%，cmd/claude 50% |
+| #57 | M3 最终交付 QA 报告 | ✅ 已完成 | QA | 26/26 PASS，全量交付条件满足，见 2026-04-10-m3-final.md |
 
 ---
 
 ## 当前阻塞项
 
-✅ **所有 P0 已清零，#26 集成测试进行中。**
+✅ **所有任务已完成，无任何阻塞项。M3 交付完成。**
 
-> 原 P0-A～P0-H（QA 验收阶段）及 P0-CR-1~9（Tech Lead 代码评审阶段）均已全部修复，无任何 P0 阻塞项。
-> CLI P1-A/D/E/F 为 P1 级，由 Agent-CLI 处理中，不阻塞集成测试。
+> 全部 P0/P1 缺陷（P0-A~H、P0-CR-1~9、CLI P1-A/C/D/E/F、TUI P1-A~F）均已修复。
+> `go test -race ./...` 26/26 包通过，综合覆盖率 69.4%，项目可合并主干。
 
 ---
 

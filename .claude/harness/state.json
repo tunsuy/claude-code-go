@@ -30,7 +30,7 @@
     "qa": "idle",
     "tech-lead": "idle"
   },
-  "summary": "项目已完成全量交付（M0–M3），26/26 测试通过，race-free，综合覆盖率 69.4%，go build ./... 通过。所有 P0/P1 缺陷已修复。项目可合并主干。",
+  "summary": "项目已完成全量交付（M0–M3），26/26 测试通过，race-free，综合覆盖率 69.4%，go build ./... 通过。所有 P0/P1 缺陷已修复。Harness Agent 定义已修订（去重 Harness Integration 章节、修正 QA 写路径、PM 任务派发规则强化）。项目可合并主干。",
   "next_steps": [],
   "known_issues": [],
   "quick_context": {

@@ -116,31 +116,3 @@ Agent-Tools
 ### Output Protocol
 
 完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
-
----
-
-## Harness Integration
-
-### Allowed Write Paths
-
-- `internal/tools/` — 所有工具实现（含子目录）
-  - `internal/tools/agent/` — Sub-agent 和 SendMessage 工具
-  - `internal/tools/fileops/` — FileRead、FileWrite、FileEdit、Glob、Grep、NotebookEdit
-  - `internal/tools/interact/` — AskUserQuestion、Worktree 工具
-  - `internal/tools/mcp/` — MCP 工具适配器
-  - `internal/tools/misc/` — 杂项工具
-  - `internal/tools/shell/` — Bash 执行工具
-  - `internal/tools/tasks/` — Task CRUD 工具
-  - `internal/tools/web/` — WebFetch、WebSearch 工具
-
-### Forbidden Actions
-
-- 不得在工具实现中相互导入（`internal/tools/` 子包之间禁止相互依赖）
-- 不得修改 `internal/engine/`（Engine 层，由 Agent-Core 负责）
-- 不得修改 `internal/permissions/`（权限层，由 Agent-Core 负责）
-- 不得在工具中直接调用 API 客户端（需通过 Engine 层的 QueryEngine 接口）
-- 不得在工具中实现 TUI 渲染逻辑
-
-### Output Protocol
-
-完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。

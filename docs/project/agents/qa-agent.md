@@ -146,29 +146,12 @@ QA Agent
 ### Allowed Write Paths
 
 - `docs/project/qa/` — QA 测试报告和最终验收报告
+- `test/integration/` — 跨模块集成测试和端到端测试文件（`*_test.go`）
+- 各模块 `*_test.go` — 补充或新增的测试用例（不得修改同目录的非测试文件）
 
 ### Forbidden Actions
 
-- 不得修改 `internal/`、`cmd/`、`pkg/` 下的任何生产代码（测试文件除外）
-- 不得修改 `docs/project/design/`（设计文档，由 Tech Lead 负责）
-- 不得修改 `docs/project/reviews/`（评审报告，由 Tech Lead 负责）
-- 不得在未运行完整测试套件的情况下给出 sign-off
-
-### Output Protocol
-
-完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
-
----
-
-## Harness Integration
-
-### Allowed Write Paths
-
-- `docs/project/qa/` — QA 测试报告和最终验收报告
-
-### Forbidden Actions
-
-- 不得修改 `internal/`、`cmd/`、`pkg/` 下的任何生产代码（测试文件除外）
+- 不得修改 `internal/`、`cmd/`、`pkg/` 下的任何**生产代码**（非测试文件）
 - 不得修改 `docs/project/design/`（设计文档，由 Tech Lead 负责）
 - 不得修改 `docs/project/reviews/`（评审报告，由 Tech Lead 负责）
 - 不得在未运行完整测试套件的情况下给出 sign-off

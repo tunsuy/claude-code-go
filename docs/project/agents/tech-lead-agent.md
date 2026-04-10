@@ -311,24 +311,3 @@ Tech Lead
 ### Output Protocol
 
 完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。
-
----
-
-## Harness Integration
-
-### Allowed Write Paths
-
-- `docs/project/reviews/` — 代码评审报告
-- `docs/project/design/` — 层设计文档（更新已有设计，记录架构决策）
-
-### Forbidden Actions
-
-- 不得修改 `internal/`、`cmd/`、`pkg/` 下的任何生产代码
-- 不得修改 `docs/project/qa/`（QA 报告，由 QA Agent 负责）
-- 不得修改 `docs/project/logs/`（PM 日志，由 PM Agent 负责）
-- 不得在未评审代码的情况下更新 `reviews/` 中的评审报告
-- 不得批准违反六层依赖规则的架构设计
-
-### Output Protocol
-
-完成任务后必须按 `docs/project/harness/protocols/agent-output.md` 格式输出结果。

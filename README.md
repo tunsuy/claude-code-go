@@ -6,6 +6,34 @@
 
 English | [中文](README.zh-CN.md)
 
+## What is this?
+
+This project is a **complete Go reimplementation of [Claude Code](https://claude.ai/code)** — Anthropic's official TypeScript CLI — rewritten module-by-module in Go, covering all core features: TUI, tool use, permission system, multi-agent coordination, MCP protocol, session management, and more.
+
+### Built entirely by AI agents — zero human-written code
+
+> **No human wrote a single line of production code in this repository.**
+
+The entire project — architecture design, detailed design docs, parallel implementation, code review, QA, and integration testing — was produced by **9 Claude AI agents** collaborating in a structured multi-agent workflow:
+
+```
+PM Agent          →  project plan, milestones, task scheduling
+Tech Lead Agent   →  architecture design, design-doc review, code review
+Agent-Infra       →  infrastructure layer (types, config, state, session)
+Agent-Services    →  services layer (API client, OAuth, MCP, compaction)
+Agent-Core        →  core engine (LLM loop, tool dispatch, coordinator)
+Agent-Tools       →  tools layer (file, shell, search, web — 18 tools)
+Agent-TUI         →  UI layer (Bubble Tea MVU, themes, Vim mode)
+Agent-CLI         →  entry layer (Cobra CLI, DI, bootstrap phases)
+QA Agent          →  test strategy, per-layer acceptance, integration tests
+```
+
+Each agent worked on an isolated Git Worktree branch in parallel, collaborating through the shared codebase, design docs, and QA reports. The result: ~**7,000 lines of production code + a full test suite**, with `go test -race ./...` passing.
+
+This is a real-world demonstration that a non-trivial, multi-layer Go application can be fully designed, implemented, reviewed, and shipped by AI agents collaborating asynchronously. The complete decision trail lives in [`docs/project/`](docs/project/).
+
+---
+
 A Go implementation of [Claude Code](https://claude.ai/code) — an agentic AI coding assistant that lives in your terminal. Claude Code understands your codebase, runs tools, and helps you write, review, and refactor code through natural conversation.
 
 ## Features
@@ -156,49 +184,6 @@ Claude Code Go is organized in six layers:
 ```
 
 See [`docs/project/architecture.md`](docs/project/architecture.md) for a detailed breakdown.
-
-## Built with Multi-Agent Collaboration
-
-> **This project was built entirely by a team of Claude AI agents working in parallel — no human wrote any of the production code.**
-
-The entire codebase — from architecture design through implementation, code review, testing, and QA — was produced through a structured multi-agent workflow orchestrated by Claude Code itself:
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      PM Agent                            │
-│        Project plan · milestones · task breakdown        │
-└─────────────────────────┬───────────────────────────────┘
-                           │
-┌─────────────────────────▼───────────────────────────────┐
-│                    Tech Lead Agent                       │
-│  Architecture design · design-doc review · code review  │
-└───────┬──────────┬──────────┬──────────┬──────────┬─────┘
-        │          │          │          │          │
-   Agent-Infra  Agent-     Agent-    Agent-    Agent-CLI
-   (pkg/types   Services   Core      Tools     (cmd/claude
-    config       api        engine    tools      bootstrap
-    state        oauth      coord.    perms.)    commands)
-    session      mcp        tool
-    hooks)       compact    dispatch
-        │          │          │          │          │
-        └──────────┴──────────┴──────────┴──────────┘
-                              │
-                         QA Agent
-                  test strategy · acceptance
-                  coverage · integration tests
-```
-
-**The workflow:**
-
-1. **PM Agent** kicked off the project by producing the overall plan, milestone breakdown, and task assignments for all subsequent agents.
-2. **Tech Lead Agent** produced the architecture document and six layer-level design docs, then reviewed every implementation for correctness and adherence to the design.
-3. **Six specialist implementation agents** (Infra, Services, Core, Tools, TUI, CLI) worked in parallel, each owning their layer end-to-end.
-4. **QA Agent** wrote a test strategy, ran acceptance tests per layer, filed P0/P1 bugs, and issued a final integration sign-off.
-5. **All inter-agent communication** happened through the shared codebase, design docs, and QA reports in `docs/project/` — agents read each other's outputs and iterated.
-
-This project serves as a real-world demonstration that a non-trivial, multi-layer Go application (~7,000 lines of production code + tests) can be designed, implemented, reviewed, and shipped entirely by AI agents collaborating asynchronously.
-
-The internal design documents and QA reports in [`docs/project/`](docs/project/) capture the full decision trail.
 
 ## Development
 

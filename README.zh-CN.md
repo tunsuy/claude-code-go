@@ -6,7 +6,33 @@
 
 [English](README.md) | 中文
 
-用 Go 实现的 [Claude Code](https://claude.ai/code)——一个在终端中运行的 AI 编程助手。Claude Code 能读懂你的代码库、执行工具，并通过自然对话帮你编写、评审和重构代码。
+## 这是什么
+
+本项目是对 [Claude Code](https://claude.ai/code)（Anthropic 官方 TypeScript CLI）**完整功能的 Go 语言复刻**，逐模块对照原版源码实现，覆盖 TUI 界面、工具调用、权限系统、多 Agent 协调、MCP 协议、会话管理等全部核心功能。
+
+### 开发方式：零人工代码，全程多 Agent 协作
+
+> **本仓库中不存在任何人类编写的生产代码。**
+
+整个项目由 **9 个 Claude AI Agent** 分工协作完成——从架构设计、详细设计文档、并行编码实现、代码评审，到 QA 验收与集成测试，全流程均由 AI 驱动：
+
+```
+PM Agent          →  项目计划、里程碑、任务调度
+Tech Lead Agent   →  架构设计、设计文档评审、代码评审
+Agent-Infra       →  基础设施层（类型、配置、状态、会话）
+Agent-Services    →  服务层（API 客户端、OAuth、MCP、压缩）
+Agent-Core        →  核心引擎（推理循环、工具分发、多 Agent 协调）
+Agent-Tools       →  工具层（文件、命令、搜索、Web 等 18 个工具）
+Agent-TUI         →  界面层（Bubble Tea MVU、主题、Vim 模式）
+Agent-CLI         →  入口层（Cobra CLI、依赖注入、启动流程）
+QA Agent          →  测试策略、逐层验收、集成测试
+```
+
+各 Agent 在独立 Git Worktree 分支上并行开发，通过共享代码库、设计文档和 QA 报告协作交互。最终产出约 **7,000 行生产代码 + 完整测试套件**，`go test -race ./...` 全部通过。
+
+这是一次真实规模的验证：**非平凡的多层 Go 应用可以完全由 AI Agent 异步协作设计、实现、评审并交付**。完整决策记录见 [`docs/project/`](docs/project/)。
+
+---
 
 ## 功能特性
 
@@ -156,48 +182,6 @@ Claude Code Go 采用六层架构：
 ```
 
 详细说明见 [`docs/project/architecture.md`](docs/project/architecture.md)。
-
-## 多 Agent 协作开发
-
-> **本项目完全由 Claude AI Agent 团队并行开发——没有人类编写任何生产代码。**
-
-整个代码库——从架构设计、编码实现、代码评审，到测试与 QA——均通过 Claude Code 编排的结构化多 Agent 工作流完成：
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                      PM Agent                            │
-│            项目计划 · 里程碑 · 任务拆解                    │
-└─────────────────────────┬───────────────────────────────┘
-                           │
-┌─────────────────────────▼───────────────────────────────┐
-│                    Tech Lead Agent                       │
-│         架构设计 · 设计文档评审 · 代码评审                  │
-└───────┬──────────┬──────────┬──────────┬──────────┬─────┘
-        │          │          │          │          │
-   Agent-Infra  Agent-     Agent-    Agent-    Agent-CLI
-   (pkg/types   Services   Core      Tools     (cmd/claude
-    config       api        engine    tools      bootstrap
-    state        oauth      coord.    perms.)    commands)
-    session      mcp        tool
-    hooks)       compact    dispatch
-        │          │          │          │          │
-        └──────────┴──────────┴──────────┴──────────┘
-                              │
-                         QA Agent
-                  测试策略 · 验收测试 · 覆盖率 · 集成测试
-```
-
-**工作流程：**
-
-1. **PM Agent** 启动项目，制定整体计划、里程碑划分和任务分配。
-2. **Tech Lead Agent** 输出架构文档和六个层级的详细设计文档，并对每层实现进行正确性与设计一致性评审。
-3. **六个专职实现 Agent**（Infra、Services、Core、Tools、TUI、CLI）并行工作，各自端到端负责所属层。
-4. **QA Agent** 编写测试策略，逐层执行验收测试，提交 P0/P1 缺陷，并出具最终集成测试报告。
-5. **所有 Agent 间的协作** 均通过共享代码库、设计文档和 QA 报告完成——Agent 读取彼此的输出并持续迭代。
-
-本项目是一个真实的验证案例：一个非平凡的多层 Go 应用（约 7,000 行生产代码及测试）可以完全由 AI Agent 异步协作完成设计、实现、评审和交付。
-
-完整决策记录见 [`docs/project/`](docs/project/) 中的设计文档和 QA 报告。
 
 ## 开发指南
 

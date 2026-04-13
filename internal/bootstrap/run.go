@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/signal"
 	"strings"
 
 	"github.com/anthropics/claude-code-go/internal/engine"
@@ -185,3 +186,19 @@ func consumeJSON(ctx context.Context, msgCh <-chan engine.Msg, container *AppCon
 
 // strPtr is a helper that returns a pointer to a string.
 func strPtr(s string) *string { return &s }
+
+// RunHeadless executes a single headless query using a pre-built container.
+// outputFormat must be one of: "text", "json", "stream-json".
+// maxTurns controls the maximum number of agentic turns; 0 means unlimited.
+// This is the testable entry point for the CLI headless path.
+func RunHeadless(container *AppContainer, prompt string, outputFormat string, maxTurns int) error {
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, os.Interrupt)
+	defer signal.Stop(sigCh)
+
+	f := &rootFlags{
+		outputFormat: outputFormat,
+		maxTurns:     maxTurns,
+	}
+	return headlessRun(container, prompt, f, sigCh)
+}

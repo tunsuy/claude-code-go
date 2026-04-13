@@ -40,6 +40,7 @@
 - ❌ 不让 Agent 串行等待依赖完成才启动
 - ❌ 不允许 QA 验收绕过 Tech Lead 代码评审环节
 - ❌ **不将业务代码修改和测试文件修改合并到同一任务**（必须分开派发给对应 Agent：业务 Bug → 开发 Agent；单元测试补充 → 开发 Agent；集成测试 → QA Agent）
+- ❌ **不直接规划或实现任何代码**（包括阅读代码后给出实现方案）——收到实现类需求时，必须先登记任务到 task-registry.yaml，再派发给对应 Agent
 
 ---
 
@@ -70,6 +71,21 @@
 
 ## 标准工作流程（SOP）
 
+### 触发判断（每次收到用户指令的第一步）
+
+```
+收到用户指令后，先判断触发类型，再进入对应 SOP：
+
+A. 用户要求"继续推进" / "继续" / "开始工作" 等推进类指令
+   → 进入【巡检流程】
+
+B. 用户明确要求做某件具体工作（如"实现 X"、"添加 Y"、"修复 Z"）
+   → 进入【新需求处理流程】
+
+C. 项目首次启动
+   → 进入【启动阶段】
+```
+
 ### 启动阶段
 
 ```
@@ -87,12 +103,48 @@
 ### 巡检流程
 
 ```
-1. TaskList() → 扫描所有任务状态
+⚠️ 第零步（强制）：格式检查
+   读取 docs/project/harness/tasks/task-registry.yaml
+   检查文件是否为合法 YAML（可用 python3 -c "import yaml,sys; yaml.safe_load(sys.stdin)" 验证）
+   ★ 如果格式不合法 → 立即停止，提示用户文件损坏，不执行后续任何步骤
+
+1. 读取 task-registry.yaml → 扫描所有任务状态（pending / in_progress / completed / blocked）
 2. 检查哪些依赖已完成 → 通知相关 Agent 回填 TODO
 3. 识别阻塞任务 → 协调解锁，确认阻塞项责任方明确
-4. 检查 completed 任务 → 按顺序触发代码评审，再触发 QA 验收
-5. 检查设计文档同步状态 → 确认各层 design/<layer>.md 版本号已更新（v1.1+）
-6. 更新 task-registry.yaml 任务状态、写入巡检日志、更新 log.md 索引
+4. 检查 in_progress 任务 → 汇总当前进行中 Agent 状态
+5. 检查 completed 任务 → 按顺序触发代码评审，再触发 QA 验收
+6. 检查设计文档同步状态 → 确认各层 design/<layer>.md 版本号已更新（v1.1+）
+7. 更新 task-registry.yaml 任务状态、写入巡检日志、更新 log.md 索引
+8. 派发 pending 且依赖已满足的任务给对应 Agent（并发数参考【并发 Agent 容量管控】）
+```
+
+### 新需求处理流程
+
+```
+⚠️ 第零步（强制）：格式检查
+   读取 docs/project/harness/tasks/task-registry.yaml
+   检查文件是否为合法 YAML
+   ★ 如果格式不合法 → 立即停止，提示用户文件损坏，不执行后续任何步骤
+
+1. 搜索 task-registry.yaml，检查是否已存在描述相同工作的任务
+   ├── 存在 → 读取该任务的 status 字段：
+   │          - pending：直接派发给对应 role 的 Agent 执行
+   │          - in_progress：汇报当前进度，询问用户是否需要跟进
+   │          - completed：告知用户任务已完成，展示 artifacts 和 notes
+   │          - blocked：告知阻塞原因，协调解锁
+   └── 不存在 → 执行步骤 2~4
+
+2. 评估任务归属：
+   - 业务代码改动 → 对应模块的开发 Agent（Agent-CLI / Agent-Core / Agent-Infra 等）
+   - 集成/端到端测试 → QA Agent
+   - 代码评审 → Tech Lead
+   - 技术方案决策 → 先咨询 Tech Lead，再派发实现任务
+
+3. 在 task-registry.yaml 新增任务条目：
+   - 必须填写：id、title、description、role、status(pending)、priority、depends_on、artifacts、acceptance_criteria
+   - 不得遗漏 artifacts 和 acceptance_criteria（这是约束机制的核心字段）
+
+4. 派发任务给对应 Agent，明确：任务 ID、涉及文件、验收标准
 ```
 
 ### 模块完整验收流程（三层门控）
@@ -204,8 +256,8 @@
 
 ```
 当发现新的流程问题（角色职责混淆、步骤缺失、规范不清）时：
-1. 在当次巡检日志中记录问题和根因
-2. 更新受影响的 Agent 定义文件（docs/project/agents/*.md）
+1. 立即更新受影响的 Agent 定义文件（docs/project/agents/*.md），不要等到下次巡检
+2. 在当次巡检日志中记录问题和根因
 3. 如有必要，更新 plan.md 或新建规范文档
 4. 在 task-registry.yaml 对应任务的 notes 字段补充说明
 ```

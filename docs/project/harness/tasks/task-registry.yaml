@@ -746,6 +746,53 @@ tasks:
     completed_at: "2026-04-10"
     notes: "综合覆盖率 69.4%，TUI P1 全绿"
 
+  - id: "T-058"
+    title: "wire.go 增加 BuildContainerWithClient 注入口"
+    description: |
+      在 internal/bootstrap/wire.go 中新增 BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppContainer, error)，
+      允许调用方（测试）注入任意 api.Client 实现，跳过真实 OAuth/API 初始化。
+      同时导出 HeadlessRun(container *AppContainer, prompt string, f *RootFlags, sigCh <-chan os.Signal) error
+      以及 RootFlags 类型（或等价的测试辅助入口），供集成测试直接调用 headless 链路。
+    role: "agent-cli"
+    status: "completed"
+    priority: "P1"
+    milestone: "M4"
+    depends_on: []
+    artifacts:
+      - "internal/bootstrap/wire.go"
+      - "internal/bootstrap/run.go"
+    acceptance_criteria:
+      - "BuildContainerWithClient 可用，跳过 OAuth 和真实 API 初始化"
+      - "HeadlessRun / RootFlags 已导出或提供等价测试入口"
+      - "go build ./... 通过"
+      - "现有单元测试 go test -race ./internal/bootstrap/... 全部通过"
+    completed_at: "2026-04-13"
+    notes: "BuildContainerWithClient 跳过 Phase2/3，RunHeadless 导出并绑定 SIGINT"
+
+  - id: "T-059"
+    title: "CLI 端到端集成测试"
+    description: |
+      在 test/integration/cli_e2e_test.go 中实现从 CLI 入口出发的完整端到端测试，覆盖：
+      1. 纯文本回复（无工具调用）：prompt → headlessRun → stdout 文本输出
+      2. 带工具调用（FileRead 读临时文件）：tool_use → tool_result → end_turn → stdout
+      3. 多轮工具调用：两轮 tool_use 后 end_turn
+      4. --output-format json 输出格式验证
+      5. --output-format stream-json 输出格式验证
+      使用 mock api.Client（通过 T-058 提供的 BuildContainerWithClient 注入），不发真实 API 请求。
+    role: "qa"
+    status: "completed"
+    priority: "P1"
+    milestone: "M4"
+    depends_on: ["T-058"]
+    artifacts:
+      - "test/integration/cli_e2e_test.go"
+    acceptance_criteria:
+      - "go test -race -tags=integration ./test/integration/... 全部通过"
+      - "覆盖上述 5 个场景"
+      - "不依赖真实 ANTHROPIC_API_KEY"
+    completed_at: "2026-04-13"
+    notes: "5 个 CLI E2E 场景全部通过：plaintext、FileRead 工具调用、多轮工具调用、json 输出格式、stream-json 输出格式"
+
   - id: "T-057"
     title: "M3 最终交付 QA 报告"
     description: "QA Agent 出具 M3 里程碑最终交付报告，确认所有交付条件满足"

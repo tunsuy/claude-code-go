@@ -121,6 +121,43 @@ func BuildHeadlessContainer(opts ContainerOptions) (*AppContainer, error) {
 	return BuildContainer(opts)
 }
 
+// BuildContainerWithClient wires up an AppContainer using the provided api.Client.
+// This bypasses OAuth and API key resolution, making it suitable for tests that
+// inject a mock client.
+func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppContainer, error) {
+	// ── Phase 1: Config ─────────────────────────────────────────────────────
+	settings, err := loadSettings(opts.HomeDir, opts.WorkingDir)
+	if err != nil {
+		return nil, fmt.Errorf("wire: load settings: %w", err)
+	}
+
+	// ── Phase 4: Tool registry ───────────────────────────────────────────────
+	reg := tools.NewRegistry()
+	RegisterBuiltinTools(reg)
+
+	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────
+	pool := mcp.NewPool()
+
+	// ── Phase 6: Engine + AppStateStore ─────────────────────────────────────
+	model := resolveModel(settings, opts.ModelOverride)
+	eng := engine.New(engine.Config{
+		Client:   client,
+		Registry: reg,
+		Model:    model,
+	})
+
+	appState := buildAppState(settings, opts, model)
+	store := state.NewAppStateStore(appState)
+
+	return &AppContainer{
+		QueryEngine:   eng,
+		AppStateStore: store,
+		ToolRegistry:  reg,
+		MCPPool:       pool,
+		Settings:      settings,
+	}, nil
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 // loadSettings calls config.NewLoader and returns merged LayeredSettings.

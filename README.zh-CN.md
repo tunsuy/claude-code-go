@@ -144,21 +144,6 @@ claude [flags]
 | `/status` | 查看 API/连接状态 |
 | `/cost` | 查看 token 用量及预估费用 |
 
-### CLAUDE.md 记忆文件
-
-在项目根目录（或任意父目录）放置 `CLAUDE.md` 文件，为 Claude 提供持久化的项目上下文——编码规范、架构说明、常用模式等。Claude Code 会从当前目录向上加载所有 `CLAUDE.md`，直至 `~/.claude/CLAUDE.md`。
-
-```markdown
-# 我的项目
-
-## 编码规范
-- 使用 tab 缩进
-- 所有导出函数必须有文档注释
-
-## 架构说明
-这是一个三层 Web 应用：React 前端、Go API、PostgreSQL 数据库。
-```
-
 ## 架构设计
 
 Claude Code Go 采用六层架构：

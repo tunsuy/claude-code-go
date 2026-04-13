@@ -146,21 +146,6 @@ Type `/` in the input to see all available commands:
 | `/status` | Show API/connection status |
 | `/cost` | Show token usage and estimated cost |
 
-### CLAUDE.md memory files
-
-Place a `CLAUDE.md` file in your project root (or any parent directory) to give Claude persistent context about your project — coding conventions, architecture notes, common patterns, etc. Claude Code loads all `CLAUDE.md` files from the current directory up to `~/.claude/CLAUDE.md`.
-
-```markdown
-# My Project
-
-## Coding conventions
-- Use tabs for indentation
-- All exported functions must have doc comments
-
-## Architecture
-This is a three-tier web app: React frontend, Go API, PostgreSQL database.
-```
-
 ## Architecture
 
 Claude Code Go is organized in six layers:

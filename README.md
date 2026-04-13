@@ -4,6 +4,8 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![CI](https://github.com/anthropics/claude-code-go/actions/workflows/ci.yml/badge.svg)](https://github.com/anthropics/claude-code-go/actions/workflows/ci.yml)
 
+English | [中文](README.zh-CN.md)
+
 A Go implementation of [Claude Code](https://claude.ai/code) — an agentic AI coding assistant that lives in your terminal. Claude Code understands your codebase, runs tools, and helps you write, review, and refactor code through natural conversation.
 
 ## Features

@@ -49,6 +49,30 @@ A Go implementation of [Claude Code](https://claude.ai/code) — an agentic AI c
 - **18 built-in slash commands** — `/help`, `/clear`, `/compact`, `/commit`, `/diff`, `/review`, `/mcp`, and more
 - **Streaming responses** — Real-time token streaming with thinking-block display
 
+## Architecture
+
+Claude Code Go is organized in six layers:
+
+```
+┌─────────────────────────────────────┐
+│  CLI (cmd/claude)                   │  cobra entry point
+├─────────────────────────────────────┤
+│  TUI (internal/tui)                 │  Bubble Tea MVU interface
+├─────────────────────────────────────┤
+│  Tools (internal/tools)             │  file, shell, search, MCP tools
+├─────────────────────────────────────┤
+│  Core Engine (internal/engine)      │  streaming, tool dispatch, coordinator
+├─────────────────────────────────────┤
+│  Services (internal/api, oauth,     │  Anthropic API, OAuth, MCP client
+│            mcp, compact)            │
+├─────────────────────────────────────┤
+│  Infra (pkg/types, internal/config, │  types, config, state, hooks, plugins
+│         state, session, hooks)      │
+└─────────────────────────────────────┘
+```
+
+See [`docs/project/architecture.md`](docs/project/architecture.md) for a detailed breakdown.
+
 ## Requirements
 
 - Go 1.21 or later
@@ -145,30 +169,6 @@ Type `/` in the input to see all available commands:
 | `/session` | Show session info |
 | `/status` | Show API/connection status |
 | `/cost` | Show token usage and estimated cost |
-
-## Architecture
-
-Claude Code Go is organized in six layers:
-
-```
-┌─────────────────────────────────────┐
-│  CLI (cmd/claude)                   │  cobra entry point
-├─────────────────────────────────────┤
-│  TUI (internal/tui)                 │  Bubble Tea MVU interface
-├─────────────────────────────────────┤
-│  Tools (internal/tools)             │  file, shell, search, MCP tools
-├─────────────────────────────────────┤
-│  Core Engine (internal/engine)      │  streaming, tool dispatch, coordinator
-├─────────────────────────────────────┤
-│  Services (internal/api, oauth,     │  Anthropic API, OAuth, MCP client
-│            mcp, compact)            │
-├─────────────────────────────────────┤
-│  Infra (pkg/types, internal/config, │  types, config, state, hooks, plugins
-│         state, session, hooks)      │
-└─────────────────────────────────────┘
-```
-
-See [`docs/project/architecture.md`](docs/project/architecture.md) for a detailed breakdown.
 
 ## Development
 

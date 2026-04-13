@@ -47,6 +47,30 @@ QA Agent          →  测试策略、逐层验收、集成测试
 - **18 个内置斜杠命令** — `/help`、`/clear`、`/compact`、`/commit`、`/diff`、`/review`、`/mcp` 等
 - **流式响应** — 实时 token 流式输出，支持 thinking block 展示
 
+## 架构设计
+
+Claude Code Go 采用六层架构：
+
+```
+┌─────────────────────────────────────┐
+│  CLI (cmd/claude)                   │  Cobra 入口
+├─────────────────────────────────────┤
+│  TUI (internal/tui)                 │  Bubble Tea MVU 界面
+├─────────────────────────────────────┤
+│  Tools (internal/tools)             │  文件、命令、搜索、MCP 工具
+├─────────────────────────────────────┤
+│  Core Engine (internal/engine)      │  流式推理、工具分发、多 Agent 协调
+├─────────────────────────────────────┤
+│  Services (internal/api, oauth,     │  Anthropic API、OAuth、MCP 客户端
+│            mcp, compact)            │
+├─────────────────────────────────────┤
+│  Infra (pkg/types, internal/config, │  类型、配置、状态、钩子、插件
+│         state, session, hooks)      │
+└─────────────────────────────────────┘
+```
+
+详细说明见 [`docs/project/architecture.md`](docs/project/architecture.md)。
+
 ## 环境要求
 
 - Go 1.21 或更高版本
@@ -143,30 +167,6 @@ claude [flags]
 | `/session` | 查看会话信息 |
 | `/status` | 查看 API/连接状态 |
 | `/cost` | 查看 token 用量及预估费用 |
-
-## 架构设计
-
-Claude Code Go 采用六层架构：
-
-```
-┌─────────────────────────────────────┐
-│  CLI (cmd/claude)                   │  Cobra 入口
-├─────────────────────────────────────┤
-│  TUI (internal/tui)                 │  Bubble Tea MVU 界面
-├─────────────────────────────────────┤
-│  Tools (internal/tools)             │  文件、命令、搜索、MCP 工具
-├─────────────────────────────────────┤
-│  Core Engine (internal/engine)      │  流式推理、工具分发、多 Agent 协调
-├─────────────────────────────────────┤
-│  Services (internal/api, oauth,     │  Anthropic API、OAuth、MCP 客户端
-│            mcp, compact)            │
-├─────────────────────────────────────┤
-│  Infra (pkg/types, internal/config, │  类型、配置、状态、钩子、插件
-│         state, session, hooks)      │
-└─────────────────────────────────────┘
-```
-
-详细说明见 [`docs/project/architecture.md`](docs/project/architecture.md)。
 
 ## 开发指南
 

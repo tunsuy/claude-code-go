@@ -171,4 +171,4 @@ Use the [feature request template](.github/ISSUE_TEMPLATE/feature_request.md). D
 
 ## Questions?
 
-Feel free to open a [GitHub Discussion](https://github.com/anthropics/claude-code-go/discussions) for questions, ideas, or general feedback.
+Feel free to open a [GitHub Discussion](https://github.com/tunsuy/claude-code-go/discussions) for questions, ideas, or general feedback.

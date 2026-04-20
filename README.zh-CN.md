@@ -25,6 +25,12 @@
 
 ---
 
+<p align="center">
+  <img src="assets/demo.png" alt="Claude Code Go 演示" width="800">
+</p>
+
+---
+
 ## 这是什么
 
 本项目是对 [Claude Code](https://claude.ai/code)（Anthropic 官方 TypeScript CLI）**完整功能的 Go 语言复刻**，逐模块对照原版源码实现，覆盖 TUI 界面、工具调用、权限系统、多 Agent 协调、MCP 协议、会话管理等全部核心功能。

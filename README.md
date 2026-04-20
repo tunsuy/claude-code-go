@@ -25,6 +25,12 @@
 
 ---
 
+<p align="center">
+  <img src="assets/demo.png" alt="Claude Code Go Demo" width="800">
+</p>
+
+---
+
 ## What is this?
 
 This project is a **complete Go reimplementation of [Claude Code](https://claude.ai/code)** — Anthropic's official TypeScript CLI — rewritten module-by-module in Go, covering all core features: TUI, tool use, permission system, multi-agent coordination, MCP protocol, session management, and more.
@@ -102,7 +108,7 @@ See [`docs/project/architecture.md`](docs/project/architecture.md) for a detaile
 ### From source
 
 ```bash
-git clone https://github.com/anthropics/claude-code-go.git
+git clone https://github.com/tunsuy/claude-code-go.git
 cd claude-code-go
 make build
 # Binary is placed at ./bin/claude

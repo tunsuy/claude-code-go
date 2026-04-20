@@ -1,9 +1,9 @@
 package tui
 
 import (
-	"github.com/anthropics/claude-code-go/internal/commands"
-	"github.com/anthropics/claude-code-go/internal/memdir"
-	"github.com/anthropics/claude-code-go/internal/state"
+	"github.com/tunsuy/claude-code-go/internal/commands"
+	"github.com/tunsuy/claude-code-go/internal/memdir"
+	"github.com/tunsuy/claude-code-go/internal/state"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

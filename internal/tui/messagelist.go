@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 	"github.com/charmbracelet/glamour"
 )
 

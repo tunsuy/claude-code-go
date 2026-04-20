@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	toolpkg "github.com/anthropics/claude-code-go/internal/tools"
+	toolpkg "github.com/tunsuy/claude-code-go/internal/tools"
 )
 
 // ─── NormalizeToolName ────────────────────────────────────────────────────────

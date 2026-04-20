@@ -9,7 +9,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/anthropics/claude-code-go/internal/tui"
+	"github.com/tunsuy/claude-code-go/internal/tui"
 )
 
 // rootFlags groups all flags declared on the root cobra command.

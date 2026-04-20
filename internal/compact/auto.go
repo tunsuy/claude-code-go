@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/anthropics/claude-code-go/internal/api"
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/internal/api"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
 // Auto-compact constants (mirrors TS autoCompact.ts).

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anthropics/claude-code-go/pkg/types"
-	"github.com/anthropics/claude-code-go/pkg/utils/ids"
+	"github.com/tunsuy/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/pkg/utils/ids"
 )
 
 // TestNewSessionId verifies that generated session IDs are unique and

@@ -4,9 +4,10 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/anthropics/claude-code-go/internal/bootstrap"
+	"github.com/tunsuy/claude-code-go/internal/bootstrap"
 )
 
 func main() {
@@ -18,6 +19,7 @@ func main() {
 
 	// Phase 1–6: full initialisation + cobra root command execution.
 	if err := bootstrap.Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

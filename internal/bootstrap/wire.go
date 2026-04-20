@@ -5,14 +5,14 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/anthropics/claude-code-go/internal/api"
-	"github.com/anthropics/claude-code-go/internal/config"
-	"github.com/anthropics/claude-code-go/internal/engine"
-	"github.com/anthropics/claude-code-go/internal/mcp"
-	"github.com/anthropics/claude-code-go/internal/oauth"
-	"github.com/anthropics/claude-code-go/internal/state"
-	"github.com/anthropics/claude-code-go/internal/tools"
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/internal/api"
+	"github.com/tunsuy/claude-code-go/internal/config"
+	"github.com/tunsuy/claude-code-go/internal/engine"
+	"github.com/tunsuy/claude-code-go/internal/mcp"
+	"github.com/tunsuy/claude-code-go/internal/oauth"
+	"github.com/tunsuy/claude-code-go/internal/state"
+	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
 // P1-F: Compile-time interface assertions for AppContainer field types.

@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
 // PermissionsConfig corresponds to the permissions field in settings.json.

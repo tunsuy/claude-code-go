@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/anthropics/claude-code-go/internal/tools"
-	"github.com/anthropics/claude-code-go/internal/tools/shell"
+	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/internal/tools/shell"
 )
 
 func TestBashTool_Name(t *testing.T) {

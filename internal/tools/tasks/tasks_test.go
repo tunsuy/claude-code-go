@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/anthropics/claude-code-go/internal/tools"
-	"github.com/anthropics/claude-code-go/internal/tools/tasks"
+	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/internal/tools/tasks"
 )
 
 // ── TaskCreate ────────────────────────────────────────────────────────────────

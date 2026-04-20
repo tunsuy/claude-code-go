@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/anthropics/claude-code-go/internal/bootstrap"
+	"github.com/tunsuy/claude-code-go/internal/bootstrap"
 )
 
 // TestMain restores os.Args after the test suite completes so that any

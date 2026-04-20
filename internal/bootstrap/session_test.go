@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anthropics/claude-code-go/pkg/types"
-	utilfs "github.com/anthropics/claude-code-go/pkg/utils/fs"
+	"github.com/tunsuy/claude-code-go/pkg/types"
+	utilfs "github.com/tunsuy/claude-code-go/pkg/utils/fs"
 )
 
 // ── helpers ──────────────────────────────────────────────────────────────────

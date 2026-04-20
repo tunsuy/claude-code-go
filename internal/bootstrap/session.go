@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/anthropics/claude-code-go/internal/session"
-	"github.com/anthropics/claude-code-go/pkg/types"
-	utilfs "github.com/anthropics/claude-code-go/pkg/utils/fs"
+	"github.com/tunsuy/claude-code-go/internal/session"
+	"github.com/tunsuy/claude-code-go/pkg/types"
+	utilfs "github.com/tunsuy/claude-code-go/pkg/utils/fs"
 )
 
 // loadSessionMessages loads conversation history from a previous session

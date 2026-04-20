@@ -1,4 +1,4 @@
-module github.com/anthropics/claude-code-go
+module github.com/tunsuy/claude-code-go
 
 go 1.21
 

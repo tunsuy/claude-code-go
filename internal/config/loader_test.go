@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/anthropics/claude-code-go/internal/config"
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/internal/config"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
 // writeJSON writes v as JSON to path, creating parent directories as needed.

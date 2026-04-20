@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
 // NewSessionId generates a new SessionId using a millisecond timestamp

@@ -9,8 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/anthropics/claude-code-go/internal/mcp"
-	"github.com/anthropics/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/internal/mcp"
+	"github.com/tunsuy/claude-code-go/internal/tools"
 )
 
 // newMCPCmd creates the `claude mcp` subcommand tree.

@@ -3,7 +3,7 @@ package commands_test
 import (
 	"testing"
 
-	"github.com/anthropics/claude-code-go/internal/commands"
+	"github.com/tunsuy/claude-code-go/internal/commands"
 )
 
 func TestRegistryLookup(t *testing.T) {

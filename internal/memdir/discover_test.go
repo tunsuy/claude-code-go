@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/anthropics/claude-code-go/internal/memdir"
+	"github.com/tunsuy/claude-code-go/internal/memdir"
 )
 
 func TestDiscoverClaudeMd(t *testing.T) {

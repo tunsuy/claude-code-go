@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anthropics/claude-code-go/internal/coordinator"
+	"github.com/tunsuy/claude-code-go/internal/coordinator"
 )
 
 // ─────────────────────────────────────────────────────────────────────────────

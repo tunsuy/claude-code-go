@@ -1,6 +1,6 @@
 package permissions
 
-import "github.com/anthropics/claude-code-go/internal/tools"
+import "github.com/tunsuy/claude-code-go/internal/tools"
 
 // AskRequest is sent from the permission system to the TUI layer when user
 // confirmation is needed for a tool call.

@@ -9,10 +9,10 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/anthropics/claude-code-go/internal/api"
-	"github.com/anthropics/claude-code-go/internal/compact"
-	"github.com/anthropics/claude-code-go/internal/tools"
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/internal/api"
+	"github.com/tunsuy/claude-code-go/internal/compact"
+	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
 // defaultMsgBufSize is the default channel buffer for Msg events.

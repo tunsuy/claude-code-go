@@ -1,15 +1,15 @@
 package bootstrap
 
 import (
-	"github.com/anthropics/claude-code-go/internal/tools"
-	"github.com/anthropics/claude-code-go/internal/tools/agent"
-	"github.com/anthropics/claude-code-go/internal/tools/fileops"
-	"github.com/anthropics/claude-code-go/internal/tools/interact"
-	"github.com/anthropics/claude-code-go/internal/tools/misc"
-	"github.com/anthropics/claude-code-go/internal/tools/mcp"
-	"github.com/anthropics/claude-code-go/internal/tools/shell"
-	"github.com/anthropics/claude-code-go/internal/tools/tasks"
-	"github.com/anthropics/claude-code-go/internal/tools/web"
+	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/internal/tools/agent"
+	"github.com/tunsuy/claude-code-go/internal/tools/fileops"
+	"github.com/tunsuy/claude-code-go/internal/tools/interact"
+	"github.com/tunsuy/claude-code-go/internal/tools/misc"
+	"github.com/tunsuy/claude-code-go/internal/tools/mcp"
+	"github.com/tunsuy/claude-code-go/internal/tools/shell"
+	"github.com/tunsuy/claude-code-go/internal/tools/tasks"
+	"github.com/tunsuy/claude-code-go/internal/tools/web"
 )
 
 // RegisterBuiltinTools registers all built-in tool singletons into reg.

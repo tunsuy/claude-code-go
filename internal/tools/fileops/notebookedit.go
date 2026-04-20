@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/anthropics/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/internal/tools"
 )
 
 // NotebookEditTool is the exported singleton instance.

@@ -4,10 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/anthropics/claude-code-go/internal/api"
-	"github.com/anthropics/claude-code-go/internal/compact"
-	"github.com/anthropics/claude-code-go/internal/tools"
-	"github.com/anthropics/claude-code-go/pkg/types"
+	"github.com/tunsuy/claude-code-go/internal/api"
+	"github.com/tunsuy/claude-code-go/internal/compact"
+	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
 // QueryEngine is the top-level interface exposed to the TUI/SDK layer.

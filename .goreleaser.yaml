@@ -1,0 +1,118 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: claude
+    main: ./cmd/claude
+    binary: claude
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+  groups:
+    - title: "🚀 Features"
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: "🐛 Bug Fixes"
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: "📚 Documentation"
+      regexp: '^.*?docs(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: "🔧 Maintenance"
+      order: 999
+
+release:
+  github:
+    owner: tunsuy
+    name: claude-code-go
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Claude Code Go {{ .Tag }}
+
+    🤖 A Go reimplementation of Claude Code — AI coding assistant in your terminal.
+
+    ### Installation
+
+    ```bash
+    # Via Go
+    go install github.com/tunsuy/claude-code-go/cmd/claude@{{ .Tag }}
+
+    # Or download the binary below
+    ```
+  footer: |
+    ---
+    **Full Changelog**: https://github.com/tunsuy/claude-code-go/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+brews:
+  - name: claude-code-go
+    repository:
+      owner: tunsuy
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: tunsuy
+      email: 957126743@qq.com
+    homepage: https://github.com/tunsuy/claude-code-go
+    description: A Go reimplementation of Claude Code — AI coding assistant in your terminal
+    license: MIT
+    skip_upload: auto
+    install: |
+      bin.install "claude"
+    test: |
+      system "#{bin}/claude", "--version"

@@ -515,7 +515,7 @@ func TestWebSearchTool_MapResultToToolResultBlock_Empty(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	content := block["content"].(string)
 	if !strings.Contains(content, "No results found") {
 		t.Errorf("expected 'No results found' for empty results: %q", content)

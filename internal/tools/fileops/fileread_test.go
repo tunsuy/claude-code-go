@@ -244,7 +244,7 @@ func TestFileReadTool_Call_ImageFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.png")
 	// Write minimal PNG-like data
-	os.WriteFile(path, []byte("\x89PNG fake image data"), 0o644)
+	_ = os.WriteFile(path, []byte("\x89PNG fake image data"), 0o644)
 
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path})
 	result, err := fileops.FileReadTool.Call(in, nil, nil)

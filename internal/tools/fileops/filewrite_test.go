@@ -93,7 +93,7 @@ func TestFileWriteTool_Call_CreateFile(t *testing.T) {
 func TestFileWriteTool_Call_OverwriteFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "existing.txt")
-	os.WriteFile(path, []byte("old content"), 0o644)
+	_ = os.WriteFile(path, []byte("old content"), 0o644)
 
 	in, _ := json.Marshal(fileops.FileWriteInput{FilePath: path, Content: "new content"})
 	result, err := fileops.FileWriteTool.Call(in, nil, nil)

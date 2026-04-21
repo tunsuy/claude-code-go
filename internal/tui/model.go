@@ -35,9 +35,8 @@ type AppModel struct {
 	// messages is the full conversation history.
 	// NOTE: abortFn may still point to a previous context when a new query
 	// starts; startQueryCmd resets it before creating the new context.
-	messages     []types.Message
-	inputText    string
-	isLoading    bool
+	messages  []types.Message
+	isLoading bool
 	abortFn      context.CancelFunc // nil when idle
 	abortCtx     context.Context    // current query context
 

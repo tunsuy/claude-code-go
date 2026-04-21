@@ -112,7 +112,7 @@ func TestFileReadTool_Call_ReadText(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.txt")
 	content := "line1\nline2\nline3\n"
-	os.WriteFile(path, []byte(content), 0o644)
+	_ = os.WriteFile(path, []byte(content), 0o644)
 
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path})
 	result, err := fileops.FileReadTool.Call(in, nil, nil)

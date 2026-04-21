@@ -146,7 +146,7 @@ func TestAccumulator_MessageStop(t *testing.T) {
 func TestAccumulator_ResultFlushesRemainingBlocks(t *testing.T) {
 	var a Accumulator
 	startData := `{"type":"message_start","message":{"id":"msg_5","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// Start block but never stop it
 	cbStartData := `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":"incomplete"}}`

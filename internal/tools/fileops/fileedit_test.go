@@ -66,7 +66,7 @@ func TestFileEditTool_UserFacingName_NoInput(t *testing.T) {
 func TestFileEditTool_Call_Success(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.go")
-	os.WriteFile(path, []byte("package main\n\nfunc hello() {}\n"), 0o644)
+	_ = os.WriteFile(path, []byte("package main\n\nfunc hello() {}\n"), 0o644)
 
 	in, _ := json.Marshal(fileops.FileEditInput{
 		FilePath:  path,
@@ -105,7 +105,7 @@ func TestFileEditTool_Call_NotFound(t *testing.T) {
 func TestFileEditTool_Call_NotUnique(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "dup.go")
-	os.WriteFile(path, []byte("foo\nfoo\n"), 0o644)
+	_ = os.WriteFile(path, []byte("foo\nfoo\n"), 0o644)
 
 	in, _ := json.Marshal(fileops.FileEditInput{
 		FilePath:  path,

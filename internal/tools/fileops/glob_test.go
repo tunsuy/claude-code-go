@@ -222,7 +222,7 @@ func TestGlobTool_MapResultToToolResultBlock_Empty(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if !strings.Contains(block["content"].(string), "No files found") {
 		t.Errorf("expected 'No files found' in empty result, got %q", block["content"])
 	}

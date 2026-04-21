@@ -3,8 +3,10 @@ package api
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -104,6 +106,13 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 		var chunk openaiStreamChunk
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
 			continue // Skip malformed chunks
+		}
+
+		// Debug: log tool calls in chunk
+		if os.Getenv("CLAUDE_DEBUG") != "" && len(chunk.Choices) > 0 && len(chunk.Choices[0].Delta.ToolCalls) > 0 {
+			tc := chunk.Choices[0].Delta.ToolCalls[0]
+			fmt.Fprintf(os.Stderr, "[DEBUG] Stream tool call chunk: Index=%d, ID=%q, Name=%q, Args=%q\n",
+				tc.Index, tc.ID, tc.Function.Name, tc.Function.Arguments)
 		}
 
 		// Store message metadata

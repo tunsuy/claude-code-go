@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 )
 
 // openaiClient implements Client using the OpenAI Chat Completions API format.
@@ -87,6 +88,10 @@ func (c *openaiClient) buildRequest(ctx context.Context, req *MessageRequest) (*
 	body, err := json.Marshal(openaiReq)
 	if err != nil {
 		return nil, fmt.Errorf("api: marshal openai request: %w", err)
+	}
+	// Debug: log request body
+	if os.Getenv("CLAUDE_DEBUG") != "" {
+		fmt.Fprintf(os.Stderr, "[DEBUG] OpenAI request body (first 2000 chars):\n%s\n\n", string(body[:minInt(2000, len(body))]))
 	}
 	url := c.baseURL + "/v1/chat/completions"
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
@@ -172,7 +177,63 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 		return result
 	}
 
-	// Process content blocks
+	// For assistant messages with both text and tool_use, combine them
+	if msg.Role == "assistant" {
+		var combinedText string
+		var toolCalls []openaiToolCall
+		var thinkingText string
+
+		for _, block := range blocks {
+			switch block.Type {
+			case "text":
+				if combinedText != "" {
+					combinedText += "\n"
+				}
+				combinedText += block.Text
+			case "tool_use":
+				inputJSON, _ := json.Marshal(block.Input)
+				toolCalls = append(toolCalls, openaiToolCall{
+					ID:   block.ID,
+					Type: "function",
+					Function: openaiToolCallFunction{
+						Name:      block.Name,
+						Arguments: string(inputJSON),
+					},
+				})
+			case "thinking":
+				if block.Thinking != "" {
+					if thinkingText != "" {
+						thinkingText += "\n"
+					}
+					thinkingText = fmt.Sprintf("[Thinking]: %s", block.Thinking)
+				}
+			}
+		}
+
+		// Create assistant message with combined content and tool calls
+		if combinedText != "" || len(toolCalls) > 0 {
+			assistantMsg := openaiMessage{
+				Role:    "assistant",
+				Content: combinedText,
+			}
+			if len(toolCalls) > 0 {
+				assistantMsg.ToolCalls = toolCalls
+			}
+			result = append(result, assistantMsg)
+		}
+
+		// Add thinking as a separate message if present
+		if thinkingText != "" {
+			result = append(result, openaiMessage{
+				Role:    "assistant",
+				Content: thinkingText,
+			})
+		}
+
+		return result
+	}
+
+	// For user messages, process each block
 	for _, block := range blocks {
 		switch block.Type {
 		case "text":
@@ -180,40 +241,24 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 				Role:    c.convertRole(msg.Role),
 				Content: block.Text,
 			})
-		case "tool_use":
-			// Tool call from assistant
-			inputJSON, _ := json.Marshal(block.Input)
-			result = append(result, openaiMessage{
-				Role: "assistant",
-				ToolCalls: []openaiToolCall{
-					{
-						ID:   block.ID,
-						Type: "function",
-						Function: openaiToolCallFunction{
-							Name:      block.Name,
-							Arguments: string(inputJSON),
-						},
-					},
-				},
-			})
 		case "tool_result":
 			// Tool result from user
 			// Content can be a string or an array of content blocks
 			contentStr := extractToolResultContent(block.Content)
+			toolCallID := block.ToolUseID
+			// Debug: log tool result conversion
+			if os.Getenv("CLAUDE_DEBUG") != "" {
+				preview := contentStr
+				if len(preview) > 100 {
+					preview = preview[:100]
+				}
+				fmt.Fprintf(os.Stderr, "[DEBUG] tool_result: ToolUseID=%q, ContentLen=%d, Preview=%q\n", toolCallID, len(contentStr), preview)
+			}
 			result = append(result, openaiMessage{
 				Role:       "tool",
 				Content:    contentStr,
-				ToolCallID: block.ToolUseID,
+				ToolCallID: toolCallID,
 			})
-		case "thinking":
-			// Convert thinking to a separate message or skip
-			// OpenAI doesn't have native thinking support, so we can include it as a comment
-			if block.Thinking != "" {
-				result = append(result, openaiMessage{
-					Role:    c.convertRole(msg.Role),
-					Content: fmt.Sprintf("[Thinking]: %s", block.Thinking),
-				})
-			}
 		}
 	}
 
@@ -266,6 +311,14 @@ func joinStrings(strs []string, sep string) string {
 		result += sep + strs[i]
 	}
 	return result
+}
+
+// minInt returns the minimum of two integers.
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 // convertRole converts Anthropic role to OpenAI role.

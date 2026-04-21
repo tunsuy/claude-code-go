@@ -667,6 +667,52 @@ func TestOpenAIMessageConversion(t *testing.T) {
 				{Role: "tool", Content: "Simple result", ToolCallID: "call_xyz789"},
 			},
 		},
+		{
+			name: "assistant_with_text_and_tool_use",
+			input: MessageParam{
+				Role:    "assistant",
+				Content: json.RawMessage(`[{"type":"text","text":"Let me check that file."},{"type":"tool_use","id":"call_123","name":"Read","input":{"path":"/tmp/test.txt"}}]`),
+			},
+			expected: []openaiMessage{
+				{
+					Role:    "assistant",
+					Content: "Let me check that file.",
+					ToolCalls: []openaiToolCall{
+						{
+							ID:   "call_123",
+							Type: "function",
+							Function: openaiToolCallFunction{
+								Name:      "Read",
+								Arguments: `{"path":"/tmp/test.txt"}`,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "assistant_with_only_tool_use",
+			input: MessageParam{
+				Role:    "assistant",
+				Content: json.RawMessage(`[{"type":"tool_use","id":"call_456","name":"Write","input":{"path":"/tmp/out.txt","content":"hello"}}]`),
+			},
+			expected: []openaiMessage{
+				{
+					Role:    "assistant",
+					Content: "",
+					ToolCalls: []openaiToolCall{
+						{
+							ID:   "call_456",
+							Type: "function",
+							Function: openaiToolCallFunction{
+								Name:      "Write",
+								Arguments: `{"content":"hello","path":"/tmp/out.txt"}`,
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {

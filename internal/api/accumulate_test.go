@@ -85,11 +85,11 @@ func TestAccumulator_ToolUseDelta(t *testing.T) {
 	// Partial JSON deltas
 	delta1 := `{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"cmd\""}}`
 	delta2 := `{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":":\"ls\"}"}}`
-	a.Process(makeEvent(EventContentBlockDelta, delta1))
-	a.Process(makeEvent(EventContentBlockDelta, delta2))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta1))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta2))
 
 	cbStopData := `{"type":"content_block_stop","index":0}`
-	a.Process(makeEvent(EventContentBlockStop, cbStopData))
+	_ = a.Process(makeEvent(EventContentBlockStop, cbStopData))
 
 	result := a.Result()
 	if len(result.Content) != 1 {

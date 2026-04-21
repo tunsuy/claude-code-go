@@ -103,8 +103,6 @@ func (r *sseReader) Next() (*StreamEvent, error) {
 		if line == "" && (eventType != "" || dataLine != "") {
 			// End of event block — parse and return
 			ev, err := parseSSEEvent(eventType, dataLine)
-			// Reset for next event (explicitly discarding previous values)
-			eventType, dataLine = "", ""
 			if err != nil {
 				return nil, err
 			}

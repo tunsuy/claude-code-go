@@ -98,17 +98,7 @@ type AppModel struct {
 	mdRendererDark  bool
 }
 
-// slashSuggestions holds the current Tab-completion candidates.
-type slashSuggestions struct {
-	commands []*commands.Command
-	selected int
-}
 
-// commandDisplayEntry is an entry to display in the slash suggestions pop-up.
-type commandDisplayEntry struct {
-	Name        string
-	Description string
-}
 
 // newAppModel is the internal constructor; callers use New().
 func newAppModel(
@@ -147,11 +137,6 @@ func newAppModel(
 		pinnedToBottom: true,
 	}
 	return m
-}
-
-// streamingPartialText returns the text accumulated from StreamTokenMsg events.
-func (m AppModel) streamingPartialText() string {
-	return m.streamingText
 }
 
 // appendStreamDelta appends a streaming text delta.

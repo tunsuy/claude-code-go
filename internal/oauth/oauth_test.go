@@ -130,7 +130,7 @@ func TestMemoryStore_SaveAndLoad(t *testing.T) {
 func TestMemoryStore_Delete(t *testing.T) {
 	m := &MemoryStore{}
 	_ = m.Save(&OAuthTokens{AccessToken: "tok"})
-	m.Delete()
+	_ = m.Delete()
 	tokens, err := m.Load()
 	if err != nil || tokens != nil {
 		t.Errorf("expected nil after delete, got err=%v tokens=%v", err, tokens)

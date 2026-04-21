@@ -193,7 +193,7 @@ func TestBashTool_MapResultToToolResultBlock(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if block["type"] != "tool_result" {
 		t.Errorf("expected type=tool_result")
 	}

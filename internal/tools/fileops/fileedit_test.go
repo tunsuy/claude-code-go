@@ -173,7 +173,7 @@ func TestFileEditTool_Call_DeviceBlocked(t *testing.T) {
 func TestFileEditTool_Call_DeleteText(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "del.txt")
-	os.WriteFile(path, []byte("keep this\ndelete me\nkeep that\n"), 0o644)
+	_ = os.WriteFile(path, []byte("keep this\ndelete me\nkeep that\n"), 0o644)
 
 	in, _ := json.Marshal(fileops.FileEditInput{
 		FilePath:  path,

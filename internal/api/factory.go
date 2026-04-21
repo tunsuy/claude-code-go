@@ -13,6 +13,7 @@ const (
 	ProviderBedrock Provider = "bedrock"
 	ProviderVertex  Provider = "vertex"
 	ProviderFoundry Provider = "foundry"
+	ProviderOpenAI  Provider = "openai"
 )
 
 // ClientConfig aggregates client configuration.
@@ -29,10 +30,16 @@ type ClientConfig struct {
 	// Vertex-specific
 	GCPProject string
 	GCPRegion  string
+	// OpenAI-specific
+	OpenAIOrganization string // Optional organization ID
+	OpenAIProject      string // Optional project ID
 }
 
 // defaultBaseURL is the Anthropic API base URL.
 const defaultBaseURL = "https://api.anthropic.com"
+
+// defaultOpenAIBaseURL is the OpenAI API base URL.
+const defaultOpenAIBaseURL = "https://api.openai.com"
 
 // appVersion is the application version string embedded in User-Agent.
 const appVersion = "0.1.0"
@@ -56,7 +63,11 @@ func NewClient(cfg ClientConfig, httpClient *http.Client) (Client, error) {
 
 	baseURL := cfg.BaseURL
 	if baseURL == "" {
-		baseURL = defaultBaseURL
+		if cfg.Provider == ProviderOpenAI {
+			baseURL = defaultOpenAIBaseURL
+		} else {
+			baseURL = defaultBaseURL
+		}
 	}
 
 	headers := buildDefaultHeaders(appVersion)
@@ -83,6 +94,8 @@ func NewClient(cfg ClientConfig, httpClient *http.Client) (Client, error) {
 			httpClient: httpClient,
 			headers:    headers,
 		}, nil
+	case ProviderOpenAI:
+		return newOpenAIClient(cfg, httpClient, headers)
 	default:
 		return &directClient{
 			apiKey:     cfg.APIKey,

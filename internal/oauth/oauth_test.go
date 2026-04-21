@@ -426,7 +426,7 @@ func TestAuthCodeListener_WaitForCode_HappyPath(t *testing.T) {
 	state := "test-state-123"
 	go func() {
 		time.Sleep(20 * time.Millisecond)
-		http.Get(fmt.Sprintf("http://localhost:%d/callback?state=%s&code=auth-code-456", port, state))
+		_, _ = http.Get(fmt.Sprintf("http://localhost:%d/callback?state=%s&code=auth-code-456", port, state))
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)

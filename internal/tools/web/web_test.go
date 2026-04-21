@@ -297,9 +297,9 @@ func TestWebFetchTool_Call_Cache(t *testing.T) {
 	in, _ := json.Marshal(WebFetchInput{URL: srv.URL})
 
 	// First call
-	WebFetchTool.Call(in, nil, nil)
+	_, _ = WebFetchTool.Call(in, nil, nil)
 	// Second call should use cache
-	WebFetchTool.Call(in, nil, nil)
+	_, _ = WebFetchTool.Call(in, nil, nil)
 
 	if callCount != 1 {
 		t.Errorf("expected 1 HTTP call (cache hit), got %d", callCount)

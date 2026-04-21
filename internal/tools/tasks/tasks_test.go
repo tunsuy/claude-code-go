@@ -59,7 +59,7 @@ func TestTaskCreateInput_ToolsJsonTag(t *testing.T) {
 	}
 	data, _ := json.Marshal(in)
 	var m map[string]any
-	json.Unmarshal(data, &m)
+	_ = json.Unmarshal(data, &m)
 	if _, ok := m["tools"]; !ok {
 		t.Error("TaskCreateInput.Tools must serialize as 'tools'")
 	}
@@ -71,7 +71,7 @@ func TestTaskCreateInput_PriorityJsonTag(t *testing.T) {
 	in := tasks.TaskCreateInput{Description: "my task", Priority: &prio}
 	data, _ := json.Marshal(in)
 	var m map[string]any
-	json.Unmarshal(data, &m)
+	_ = json.Unmarshal(data, &m)
 	if _, ok := m["priority"]; !ok {
 		t.Error("TaskCreateInput.Priority must serialize as 'priority'")
 	}
@@ -260,7 +260,7 @@ func TestTaskOutputInput_SinceJsonTag(t *testing.T) {
 	in := tasks.TaskOutputInput{ID: "t1", Since: &since}
 	data, _ := json.Marshal(in)
 	var m map[string]any
-	json.Unmarshal(data, &m)
+	_ = json.Unmarshal(data, &m)
 	if _, ok := m["since"]; !ok {
 		t.Error("TaskOutputInput.Since must serialize as 'since'")
 	}

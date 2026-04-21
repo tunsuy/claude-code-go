@@ -61,7 +61,7 @@ func TestAccumulator_TextDelta(t *testing.T) {
 
 	// Stop content block
 	cbStopData := `{"type":"content_block_stop","index":0}`
-	a.Process(makeEvent(EventContentBlockStop, cbStopData))
+	_ = a.Process(makeEvent(EventContentBlockStop, cbStopData))
 
 	result := a.Result()
 	if len(result.Content) != 1 {
@@ -76,11 +76,11 @@ func TestAccumulator_ToolUseDelta(t *testing.T) {
 	var a Accumulator
 
 	startData := `{"type":"message_start","message":{"id":"msg_3","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// Tool use block
 	cbStartData := `{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tool_1","name":"bash"}}`
-	a.Process(makeEvent(EventContentBlockStart, cbStartData))
+	_ = a.Process(makeEvent(EventContentBlockStart, cbStartData))
 
 	// Partial JSON deltas
 	delta1 := `{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"cmd\""}}`

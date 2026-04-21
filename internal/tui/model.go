@@ -251,11 +251,6 @@ func parseSlashInput(text string) (name, args string) {
 	return text, ""
 }
 
-// isTea returns whether msgCh is the currently active stream.
-func (m AppModel) isActiveStream(ch <-chan engine.Msg) bool {
-	return m.streamCh == ch
-}
-
 // tickInterval is the duration between spinner ticks.
 const tickInterval = 100 * time.Millisecond
 

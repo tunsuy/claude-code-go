@@ -293,10 +293,9 @@ func TestResolveContextWindow_KnownModels(t *testing.T) {
 }
 
 func TestEstimateTokens_Empty(t *testing.T) {
-	if estimateTokens(nil) != 0 {
-		// nil marshals to "null" which is 4 chars / 4 = 1 token
-		// — any non-negative value is fine; just ensure no panic.
-	}
+	// nil marshals to "null" which is 4 chars / 4 = 1 token
+	// — any non-negative value is fine; just ensure no panic.
+	_ = estimateTokens(nil)
 }
 
 func TestEstimateTokens_NonEmpty(t *testing.T) {

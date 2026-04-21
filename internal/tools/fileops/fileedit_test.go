@@ -124,7 +124,7 @@ func TestFileEditTool_Call_NotUnique(t *testing.T) {
 func TestFileEditTool_Call_OldStringNotFound(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "nope.go")
-	os.WriteFile(path, []byte("package main\n"), 0o644)
+	_ = os.WriteFile(path, []byte("package main\n"), 0o644)
 
 	in, _ := json.Marshal(fileops.FileEditInput{
 		FilePath:  path,

@@ -122,7 +122,8 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 		// Send message_start on first chunk
 		if !r.started {
 			r.started = true
-			return r.createMessageStartEvent(&chunk), nil
+			// Queue message_start event and continue processing the same chunk
+			r.pendingEvents = append(r.pendingEvents, r.createMessageStartEvent(&chunk))
 		}
 
 		// Process choices
@@ -157,7 +158,21 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 				if !r.textBlockStarted {
 					r.textBlockStarted = true
 					r.pendingEvents = append(r.pendingEvents, r.createContentDeltaEvent(choice.Delta.Content))
+					// Return pending events first (including message_start if queued)
+					if len(r.pendingEvents) > 1 {
+						ev := r.pendingEvents[0]
+						r.pendingEvents = r.pendingEvents[1:]
+						r.pendingEvents = append(r.pendingEvents, r.createContentBlockStartEvent(0, "text"))
+						return ev, nil
+					}
 					return r.createContentBlockStartEvent(0, "text"), nil
+				}
+				// Return pending events first
+				if len(r.pendingEvents) > 0 {
+					r.pendingEvents = append(r.pendingEvents, r.createContentDeltaEvent(choice.Delta.Content))
+					ev := r.pendingEvents[0]
+					r.pendingEvents = r.pendingEvents[1:]
+					return ev, nil
 				}
 				return r.createContentDeltaEvent(choice.Delta.Content), nil
 			}
@@ -168,11 +183,27 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 				if err != nil {
 					return nil, err
 				}
+				// Return pending events first (including message_start if queued)
+				if len(r.pendingEvents) > 0 {
+					if ev != nil {
+						r.pendingEvents = append(r.pendingEvents, ev)
+					}
+					retEv := r.pendingEvents[0]
+					r.pendingEvents = r.pendingEvents[1:]
+					return retEv, nil
+				}
 				if ev != nil {
 					return ev, nil
 				}
 				// If ev is nil, continue processing next chunk
 				continue
+			}
+
+			// No content or tool calls, but we may have pending events (e.g., message_start)
+			if len(r.pendingEvents) > 0 {
+				ev := r.pendingEvents[0]
+				r.pendingEvents = r.pendingEvents[1:]
+				return ev, nil
 			}
 		}
 	}
@@ -265,7 +296,7 @@ func (r *openaiSSEReader) processToolCallDelta(tc *openaiToolCall, _ int) (*Stre
 		r.toolCalls[toolIndex] = acc
 	}
 
-	// Update accumulated data
+	// Update accumulated data BEFORE checking if we need to send block start
 	if tc.ID != "" {
 		acc.ID = tc.ID
 	}

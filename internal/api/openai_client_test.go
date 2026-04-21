@@ -316,6 +316,180 @@ func TestOpenAIClientToolCalls(t *testing.T) {
 	}
 }
 
+// TestOpenAIClientStreamToolCalls tests streaming tool call functionality.
+func TestOpenAIClientStreamToolCalls(t *testing.T) {
+	// Mock SSE response with tool calls
+	// OpenAI streams tool calls like this:
+	// 1. First chunk: role=assistant, tool_calls[0] with id and name (no arguments)
+	// 2. Subsequent chunks: tool_calls[0] with arguments fragments
+	// 3. Final chunk: finish_reason=tool_calls
+	sseData := `data: {"id":"chatcmpl-456","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_abc","type":"function","function":{"name":"Read","arguments":""}}]},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-456","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"{\"file_"}}]},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-456","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"function":{"arguments":"path\":\"/test.txt\"}"}}]},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-456","object":"chat.completion.chunk","created":1677652288,"model":"gpt-4","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
+
+data: [DONE]
+
+`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		_, _ = w.Write([]byte(sseData))
+	}))
+	defer server.Close()
+
+	// Create client
+	cfg := ClientConfig{
+		Provider: ProviderOpenAI,
+		APIKey:   "test-key",
+		BaseURL:  server.URL,
+	}
+	client, err := NewClient(cfg, nil)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	// Make streaming request with tool
+	req := &MessageRequest{
+		Model:     "gpt-4",
+		MaxTokens: 100,
+		Messages: []MessageParam{
+			{
+				Role:    "user",
+				Content: json.RawMessage(`"Read the test file"`),
+			},
+		},
+		Tools: []ToolSchema{
+			{
+				Name:        "Read",
+				Description: "Read a file",
+				InputSchema: json.RawMessage(`{"type":"object","properties":{"file_path":{"type":"string"}},"required":["file_path"]}`),
+			},
+		},
+	}
+	reader, err := client.Stream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Stream failed: %v", err)
+	}
+	defer reader.Close()
+
+	// Collect events
+	var events []*StreamEvent
+	for {
+		ev, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("Next failed: %v", err)
+		}
+		events = append(events, ev)
+		t.Logf("Event: type=%s", ev.Type)
+	}
+
+	// Verify we got expected events
+	// Should have: message_start, content_block_start (tool_use), input_json_delta(s), content_block_stop, message_delta, message_stop
+	if len(events) < 4 {
+		t.Fatalf("expected at least 4 events, got %d", len(events))
+	}
+
+	// First event should be message_start
+	if events[0].Type != EventMessageStart {
+		t.Errorf("expected first event to be message_start, got %s", events[0].Type)
+	}
+
+	// Should have content_block_start for tool_use
+	hasToolUseStart := false
+	for _, ev := range events {
+		if ev.Type == EventContentBlockStart {
+			var bs struct {
+				Index        int          `json:"index"`
+				ContentBlock ContentBlock `json:"content_block"`
+			}
+			if err := json.Unmarshal(ev.Data, &bs); err == nil {
+				if bs.ContentBlock.Type == "tool_use" {
+					hasToolUseStart = true
+					if bs.ContentBlock.ID != "call_abc" {
+						t.Errorf("expected tool ID call_abc, got %s", bs.ContentBlock.ID)
+					}
+					if bs.ContentBlock.Name != "Read" {
+						t.Errorf("expected tool name Read, got %s", bs.ContentBlock.Name)
+					}
+					break
+				}
+			}
+		}
+	}
+	if !hasToolUseStart {
+		t.Error("expected content_block_start for tool_use")
+	}
+
+	// Should have input_json_delta events
+	var jsonContent strings.Builder
+	for _, ev := range events {
+		if ev.Type == EventContentBlockDelta && ev.ContentBlockDelta != nil {
+			if ev.ContentBlockDelta.Delta.Type == "input_json_delta" {
+				jsonContent.WriteString(ev.ContentBlockDelta.Delta.PartialJSON)
+			}
+		}
+	}
+	expectedJSON := `{"file_path":"/test.txt"}`
+	if jsonContent.String() != expectedJSON {
+		t.Errorf("expected JSON '%s', got '%s'", expectedJSON, jsonContent.String())
+	}
+
+	// Should have message_delta with stop_reason=tool_use
+	hasToolUseStop := false
+	for _, ev := range events {
+		if ev.Type == EventMessageDelta && ev.MessageDelta != nil {
+			if ev.MessageDelta.Delta.StopReason == "tool_use" {
+				hasToolUseStop = true
+				break
+			}
+		}
+	}
+	if !hasToolUseStop {
+		t.Error("expected message_delta with stop_reason=tool_use")
+	}
+
+	// Use Accumulator to verify final result
+	acc := &Accumulator{}
+	for _, ev := range events {
+		if err := acc.Process(ev); err != nil {
+			t.Errorf("Accumulator.Process failed: %v", err)
+		}
+	}
+	result := acc.Result()
+	if result.StopReason != "tool_use" {
+		t.Errorf("expected stop_reason tool_use, got %s", result.StopReason)
+	}
+	if len(result.Content) != 1 {
+		t.Errorf("expected 1 content block, got %d", len(result.Content))
+	} else {
+		if result.Content[0].Type != "tool_use" {
+			t.Errorf("expected content type tool_use, got %s", result.Content[0].Type)
+		}
+		if result.Content[0].ID != "call_abc" {
+			t.Errorf("expected tool ID call_abc, got %s", result.Content[0].ID)
+		}
+		if result.Content[0].Name != "Read" {
+			t.Errorf("expected tool name Read, got %s", result.Content[0].Name)
+		}
+		// Check input JSON
+		var input map[string]string
+		if err := json.Unmarshal(result.Content[0].Input, &input); err != nil {
+			t.Errorf("failed to unmarshal input: %v", err)
+		} else if input["file_path"] != "/test.txt" {
+			t.Errorf("expected file_path=/test.txt, got %s", input["file_path"])
+		}
+	}
+}
+
 // TestOpenAIClientError tests error handling.
 func TestOpenAIClientError(t *testing.T) {
 	tests := []struct {

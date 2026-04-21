@@ -177,7 +177,7 @@ func TestSendMessageInput_ContentJsonTag(t *testing.T) {
 	in := agent.SendMessageInput{AgentID: "a1", Content: "hello"}
 	data, _ := json.Marshal(in)
 	var m map[string]any
-	json.Unmarshal(data, &m)
+	_ = json.Unmarshal(data, &m)
 	if _, ok := m["content"]; !ok {
 		t.Error("SendMessageInput.Content must serialize as 'content'")
 	}

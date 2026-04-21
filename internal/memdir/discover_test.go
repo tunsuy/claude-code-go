@@ -81,9 +81,7 @@ func TestLoadAndTruncate(t *testing.T) {
 	}
 
 	result := memdir.LoadAndTruncate([]string{p}, 50)
-	if len(result) > 100 { // some overhead from header
-		// The raw content is truncated, but total with header might be longer.
-		// Just verify the function doesn't panic.
-	}
+	// The raw content is truncated, but total with header might be longer.
+	// Just verify the function doesn't panic and returns something.
 	_ = result
 }

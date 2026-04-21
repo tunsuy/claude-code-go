@@ -279,7 +279,6 @@ func executeOneTool(
 			raw, merr := json.Marshal(v)
 			if merr != nil {
 				contentStr = fmt.Sprintf("error marshalling result: %v", merr)
-				isError = true
 			} else {
 				contentStr = string(raw)
 			}

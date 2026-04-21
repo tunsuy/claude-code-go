@@ -252,7 +252,7 @@ type sseTransport struct {
 	errCh      chan error
 	closeOnce  sync.Once
 	closed     chan struct{}
-	sessionID  string
+	_sessionID string // nolint: unused // reserved for future session management
 }
 
 func newSSETransport(cfg SSETransportConfig) (*sseTransport, error) {

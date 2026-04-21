@@ -47,17 +47,17 @@ func TestAccumulator_TextDelta(t *testing.T) {
 
 	// Start a message
 	startData := `{"type":"message_start","message":{"id":"msg_2","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// Start content block index 0 (text block)
 	cbStartData := `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`
-	a.Process(makeEvent(EventContentBlockStart, cbStartData))
+	_ = a.Process(makeEvent(EventContentBlockStart, cbStartData))
 
 	// Two text deltas
 	delta1 := `{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}`
 	delta2 := `{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" World"}}`
-	a.Process(makeEvent(EventContentBlockDelta, delta1))
-	a.Process(makeEvent(EventContentBlockDelta, delta2))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta1))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta2))
 
 	// Stop content block
 	cbStopData := `{"type":"content_block_stop","index":0}`

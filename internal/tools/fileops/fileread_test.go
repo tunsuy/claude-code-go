@@ -140,7 +140,7 @@ func TestFileReadTool_Call_ReadText(t *testing.T) {
 func TestFileReadTool_Call_WithOffset(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.txt")
-	os.WriteFile(path, []byte("A\nB\nC\nD\n"), 0o644)
+	_ = os.WriteFile(path, []byte("A\nB\nC\nD\n"), 0o644)
 
 	offset := 3
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path, Offset: &offset})
@@ -163,7 +163,7 @@ func TestFileReadTool_Call_WithOffset(t *testing.T) {
 func TestFileReadTool_Call_WithLimit(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.txt")
-	os.WriteFile(path, []byte("A\nB\nC\nD\nE\n"), 0o644)
+	_ = os.WriteFile(path, []byte("A\nB\nC\nD\nE\n"), 0o644)
 
 	limit := 2
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path, Limit: &limit})
@@ -225,7 +225,7 @@ func TestFileReadTool_Call_CancelledContext(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		sb.WriteString("some content line\n")
 	}
-	os.WriteFile(path, []byte(sb.String()), 0o644)
+	_ = os.WriteFile(path, []byte(sb.String()), 0o644)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately

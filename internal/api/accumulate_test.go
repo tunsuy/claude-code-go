@@ -109,11 +109,11 @@ func TestAccumulator_MessageDelta(t *testing.T) {
 	var a Accumulator
 
 	startData := `{"type":"message_start","message":{"id":"msg_4","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// message_delta carries stop_reason and usage
 	msgDelta := `{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":25}}`
-	a.Process(makeEvent(EventMessageDelta, msgDelta))
+	_ = a.Process(makeEvent(EventMessageDelta, msgDelta))
 
 	result := a.Result()
 	if result.StopReason != "end_turn" {
@@ -150,7 +150,7 @@ func TestAccumulator_ResultFlushesRemainingBlocks(t *testing.T) {
 
 	// Start block but never stop it
 	cbStartData := `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":"incomplete"}}`
-	a.Process(makeEvent(EventContentBlockStart, cbStartData))
+	_ = a.Process(makeEvent(EventContentBlockStart, cbStartData))
 
 	// Result() should flush remaining blocks
 	result := a.Result()

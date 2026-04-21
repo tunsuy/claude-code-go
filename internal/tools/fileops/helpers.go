@@ -2,7 +2,6 @@
 package fileops
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -70,18 +69,4 @@ func isBlockedDevicePath(path string) bool {
 // isImageExtension returns true for image file extensions.
 func isImageExtension(ext string) bool {
 	return imageExtensions[strings.ToLower(ext)]
-}
-
-// truncateOutput truncates s to maxChars characters, appending a note.
-func truncateOutput(s string, maxChars int) string {
-	if maxChars <= 0 || len(s) <= maxChars {
-		return s
-	}
-	return s[:maxChars] + fmt.Sprintf("\n\n[Output truncated at %d characters]", maxChars)
-}
-
-// fileExistsAndRegular returns true only if the path exists and is a regular file.
-func fileExistsAndRegular(path string) bool {
-	info, err := os.Stat(path)
-	return err == nil && info.Mode().IsRegular()
 }

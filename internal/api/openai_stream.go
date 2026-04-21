@@ -11,14 +11,17 @@ import (
 // openaiSSEReader implements StreamReader for OpenAI streaming responses.
 // It translates OpenAI SSE events to the Anthropic StreamEvent format.
 type openaiSSEReader struct {
-	resp       *http.Response
-	scanner    *bufio.Scanner
-	done       bool
-	messageID  string
-	model      string
-	started    bool
-	toolCalls  map[int]*accumulatedToolCall // index -> accumulated tool call
-	inputUsage int                          // accumulated from usage chunks
+	resp             *http.Response
+	scanner          *bufio.Scanner
+	done             bool
+	messageID        string
+	model            string
+	started          bool
+	textBlockStarted bool                         // whether we've sent content_block_start for text
+	toolCalls        map[int]*accumulatedToolCall // index -> accumulated tool call
+	toolBlockStarted map[int]bool                 // whether we've sent content_block_start for each tool
+	inputUsage       int                          // accumulated from usage chunks
+	pendingEvents    []*StreamEvent               // events to return before processing more chunks
 }
 
 // accumulatedToolCall tracks tool call data being streamed incrementally.
@@ -33,15 +36,23 @@ func newOpenAISSEReader(resp *http.Response) *openaiSSEReader {
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	return &openaiSSEReader{
-		resp:      resp,
-		scanner:   scanner,
-		toolCalls: make(map[int]*accumulatedToolCall),
+		resp:             resp,
+		scanner:          scanner,
+		toolCalls:        make(map[int]*accumulatedToolCall),
+		toolBlockStarted: make(map[int]bool),
 	}
 }
 
 // Next returns the next SSE event from the OpenAI stream, converted to Anthropic format.
 // Returns (nil, io.EOF) when the stream ends normally.
 func (r *openaiSSEReader) Next() (*StreamEvent, error) {
+	// Return any pending events first (even if done)
+	if len(r.pendingEvents) > 0 {
+		ev := r.pendingEvents[0]
+		r.pendingEvents = r.pendingEvents[1:]
+		return ev, nil
+	}
+
 	if r.done {
 		return nil, io.EOF
 	}
@@ -64,10 +75,21 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 		// Check for stream end sentinel
 		if data == "[DONE]" {
 			r.done = true
+			// Send content_block_stop for text if we started one
+			if r.textBlockStarted {
+				r.pendingEvents = append(r.pendingEvents, r.createContentBlockStopEvent(0))
+			}
 			// Send message_stop event
-			return &StreamEvent{
+			r.pendingEvents = append(r.pendingEvents, &StreamEvent{
 				Type: EventMessageStop,
-			}, nil
+			})
+			// Return first pending event
+			if len(r.pendingEvents) > 0 {
+				ev := r.pendingEvents[0]
+				r.pendingEvents = r.pendingEvents[1:]
+				return ev, nil
+			}
+			return nil, io.EOF
 		}
 
 		// Parse the chunk
@@ -101,11 +123,26 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 
 			// Check for finish
 			if choice.FinishReason != "" {
-				return r.createMessageDeltaEvent(&choice), nil
+				// Send content_block_stop for text if we started one
+				if r.textBlockStarted {
+					r.pendingEvents = append(r.pendingEvents, r.createContentBlockStopEvent(0))
+				}
+				// Queue message_delta event
+				r.pendingEvents = append(r.pendingEvents, r.createMessageDeltaEvent(&choice))
+				// Return first pending event
+				ev := r.pendingEvents[0]
+				r.pendingEvents = r.pendingEvents[1:]
+				return ev, nil
 			}
 
 			// Process delta content
 			if choice.Delta.Content != "" {
+				// Send content_block_start first if not done yet
+				if !r.textBlockStarted {
+					r.textBlockStarted = true
+					r.pendingEvents = append(r.pendingEvents, r.createContentDeltaEvent(choice.Delta.Content))
+					return r.createContentBlockStartEvent(0, "text"), nil
+				}
 				return r.createContentDeltaEvent(choice.Delta.Content), nil
 			}
 
@@ -123,7 +160,7 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 }
 
 // createMessageStartEvent creates the initial message_start event.
-func (r *openaiSSEReader) createMessageStartEvent(chunk *openaiStreamChunk) *StreamEvent {
+func (r *openaiSSEReader) createMessageStartEvent(_ *openaiStreamChunk) *StreamEvent {
 	msgStart := &MessageStartData{
 		Message: MessageResponse{
 			ID:    r.messageID,
@@ -140,6 +177,38 @@ func (r *openaiSSEReader) createMessageStartEvent(chunk *openaiStreamChunk) *Str
 		Type:         EventMessageStart,
 		Data:         data,
 		MessageStart: msgStart,
+	}
+}
+
+// createContentBlockStartEvent creates a content_block_start event.
+func (r *openaiSSEReader) createContentBlockStartEvent(index int, blockType string) *StreamEvent {
+	blockData := struct {
+		Index        int          `json:"index"`
+		ContentBlock ContentBlock `json:"content_block"`
+	}{
+		Index: index,
+		ContentBlock: ContentBlock{
+			Type: blockType,
+		},
+	}
+	data, _ := json.Marshal(blockData)
+	return &StreamEvent{
+		Type: EventContentBlockStart,
+		Data: data,
+	}
+}
+
+// createContentBlockStopEvent creates a content_block_stop event.
+func (r *openaiSSEReader) createContentBlockStopEvent(index int) *StreamEvent {
+	stopData := struct {
+		Index int `json:"index"`
+	}{
+		Index: index,
+	}
+	data, _ := json.Marshal(stopData)
+	return &StreamEvent{
+		Type: EventContentBlockStop,
+		Data: data,
 	}
 }
 

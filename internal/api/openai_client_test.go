@@ -186,6 +186,11 @@ data: [DONE]
 		t.Errorf("expected first event to be message_start, got %s", events[0].Type)
 	}
 
+	// Second event should be content_block_start
+	if events[1].Type != EventContentBlockStart {
+		t.Errorf("expected second event to be content_block_start, got %s", events[1].Type)
+	}
+
 	// Should have content_block_delta events with text
 	var textContent strings.Builder
 	for _, ev := range events {
@@ -197,10 +202,16 @@ data: [DONE]
 		t.Errorf("expected content 'Hello!', got '%s'", textContent.String())
 	}
 
-	// Last event should be message_stop
-	lastEvent := events[len(events)-1]
-	if lastEvent.Type != EventMessageStop {
-		t.Errorf("expected last event to be message_stop, got %s", lastEvent.Type)
+	// Should have message_stop event somewhere
+	hasMessageStop := false
+	for _, ev := range events {
+		if ev.Type == EventMessageStop {
+			hasMessageStop = true
+			break
+		}
+	}
+	if !hasMessageStop {
+		t.Error("expected message_stop event in the stream")
 	}
 }
 

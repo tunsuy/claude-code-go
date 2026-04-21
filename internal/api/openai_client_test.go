@@ -647,6 +647,26 @@ func TestOpenAIMessageConversion(t *testing.T) {
 				{Role: "assistant", Content: "Hello!"},
 			},
 		},
+		{
+			name: "tool_result_with_content_blocks",
+			input: MessageParam{
+				Role:    "user",
+				Content: json.RawMessage(`[{"type":"tool_result","tool_use_id":"call_abc123","content":[{"type":"text","text":"File content here"}]}]`),
+			},
+			expected: []openaiMessage{
+				{Role: "tool", Content: "File content here", ToolCallID: "call_abc123"},
+			},
+		},
+		{
+			name: "tool_result_with_string_content",
+			input: MessageParam{
+				Role:    "user",
+				Content: json.RawMessage(`[{"type":"tool_result","tool_use_id":"call_xyz789","content":"Simple result"}]`),
+			},
+			expected: []openaiMessage{
+				{Role: "tool", Content: "Simple result", ToolCallID: "call_xyz789"},
+			},
+		},
 	}
 
 	for _, tt := range tests {

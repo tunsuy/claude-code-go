@@ -198,10 +198,8 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 			})
 		case "tool_result":
 			// Tool result from user
-			var contentStr string
-			if err := json.Unmarshal(block.Content, &contentStr); err != nil {
-				contentStr = string(block.Content)
-			}
+			// Content can be a string or an array of content blocks
+			contentStr := extractToolResultContent(block.Content)
 			result = append(result, openaiMessage{
 				Role:       "tool",
 				Content:    contentStr,
@@ -219,6 +217,54 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 		}
 	}
 
+	return result
+}
+
+// extractToolResultContent extracts text content from tool_result.
+// Content can be:
+// - A simple string: "result text"
+// - An array of content blocks: [{"type":"text","text":"result text"}]
+func extractToolResultContent(content json.RawMessage) string {
+	if len(content) == 0 {
+		return ""
+	}
+
+	// Try to unmarshal as string first
+	var strContent string
+	if err := json.Unmarshal(content, &strContent); err == nil {
+		return strContent
+	}
+
+	// Try to unmarshal as array of content blocks
+	var blocks []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(content, &blocks); err == nil {
+		var texts []string
+		for _, b := range blocks {
+			if b.Type == "text" && b.Text != "" {
+				texts = append(texts, b.Text)
+			}
+		}
+		if len(texts) > 0 {
+			return joinStrings(texts, "\n")
+		}
+	}
+
+	// Fallback: return raw JSON string
+	return string(content)
+}
+
+// joinStrings joins non-empty strings with separator.
+func joinStrings(strs []string, sep string) string {
+	if len(strs) == 0 {
+		return ""
+	}
+	result := strs[0]
+	for i := 1; i < len(strs); i++ {
+		result += sep + strs[i]
+	}
 	return result
 }
 

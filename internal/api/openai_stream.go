@@ -79,6 +79,14 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 			if r.textBlockStarted {
 				r.pendingEvents = append(r.pendingEvents, r.createContentBlockStopEvent(0))
 			}
+			// Send content_block_stop for each tool block
+			for toolIndex := range r.toolBlockStarted {
+				blockIndex := toolIndex + 1
+				if !r.textBlockStarted {
+					blockIndex = toolIndex
+				}
+				r.pendingEvents = append(r.pendingEvents, r.createContentBlockStopEvent(blockIndex))
+			}
 			// Send message_stop event
 			r.pendingEvents = append(r.pendingEvents, &StreamEvent{
 				Type: EventMessageStop,
@@ -127,6 +135,14 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 				if r.textBlockStarted {
 					r.pendingEvents = append(r.pendingEvents, r.createContentBlockStopEvent(0))
 				}
+				// Send content_block_stop for each tool block
+				for toolIndex := range r.toolBlockStarted {
+					blockIndex := toolIndex + 1
+					if !r.textBlockStarted {
+						blockIndex = toolIndex
+					}
+					r.pendingEvents = append(r.pendingEvents, r.createContentBlockStopEvent(blockIndex))
+				}
 				// Queue message_delta event
 				r.pendingEvents = append(r.pendingEvents, r.createMessageDeltaEvent(&choice))
 				// Return first pending event
@@ -148,7 +164,15 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 
 			// Process tool calls
 			if len(choice.Delta.ToolCalls) > 0 {
-				return r.processToolCallDelta(&choice.Delta.ToolCalls[0], choice.Index)
+				ev, err := r.processToolCallDelta(&choice.Delta.ToolCalls[0], choice.Index)
+				if err != nil {
+					return nil, err
+				}
+				if ev != nil {
+					return ev, nil
+				}
+				// If ev is nil, continue processing next chunk
+				continue
 			}
 		}
 	}
@@ -230,12 +254,15 @@ func (r *openaiSSEReader) createContentDeltaEvent(text string) *StreamEvent {
 }
 
 // processToolCallDelta processes incremental tool call data.
-func (r *openaiSSEReader) processToolCallDelta(tc *openaiToolCall, index int) (*StreamEvent, error) {
+func (r *openaiSSEReader) processToolCallDelta(tc *openaiToolCall, _ int) (*StreamEvent, error) {
+	// Use the tool call's own index, not the choice index
+	toolIndex := tc.Index
+
 	// Get or create accumulated tool call
-	acc, exists := r.toolCalls[index]
+	acc, exists := r.toolCalls[toolIndex]
 	if !exists {
 		acc = &accumulatedToolCall{}
-		r.toolCalls[index] = acc
+		r.toolCalls[toolIndex] = acc
 	}
 
 	// Update accumulated data
@@ -249,20 +276,75 @@ func (r *openaiSSEReader) processToolCallDelta(tc *openaiToolCall, index int) (*
 		acc.Arguments.WriteString(tc.Function.Arguments)
 	}
 
+	// Block index: text is 0, tools start at 1
+	blockIndex := toolIndex + 1
+	if !r.textBlockStarted {
+		// If no text was sent, tools start at 0
+		blockIndex = toolIndex
+	}
+
+	// Send content_block_start first if not done yet for this tool
+	if !r.toolBlockStarted[toolIndex] {
+		r.toolBlockStarted[toolIndex] = true
+		// Queue the delta event
+		if tc.Function.Arguments != "" {
+			delta := &ContentBlockDeltaData{
+				Index: blockIndex,
+				Delta: Delta{
+					Type:        "input_json_delta",
+					PartialJSON: tc.Function.Arguments,
+				},
+			}
+			data, _ := json.Marshal(delta)
+			r.pendingEvents = append(r.pendingEvents, &StreamEvent{
+				Type:              EventContentBlockDelta,
+				Data:              data,
+				ContentBlockDelta: delta,
+			})
+		}
+		// Return content_block_start for tool_use
+		return r.createToolUseBlockStartEvent(blockIndex, acc.ID, acc.Name), nil
+	}
+
 	// Return a partial JSON delta (similar to Anthropic's input_json_delta)
-	delta := &ContentBlockDeltaData{
-		Index: index + 1, // Offset by 1 since index 0 is text
-		Delta: Delta{
-			Type:        "input_json_delta",
-			PartialJSON: tc.Function.Arguments,
+	if tc.Function.Arguments != "" {
+		delta := &ContentBlockDeltaData{
+			Index: blockIndex,
+			Delta: Delta{
+				Type:        "input_json_delta",
+				PartialJSON: tc.Function.Arguments,
+			},
+		}
+		data, _ := json.Marshal(delta)
+		return &StreamEvent{
+			Type:              EventContentBlockDelta,
+			Data:              data,
+			ContentBlockDelta: delta,
+		}, nil
+	}
+
+	// No content to return, continue processing
+	return nil, nil
+}
+
+// createToolUseBlockStartEvent creates a content_block_start event for tool use.
+func (r *openaiSSEReader) createToolUseBlockStartEvent(index int, id, name string) *StreamEvent {
+	blockData := struct {
+		Index        int          `json:"index"`
+		ContentBlock ContentBlock `json:"content_block"`
+	}{
+		Index: index,
+		ContentBlock: ContentBlock{
+			Type: "tool_use",
+			ID:   id,
+			Name: name,
 		},
 	}
-	data, _ := json.Marshal(delta)
+	data, _ := json.Marshal(blockData)
 	return &StreamEvent{
-		Type:              EventContentBlockDelta,
-		Data:              data,
-		ContentBlockDelta: delta,
-	}, nil
+		Type: EventContentBlockStart,
+		Data: data,
+	}
 }
 
 // createMessageDeltaEvent creates the final message_delta event with stop reason.

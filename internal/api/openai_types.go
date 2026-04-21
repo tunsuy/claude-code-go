@@ -53,6 +53,7 @@ type openaiFunction struct {
 
 // openaiToolCall represents a tool call made by the model.
 type openaiToolCall struct {
+	Index    int                    `json:"index"`
 	ID       string                 `json:"id"`
 	Type     string                 `json:"type"` // always "function"
 	Function openaiToolCallFunction `json:"function"`

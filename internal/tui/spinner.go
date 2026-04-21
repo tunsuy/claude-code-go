@@ -19,7 +19,6 @@ type SpinnerModel struct {
 	current int
 	verb    string
 	elapsed time.Duration
-	mode    SpinnerMode
 }
 
 // newSpinner creates a default spinner.

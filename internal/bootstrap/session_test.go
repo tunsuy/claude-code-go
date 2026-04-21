@@ -190,7 +190,7 @@ func TestLoadSessionMessages_Continue_Happy(t *testing.T) {
 	}
 	// The first message should be from the newer session ("new").
 	text := ""
-	if got[0].Content != nil && len(got[0].Content) > 0 && got[0].Content[0].Text != nil {
+	if len(got[0].Content) > 0 && got[0].Content[0].Text != nil {
 		text = *got[0].Content[0].Text
 	}
 	if text != "new" {

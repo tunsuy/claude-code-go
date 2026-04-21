@@ -275,7 +275,7 @@ func TestGetDenialCount(t *testing.T) {
 		AskCh:  askCh,
 		RespCh: respCh,
 	})
-	c.RequestPermission(context.Background(), PermissionRequest{
+	_, _ = c.RequestPermission(context.Background(), PermissionRequest{
 		ToolName:  "Bash",
 		ToolUseID: "u1",
 	}, nil)

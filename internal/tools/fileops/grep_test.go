@@ -306,7 +306,7 @@ func TestGrepTool_MapResultToToolResultBlock_Content(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if !strings.Contains(block["content"].(string), "func main()") {
 		t.Errorf("expected match content in output, got %q", block["content"])
 	}
@@ -316,7 +316,7 @@ func TestGrepTool_MapResultToToolResultBlock_NoMatches(t *testing.T) {
 	out := fileops.GrepOutput{NumResults: 0}
 	raw, _ := fileops.GrepTool.MapResultToToolResultBlock(out, "tid")
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if !strings.Contains(block["content"].(string), "No matches found") {
 		t.Errorf("expected 'No matches found', got %q", block["content"])
 	}

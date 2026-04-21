@@ -297,9 +297,9 @@ func TestWebFetchTool_Call_Cache(t *testing.T) {
 	in, _ := json.Marshal(WebFetchInput{URL: srv.URL})
 
 	// First call
-	WebFetchTool.Call(in, nil, nil)
+	_, _ = WebFetchTool.Call(in, nil, nil)
 	// Second call should use cache
-	WebFetchTool.Call(in, nil, nil)
+	_, _ = WebFetchTool.Call(in, nil, nil)
 
 	if callCount != 1 {
 		t.Errorf("expected 1 HTTP call (cache hit), got %d", callCount)
@@ -334,7 +334,7 @@ func TestWebFetchTool_MapResultToToolResultBlock(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if block["type"] != "tool_result" {
 		t.Error("expected type=tool_result")
 	}
@@ -495,7 +495,7 @@ func TestWebSearchTool_MapResultToToolResultBlock_WithResults(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if block["type"] != "tool_result" {
 		t.Error("expected type=tool_result")
 	}
@@ -515,7 +515,7 @@ func TestWebSearchTool_MapResultToToolResultBlock_Empty(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	content := block["content"].(string)
 	if !strings.Contains(content, "No results found") {
 		t.Errorf("expected 'No results found' for empty results: %q", content)

@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -49,13 +47,4 @@ func codeStyle(t Theme) lipgloss.Style {
 	return lipgloss.NewStyle().
 		Background(t.CodeBG).
 		Foreground(t.CodeFG)
-}
-
-// padRight pads s with spaces to reach width w.
-func padRight(s string, w int) string {
-	sw := lipgloss.Width(s)
-	if sw >= w {
-		return s
-	}
-	return s + strings.Repeat(" ", w-sw)
 }

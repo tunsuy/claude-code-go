@@ -129,8 +129,8 @@ func TestMemoryStore_SaveAndLoad(t *testing.T) {
 
 func TestMemoryStore_Delete(t *testing.T) {
 	m := &MemoryStore{}
-	m.Save(&OAuthTokens{AccessToken: "tok"})
-	m.Delete()
+	_ = m.Save(&OAuthTokens{AccessToken: "tok"})
+	_ = m.Delete()
 	tokens, err := m.Load()
 	if err != nil || tokens != nil {
 		t.Errorf("expected nil after delete, got err=%v tokens=%v", err, tokens)
@@ -140,7 +140,7 @@ func TestMemoryStore_Delete(t *testing.T) {
 func TestMemoryStore_SaveReturnsCopy(t *testing.T) {
 	m := &MemoryStore{}
 	original := &OAuthTokens{AccessToken: "original"}
-	m.Save(original)
+	_ = m.Save(original)
 	original.AccessToken = "mutated"
 
 	got, _ := m.Load()
@@ -193,7 +193,7 @@ func TestFileStore_LoadNonExistent(t *testing.T) {
 func TestFileStore_Delete(t *testing.T) {
 	dir := t.TempDir()
 	fs := &FileStore{path: filepath.Join(dir, "tokens.enc")}
-	fs.Save(&OAuthTokens{AccessToken: "tok"})
+	_ = fs.Save(&OAuthTokens{AccessToken: "tok"})
 	if err := fs.Delete(); err != nil {
 		t.Fatalf("delete error: %v", err)
 	}
@@ -330,7 +330,7 @@ func TestTokenManager_CheckAndRefresh_ValidToken(t *testing.T) {
 		RefreshToken: "ref",
 		ExpiresAt:    time.Now().Add(time.Hour).UnixMilli(),
 	}
-	store.Save(valid)
+	_ = store.Save(valid)
 
 	tm := NewTokenManager(store, nil)
 	tokens, err := tm.CheckAndRefreshIfNeeded(context.Background())
@@ -351,7 +351,7 @@ func TestTokenManager_CheckAndRefresh_ExpiredToken_Refreshes(t *testing.T) {
 			ExpiresIn:    3600,
 			Scope:        "org:inference",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -362,7 +362,7 @@ func TestTokenManager_CheckAndRefresh_ExpiredToken_Refreshes(t *testing.T) {
 		ExpiresAt:    time.Now().Add(-time.Hour).UnixMilli(), // expired
 		Scopes:       []string{"org:inference"},
 	}
-	store.Save(expired)
+	_ = store.Save(expired)
 
 	cfg := DefaultOAuthConfig()
 	cfg.TokenURL = server.URL
@@ -381,7 +381,7 @@ func TestTokenManager_CheckAndRefresh_ExpiredToken_Refreshes(t *testing.T) {
 func TestTokenManager_HandleOAuth401_TokenAlreadyRefreshed(t *testing.T) {
 	store := &MemoryStore{}
 	current := &OAuthTokens{AccessToken: "current-token", RefreshToken: "ref"}
-	store.Save(current)
+	_ = store.Save(current)
 
 	tm := NewTokenManager(store, nil)
 	// If failedToken != currentToken, no refresh needed
@@ -403,7 +403,7 @@ func TestAuthCodeListener_WaitForCode_CSRFMismatch(t *testing.T) {
 
 	// Send request with wrong state
 	go func() {
-		http.Get(fmt.Sprintf("http://localhost:%d/callback?state=wrong&code=mycode", port))
+		_, _ = http.Get(fmt.Sprintf("http://localhost:%d/callback?state=wrong&code=mycode", port))
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -426,7 +426,7 @@ func TestAuthCodeListener_WaitForCode_HappyPath(t *testing.T) {
 	state := "test-state-123"
 	go func() {
 		time.Sleep(20 * time.Millisecond)
-		http.Get(fmt.Sprintf("http://localhost:%d/callback?state=%s&code=auth-code-456", port, state))
+		_, _ = http.Get(fmt.Sprintf("http://localhost:%d/callback?state=%s&code=auth-code-456", port, state))
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -451,7 +451,7 @@ func TestAuthCodeListener_WaitForCode_ErrorParam(t *testing.T) {
 
 	go func() {
 		time.Sleep(20 * time.Millisecond)
-		http.Get(fmt.Sprintf("http://localhost:%d/callback?error=access_denied&error_description=User+denied", port))
+		_, _ = http.Get(fmt.Sprintf("http://localhost:%d/callback?error=access_denied&error_description=User+denied", port))
 	}()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -482,7 +482,7 @@ func TestAuthCodeListener_WaitForCode_ContextCancelled(t *testing.T) {
 
 func TestAuthCodeListener_Close_Idempotent(t *testing.T) {
 	l := NewAuthCodeListener("/callback")
-	l.Start(0)
+	_, _ = l.Start(0)
 	l.Close()
 	if err := l.Close(); err != nil {
 		t.Errorf("second Close() should not error: %v", err)
@@ -548,7 +548,7 @@ func TestExchangeCodeForTokens_Success(t *testing.T) {
 			ExpiresIn:    3600,
 			Scope:        "org:inference user:profile",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 
@@ -591,7 +591,7 @@ func TestRefreshToken_Success(t *testing.T) {
 			ExpiresIn:   3600,
 			Scope:       "org:inference",
 		}
-		json.NewEncoder(w).Encode(resp)
+		_ = json.NewEncoder(w).Encode(resp)
 	}))
 	defer server.Close()
 

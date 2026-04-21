@@ -46,9 +46,9 @@ func failingAgent(errMsg string) coordinator.RunAgentFn {
 	}
 }
 
-// inboxCapturingAgent reads all inbox messages then completes, returning them
-// concatenated with "|".
-func inboxCapturingAgent(readDeadline time.Duration) coordinator.RunAgentFn {
+// _inboxCapturingAgent reads all inbox messages then completes, returning them
+// concatenated with "|". (Prefixed with _ to indicate intentionally unused for now)
+var _ = func(readDeadline time.Duration) coordinator.RunAgentFn {
 	return func(_ context.Context, _ coordinator.SpawnRequest, inbox <-chan string) (string, error) {
 		var msgs []string
 		deadline := time.After(readDeadline)

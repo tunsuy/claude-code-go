@@ -35,9 +35,8 @@ type AppModel struct {
 	// messages is the full conversation history.
 	// NOTE: abortFn may still point to a previous context when a new query
 	// starts; startQueryCmd resets it before creating the new context.
-	messages     []types.Message
-	inputText    string
-	isLoading    bool
+	messages  []types.Message
+	isLoading bool
 	abortFn      context.CancelFunc // nil when idle
 	abortCtx     context.Context    // current query context
 
@@ -98,17 +97,7 @@ type AppModel struct {
 	mdRendererDark  bool
 }
 
-// slashSuggestions holds the current Tab-completion candidates.
-type slashSuggestions struct {
-	commands []*commands.Command
-	selected int
-}
 
-// commandDisplayEntry is an entry to display in the slash suggestions pop-up.
-type commandDisplayEntry struct {
-	Name        string
-	Description string
-}
 
 // newAppModel is the internal constructor; callers use New().
 func newAppModel(
@@ -147,11 +136,6 @@ func newAppModel(
 		pinnedToBottom: true,
 	}
 	return m
-}
-
-// streamingPartialText returns the text accumulated from StreamTokenMsg events.
-func (m AppModel) streamingPartialText() string {
-	return m.streamingText
 }
 
 // appendStreamDelta appends a streaming text delta.
@@ -249,11 +233,6 @@ func parseSlashInput(text string) (name, args string) {
 		return text[:idx], strings.TrimSpace(text[idx+1:])
 	}
 	return text, ""
-}
-
-// isTea returns whether msgCh is the currently active stream.
-func (m AppModel) isActiveStream(ch <-chan engine.Msg) bool {
-	return m.streamCh == ch
 }
 
 // tickInterval is the duration between spinner ticks.

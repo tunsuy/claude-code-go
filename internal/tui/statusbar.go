@@ -20,8 +20,6 @@ type StatusBar struct {
 	model       string
 	cwd         string
 	tokenUsage  TokenUsage
-	permMode    string // "default" | "auto" | "bypass"
-	sessionName string
 	cost        float64
 	coordinator bool
 }

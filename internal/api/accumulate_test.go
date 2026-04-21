@@ -47,21 +47,21 @@ func TestAccumulator_TextDelta(t *testing.T) {
 
 	// Start a message
 	startData := `{"type":"message_start","message":{"id":"msg_2","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// Start content block index 0 (text block)
 	cbStartData := `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":""}}`
-	a.Process(makeEvent(EventContentBlockStart, cbStartData))
+	_ = a.Process(makeEvent(EventContentBlockStart, cbStartData))
 
 	// Two text deltas
 	delta1 := `{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":"Hello"}}`
 	delta2 := `{"type":"content_block_delta","index":0,"delta":{"type":"text_delta","text":" World"}}`
-	a.Process(makeEvent(EventContentBlockDelta, delta1))
-	a.Process(makeEvent(EventContentBlockDelta, delta2))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta1))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta2))
 
 	// Stop content block
 	cbStopData := `{"type":"content_block_stop","index":0}`
-	a.Process(makeEvent(EventContentBlockStop, cbStopData))
+	_ = a.Process(makeEvent(EventContentBlockStop, cbStopData))
 
 	result := a.Result()
 	if len(result.Content) != 1 {
@@ -76,20 +76,20 @@ func TestAccumulator_ToolUseDelta(t *testing.T) {
 	var a Accumulator
 
 	startData := `{"type":"message_start","message":{"id":"msg_3","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// Tool use block
 	cbStartData := `{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tool_1","name":"bash"}}`
-	a.Process(makeEvent(EventContentBlockStart, cbStartData))
+	_ = a.Process(makeEvent(EventContentBlockStart, cbStartData))
 
 	// Partial JSON deltas
 	delta1 := `{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"cmd\""}}`
 	delta2 := `{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":":\"ls\"}"}}`
-	a.Process(makeEvent(EventContentBlockDelta, delta1))
-	a.Process(makeEvent(EventContentBlockDelta, delta2))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta1))
+	_ = a.Process(makeEvent(EventContentBlockDelta, delta2))
 
 	cbStopData := `{"type":"content_block_stop","index":0}`
-	a.Process(makeEvent(EventContentBlockStop, cbStopData))
+	_ = a.Process(makeEvent(EventContentBlockStop, cbStopData))
 
 	result := a.Result()
 	if len(result.Content) != 1 {
@@ -109,11 +109,11 @@ func TestAccumulator_MessageDelta(t *testing.T) {
 	var a Accumulator
 
 	startData := `{"type":"message_start","message":{"id":"msg_4","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// message_delta carries stop_reason and usage
 	msgDelta := `{"type":"message_delta","delta":{"stop_reason":"end_turn","stop_sequence":null},"usage":{"output_tokens":25}}`
-	a.Process(makeEvent(EventMessageDelta, msgDelta))
+	_ = a.Process(makeEvent(EventMessageDelta, msgDelta))
 
 	result := a.Result()
 	if result.StopReason != "end_turn" {
@@ -146,11 +146,11 @@ func TestAccumulator_MessageStop(t *testing.T) {
 func TestAccumulator_ResultFlushesRemainingBlocks(t *testing.T) {
 	var a Accumulator
 	startData := `{"type":"message_start","message":{"id":"msg_5","type":"message","role":"assistant","content":[],"model":"claude-3","stop_reason":null,"usage":{"input_tokens":5,"output_tokens":0}}}`
-	a.Process(makeEvent(EventMessageStart, startData))
+	_ = a.Process(makeEvent(EventMessageStart, startData))
 
 	// Start block but never stop it
 	cbStartData := `{"type":"content_block_start","index":0,"content_block":{"type":"text","text":"incomplete"}}`
-	a.Process(makeEvent(EventContentBlockStart, cbStartData))
+	_ = a.Process(makeEvent(EventContentBlockStart, cbStartData))
 
 	// Result() should flush remaining blocks
 	result := a.Result()

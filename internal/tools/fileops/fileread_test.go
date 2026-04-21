@@ -112,7 +112,7 @@ func TestFileReadTool_Call_ReadText(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.txt")
 	content := "line1\nline2\nline3\n"
-	os.WriteFile(path, []byte(content), 0o644)
+	_ = os.WriteFile(path, []byte(content), 0o644)
 
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path})
 	result, err := fileops.FileReadTool.Call(in, nil, nil)
@@ -140,7 +140,7 @@ func TestFileReadTool_Call_ReadText(t *testing.T) {
 func TestFileReadTool_Call_WithOffset(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.txt")
-	os.WriteFile(path, []byte("A\nB\nC\nD\n"), 0o644)
+	_ = os.WriteFile(path, []byte("A\nB\nC\nD\n"), 0o644)
 
 	offset := 3
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path, Offset: &offset})
@@ -163,7 +163,7 @@ func TestFileReadTool_Call_WithOffset(t *testing.T) {
 func TestFileReadTool_Call_WithLimit(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.txt")
-	os.WriteFile(path, []byte("A\nB\nC\nD\nE\n"), 0o644)
+	_ = os.WriteFile(path, []byte("A\nB\nC\nD\nE\n"), 0o644)
 
 	limit := 2
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path, Limit: &limit})
@@ -225,7 +225,7 @@ func TestFileReadTool_Call_CancelledContext(t *testing.T) {
 	for i := 0; i < 100; i++ {
 		sb.WriteString("some content line\n")
 	}
-	os.WriteFile(path, []byte(sb.String()), 0o644)
+	_ = os.WriteFile(path, []byte(sb.String()), 0o644)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately
@@ -244,7 +244,7 @@ func TestFileReadTool_Call_ImageFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.png")
 	// Write minimal PNG-like data
-	os.WriteFile(path, []byte("\x89PNG fake image data"), 0o644)
+	_ = os.WriteFile(path, []byte("\x89PNG fake image data"), 0o644)
 
 	in, _ := json.Marshal(fileops.FileReadInput{FilePath: path})
 	result, err := fileops.FileReadTool.Call(in, nil, nil)
@@ -276,7 +276,7 @@ func TestFileReadTool_MapResultToToolResultBlock_Text(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if block["type"] != "tool_result" {
 		t.Error("expected type=tool_result")
 	}
@@ -297,7 +297,7 @@ func TestFileReadTool_MapResultToToolResultBlock_Image(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	var block map[string]any
-	json.Unmarshal(raw, &block)
+	_ = json.Unmarshal(raw, &block)
 	if block["type"] != "tool_result" {
 		t.Error("expected type=tool_result")
 	}

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 )
 
 // openaiClient implements Client using the OpenAI Chat Completions API format.
@@ -19,8 +18,9 @@ type openaiClient struct {
 	baseURL      string
 	httpClient   *http.Client
 	headers      map[string]string
-	organization string // Optional OpenAI organization ID
-	project      string // Optional OpenAI project ID
+	organization string       // Optional OpenAI organization ID
+	project      string       // Optional OpenAI project ID
+	debugLogger  *DebugLogger // Debug logger for request/response tracing
 }
 
 // Compile-time interface assertion: openaiClient must satisfy Client.
@@ -32,6 +32,10 @@ func newOpenAIClient(cfg ClientConfig, httpClient *http.Client, headers map[stri
 	if baseURL == "" {
 		baseURL = defaultOpenAIBaseURL
 	}
+	dl, err := NewDebugLogger(cfg.Debug, cfg.DebugFile)
+	if err != nil {
+		return nil, fmt.Errorf("api: init debug logger: %w", err)
+	}
 	return &openaiClient{
 		apiKey:       cfg.APIKey,
 		baseURL:      baseURL,
@@ -39,6 +43,7 @@ func newOpenAIClient(cfg ClientConfig, httpClient *http.Client, headers map[stri
 		headers:      headers,
 		organization: cfg.OpenAIOrganization,
 		project:      cfg.OpenAIProject,
+		debugLogger:  dl,
 	}, nil
 }
 
@@ -51,13 +56,18 @@ func (c *openaiClient) Stream(ctx context.Context, req *MessageRequest) (StreamR
 	}
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		c.debugLogger.LogError("HTTP request failed", err)
 		return nil, &APIError{Kind: ErrKindConnectionError, Message: err.Error()}
 	}
+	// Log response status and headers.
+	c.debugLogger.LogResponse(resp.StatusCode, resp.Status, resp.Header)
 	if resp.StatusCode >= 400 {
 		defer resp.Body.Close()
-		return nil, c.parseHTTPError(resp)
+		apiErr := c.parseHTTPError(resp)
+		c.debugLogger.LogError("API returned error", apiErr)
+		return nil, apiErr
 	}
-	return newOpenAISSEReader(resp), nil
+	return newOpenAISSEReader(resp, c.debugLogger), nil
 }
 
 // Complete makes a non-streaming chat completion request and returns the full response.
@@ -69,14 +79,26 @@ func (c *openaiClient) Complete(ctx context.Context, req *MessageRequest) (*Mess
 	}
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
+		c.debugLogger.LogError("HTTP request failed", err)
 		return nil, &APIError{Kind: ErrKindConnectionError, Message: err.Error()}
 	}
 	defer resp.Body.Close()
+	// Log response status and headers.
+	c.debugLogger.LogResponse(resp.StatusCode, resp.Status, resp.Header)
 	if resp.StatusCode >= 400 {
-		return nil, c.parseHTTPError(resp)
+		apiErr := c.parseHTTPError(resp)
+		c.debugLogger.LogError("API returned error", apiErr)
+		return nil, apiErr
 	}
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.debugLogger.LogError("read response body", err)
+		return nil, fmt.Errorf("api: read openai response body: %w", err)
+	}
+	c.debugLogger.LogResponseBody(respBody)
 	var openaiResp openaiChatCompletionResponse
-	if decErr := json.NewDecoder(resp.Body).Decode(&openaiResp); decErr != nil {
+	if decErr := json.Unmarshal(respBody, &openaiResp); decErr != nil {
+		c.debugLogger.LogError("decode response JSON", decErr)
 		return nil, fmt.Errorf("api: decode openai response: %w", decErr)
 	}
 	return c.convertToMessageResponse(&openaiResp), nil
@@ -89,24 +111,31 @@ func (c *openaiClient) buildRequest(ctx context.Context, req *MessageRequest) (*
 	if err != nil {
 		return nil, fmt.Errorf("api: marshal openai request: %w", err)
 	}
-	// Debug: log request body
-	if os.Getenv("CLAUDE_DEBUG") != "" {
-		fmt.Fprintf(os.Stderr, "[DEBUG] OpenAI request body (first 2000 chars):\n%s\n\n", string(body[:minInt(2000, len(body))]))
-	}
 	url := c.baseURL + "/v1/chat/completions"
+
+	// Build headers map for logging.
+	reqHeaders := map[string]string{
+		"Content-Type":  "application/json",
+		"Authorization": "Bearer " + c.apiKey,
+	}
+	if c.organization != "" {
+		reqHeaders["OpenAI-Organization"] = c.organization
+	}
+	if c.project != "" {
+		reqHeaders["OpenAI-Project"] = c.project
+	}
+	for k, v := range c.headers {
+		reqHeaders[k] = v
+	}
+
+	// Log the full request.
+	c.debugLogger.LogRequest(http.MethodPost, url, reqHeaders, body)
+
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("api: build openai request: %w", err)
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("Authorization", "Bearer "+c.apiKey)
-	if c.organization != "" {
-		httpReq.Header.Set("OpenAI-Organization", c.organization)
-	}
-	if c.project != "" {
-		httpReq.Header.Set("OpenAI-Project", c.project)
-	}
-	for k, v := range c.headers {
+	for k, v := range reqHeaders {
 		httpReq.Header.Set(k, v)
 	}
 	return httpReq, nil
@@ -122,9 +151,10 @@ func (c *openaiClient) convertToOpenAIRequest(req *MessageRequest) *openaiChatCo
 
 	// Convert system message
 	if req.System != "" {
+		sysContent := req.System
 		openaiReq.Messages = append(openaiReq.Messages, openaiMessage{
 			Role:    "system",
-			Content: req.System,
+			Content: &sysContent,
 		})
 	}
 
@@ -161,7 +191,7 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 	if err := json.Unmarshal(msg.Content, &textContent); err == nil {
 		result = append(result, openaiMessage{
 			Role:    c.convertRole(msg.Role),
-			Content: textContent,
+			Content: &textContent,
 		})
 		return result
 	}
@@ -170,9 +200,10 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 	var blocks []ContentBlock
 	if err := json.Unmarshal(msg.Content, &blocks); err != nil {
 		// Fallback: treat as raw string
+		fallback := string(msg.Content)
 		result = append(result, openaiMessage{
 			Role:    c.convertRole(msg.Role),
-			Content: string(msg.Content),
+			Content: &fallback,
 		})
 		return result
 	}
@@ -193,8 +224,9 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 			case "tool_use":
 				inputJSON, _ := json.Marshal(block.Input)
 				toolCalls = append(toolCalls, openaiToolCall{
-					ID:   block.ID,
-					Type: "function",
+					Index: len(toolCalls),
+					ID:    block.ID,
+					Type:  "function",
 					Function: openaiToolCallFunction{
 						Name:      block.Name,
 						Arguments: string(inputJSON),
@@ -212,9 +244,13 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 
 		// Create assistant message with combined content and tool calls
 		if combinedText != "" || len(toolCalls) > 0 {
+			// Always set Content for assistant messages with tool_calls.
+			// Many OpenAI-compatible APIs require the content field to be present
+			// (even if empty) when tool_calls are included.
+			contentPtr := &combinedText
 			assistantMsg := openaiMessage{
 				Role:    "assistant",
-				Content: combinedText,
+				Content: contentPtr,
 			}
 			if len(toolCalls) > 0 {
 				assistantMsg.ToolCalls = toolCalls
@@ -226,7 +262,7 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 		if thinkingText != "" {
 			result = append(result, openaiMessage{
 				Role:    "assistant",
-				Content: thinkingText,
+				Content: &thinkingText,
 			})
 		}
 
@@ -237,26 +273,27 @@ func (c *openaiClient) convertMessage(msg MessageParam) []openaiMessage {
 	for _, block := range blocks {
 		switch block.Type {
 		case "text":
+			text := block.Text
 			result = append(result, openaiMessage{
 				Role:    c.convertRole(msg.Role),
-				Content: block.Text,
+				Content: &text,
 			})
 		case "tool_result":
 			// Tool result from user
 			// Content can be a string or an array of content blocks
 			contentStr := extractToolResultContent(block.Content)
 			toolCallID := block.ToolUseID
-			// Debug: log tool result conversion
-			if os.Getenv("CLAUDE_DEBUG") != "" {
+			// Debug: log tool result conversion.
+			if c.debugLogger.Enabled() {
 				preview := contentStr
-				if len(preview) > 100 {
-					preview = preview[:100]
+				if len(preview) > 200 {
+					preview = preview[:200]
 				}
-				fmt.Fprintf(os.Stderr, "[DEBUG] tool_result: ToolUseID=%q, ContentLen=%d, Preview=%q\n", toolCallID, len(contentStr), preview)
+				c.debugLogger.Logf("tool_result: ToolUseID=%q, ContentLen=%d, Preview=%q", toolCallID, len(contentStr), preview)
 			}
 			result = append(result, openaiMessage{
 				Role:       "tool",
-				Content:    contentStr,
+				Content:    &contentStr,
 				ToolCallID: toolCallID,
 			})
 		}
@@ -311,14 +348,6 @@ func joinStrings(strs []string, sep string) string {
 		result += sep + strs[i]
 	}
 	return result
-}
-
-// minInt returns the minimum of two integers.
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 // convertRole converts Anthropic role to OpenAI role.

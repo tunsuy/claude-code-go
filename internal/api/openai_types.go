@@ -30,9 +30,12 @@ type openaiStreamOptions struct {
 }
 
 // openaiMessage represents a message in the conversation.
+// Content uses *string so that we can distinguish between absent and empty:
+//   - nil  → field omitted (e.g., pure tool messages)
+//   - ""   → field present as "content":"" (needed for assistant + tool_calls)
 type openaiMessage struct {
 	Role       string           `json:"role"`
-	Content    string           `json:"content,omitempty"`
+	Content    *string          `json:"content,omitempty"`
 	Name       string           `json:"name,omitempty"`
 	ToolCalls  []openaiToolCall `json:"tool_calls,omitempty"`
 	ToolCallID string           `json:"tool_call_id,omitempty"`

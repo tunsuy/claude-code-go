@@ -38,6 +38,7 @@ type ContainerOptions struct {
 	ModelOverride string
 	Verbose       bool
 	Debug         bool
+	DebugFile     string // File path for debug log output (empty = stderr when Debug is true)
 }
 
 // AppContainer holds all wired application dependencies.
@@ -81,7 +82,7 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	}
 
 	// ── Phase 3: API client ──────────────────────────────────────────────────
-	apiClient, err := buildAPIClient(settings, apiKey)
+	apiClient, err := buildAPIClient(settings, apiKey, opts)
 	if err != nil {
 		return nil, fmt.Errorf("wire: build API client: %w", err)
 	}
@@ -199,10 +200,12 @@ func resolveAPIKey(settings *config.LayeredSettings) (string, error) {
 }
 
 // buildAPIClient constructs the api.Client from merged settings.
-func buildAPIClient(settings *config.LayeredSettings, apiKey string) (api.Client, error) {
+func buildAPIClient(settings *config.LayeredSettings, apiKey string, opts ContainerOptions) (api.Client, error) {
 	cfg := api.ClientConfig{
-		Provider: api.ProviderDirect,
-		APIKey:   apiKey,
+		Provider:  api.ProviderDirect,
+		APIKey:    apiKey,
+		Debug:     opts.Debug,
+		DebugFile: opts.DebugFile,
 	}
 	if settings.Merged != nil {
 		if settings.Merged.BaseURL != "" {

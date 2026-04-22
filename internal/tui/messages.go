@@ -56,10 +56,18 @@ type StreamToolResultMsg struct {
 	IsError   bool
 }
 
-// StreamDoneMsg is emitted when the full assistant turn is finalised.
-// FinalMessage replaces (not appends to) the in-progress streaming message.
+// StreamAssistantTurnMsg is emitted when one assistant turn completes
+// (i.e. the LLM finishes one streaming response). In a tool_use scenario
+// this does NOT mean the whole query is done — the engine will continue with
+// tool execution and a subsequent LLM call. The TUI must keep pulling events.
+type StreamAssistantTurnMsg struct {
+	FinalMessage *types.Message // the completed assistant message for this turn
+}
+
+// StreamDoneMsg is emitted when the entire query cycle is finished.
+// No more events will arrive on the stream channel after this.
 type StreamDoneMsg struct {
-	FinalMessage *types.Message // the completed assistant message
+	FinalMessage *types.Message // the completed assistant message (legacy; may be nil)
 }
 
 // StreamErrorMsg is emitted on an unrecoverable streaming error.

@@ -119,9 +119,18 @@ func dispatchEngineMsg(msg engine.Msg) tea.Msg {
 			}
 		}
 	case engine.MsgTypeAssistantMessage:
-		return StreamDoneMsg{FinalMessage: msg.AssistantMsg}
+		return StreamAssistantTurnMsg{FinalMessage: msg.AssistantMsg}
 	case engine.MsgTypeTurnComplete:
-		return StreamDoneMsg{}
+		// Only treat as "stream done" when the stop reason is terminal.
+		// For tool_use / max_tokens the engine will continue the loop,
+		// so the TUI must keep pulling events from the channel.
+		switch msg.StopReason {
+		case "tool_use", "max_tokens":
+			return StreamAssistantTurnMsg{}
+		default:
+			// "end_turn", "stop_sequence", "" → query finished.
+			return StreamDoneMsg{}
+		}
 	case engine.MsgTypeError:
 		return StreamErrorMsg{Err: msg.Err}
 	case engine.MsgTypeSystemMessage:

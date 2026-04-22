@@ -8,7 +8,7 @@
 
 **Claude Code Go** 是 [Anthropic Claude Code](https://claude.ai/code)（官方 TypeScript CLI）的完整 Go 语言复刻版。它是一个运行在终端中的 AI 编程助手，能够理解你的代码库、执行各种工具操作，并通过自然语言对话帮助你编写、评审和重构代码。
 
-🔗 **项目地址**: [https://github.com/tunsuy/claude-code-go](https://github.com/tunsuy/claude-code-go)
+项目地址: [https://github.com/tunsuy/claude-code-go](https://github.com/tunsuy/claude-code-go)
 
 ---
 
@@ -48,39 +48,39 @@
 
 ## 核心功能
 
-### 🖥️ 交互式 TUI
+### 交互式 TUI
 基于 [Bubble Tea](https://github.com/charmbracelet/bubbletea) 构建的全功能终端界面，支持深色/浅色主题切换。
 
-### 🛠️ 智能工具调用
+### 智能工具调用
 - 文件读写与编辑
 - Shell 命令执行
 - 代码搜索（grep/glob）
 - Web 抓取与搜索
 - 所有操作均经过 **9 层权限审批链**
 
-### 🤖 多 Agent 协作
+### 多 Agent 协作
 可启动后台子 Agent 并行处理复杂任务，实现真正的"分而治之"。
 
-### 🔌 MCP 协议支持
+### MCP 协议支持
 通过 [Model Context Protocol](https://modelcontextprotocol.io) 接入外部工具，无限扩展能力边界。
 
-### 📝 CLAUDE.md 记忆
+### CLAUDE.md 记忆
 自动加载项目目录树中所有 `CLAUDE.md` 文件，让 AI 持续了解你的项目上下文。
 
-### 💬 会话管理
+### 会话管理
 - 恢复历史对话
 - 自动压缩过长的上下文
 - 3 种压缩策略：Snip（局部截断）、Micro（单消息压缩）、Auto（LLM 驱动总结）
 
-### ⌨️ Vim 模式
+### Vim 模式
 输入框支持可选的 Vim 按键绑定，让终端重度用户如鱼得水。
 
-### 🔐 灵活认证
+### 灵活认证
 - 支持 `ANTHROPIC_API_KEY` 直接认证
 - 支持 OAuth 浏览器授权
 - 支持多种 API Provider（Anthropic、OpenAI、DeepSeek、Ollama 等）
 
-### 📜 18 个内置斜杠命令
+### 18 个内置斜杠命令
 `/help`、`/clear`、`/compact`、`/commit`、`/diff`、`/review`、`/mcp`、`/cost` 等，开箱即用。
 
 ---
@@ -169,31 +169,31 @@ claude
 
 ### 你可以贡献的方向
 
-#### 🐛 Bug 修复与优化
+#### Bug 修复与优化
 - 发现并修复潜在问题
 - 性能优化
 - 代码质量改进
 
-#### 🔧 新工具开发
+#### 新工具开发
 在 `internal/tools/` 目录下添加新的内置工具，例如：
 - 数据库操作工具
 - Docker/K8s 管理工具
 - 更多 IDE 集成工具
 
-#### 🌐 MCP Server 适配
+#### MCP Server 适配
 开发更多 MCP Server 集成，扩展 AI 的能力边界。
 
-#### 📚 文档完善
+#### 文档完善
 - 改进使用文档
 - 添加更多示例
 - 翻译成更多语言
 
-#### 🧪 测试增强
+#### 测试增强
 - 提高测试覆盖率（目标 ≥60%）
 - 添加更多集成测试
 - 性能基准测试
 
-#### 💡 新功能提议
+#### 新功能提议
 - 在 [Discussions](https://github.com/tunsuy/claude-code-go/discussions) 中提出你的想法
 - 参与功能讨论和设计
 
@@ -222,7 +222,7 @@ claude
 - **GitHub Discussions**：技术讨论和问答
 - **Pull Requests**：代码贡献
 
-如果你觉得这个项目有价值，请给我们一个 ⭐ Star，让更多人发现它！
+如果你觉得这个项目有价值，请给我们一个 Star，让更多人发现它！
 
 ---
 
@@ -240,4 +240,4 @@ MIT License - 欢迎自由使用和分发。
 
 ---
 
-**让我们一起打造 Go 生态中最好的终端 AI 编程助手！** 🚀
+**让我们一起打造 Go 生态中最好的终端 AI 编程助手！**

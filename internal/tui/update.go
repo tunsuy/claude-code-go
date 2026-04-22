@@ -82,6 +82,21 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, waitForStreamEvent(m.streamCh)
 
+	case StreamAssistantTurnMsg:
+		// One LLM turn completed (e.g. before tool execution). Save the
+		// assistant message and reset streaming text, but keep pulling
+		// events — the engine may continue with tool execution + another
+		// LLM call.
+		if m.streamCh == nil {
+			return m, nil
+		}
+		if msg.FinalMessage != nil {
+			m.messages = append(m.messages, *msg.FinalMessage)
+		}
+		m.streamingText = ""
+		m.streamingHasMsg = false
+		return m, waitForStreamEvent(m.streamCh)
+
 	case StreamDoneMsg:
 		m.isLoading = false
 		m.showSpinner = false

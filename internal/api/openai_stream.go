@@ -3,10 +3,8 @@ package api
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 )
 
@@ -24,6 +22,7 @@ type openaiSSEReader struct {
 	toolBlockStarted map[int]bool                 // whether we've sent content_block_start for each tool
 	inputUsage       int                          // accumulated from usage chunks
 	pendingEvents    []*StreamEvent               // events to return before processing more chunks
+	debugLogger      *DebugLogger                 // debug logger for SSE event tracing
 }
 
 // accumulatedToolCall tracks tool call data being streamed incrementally.
@@ -34,7 +33,7 @@ type accumulatedToolCall struct {
 }
 
 // newOpenAISSEReader creates a new SSE reader for OpenAI streaming responses.
-func newOpenAISSEReader(resp *http.Response) *openaiSSEReader {
+func newOpenAISSEReader(resp *http.Response, dl *DebugLogger) *openaiSSEReader {
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 64*1024), 1024*1024)
 	return &openaiSSEReader{
@@ -42,6 +41,7 @@ func newOpenAISSEReader(resp *http.Response) *openaiSSEReader {
 		scanner:          scanner,
 		toolCalls:        make(map[int]*accumulatedToolCall),
 		toolBlockStarted: make(map[int]bool),
+		debugLogger:      dl,
 	}
 }
 
@@ -76,6 +76,7 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 
 		// Check for stream end sentinel
 		if data == "[DONE]" {
+			r.debugLogger.LogSSEEvent("DONE", "[DONE]")
 			r.done = true
 			// Send content_block_stop for text if we started one
 			if r.textBlockStarted {
@@ -105,13 +106,17 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 		// Parse the chunk
 		var chunk openaiStreamChunk
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
+			r.debugLogger.LogError("SSE chunk parse error", err)
 			continue // Skip malformed chunks
 		}
 
-		// Debug: log tool calls in chunk
-		if os.Getenv("CLAUDE_DEBUG") != "" && len(chunk.Choices) > 0 && len(chunk.Choices[0].Delta.ToolCalls) > 0 {
+		// Log the SSE event data.
+		r.debugLogger.LogSSEEvent("chunk", data)
+
+		// Debug: log tool calls in chunk.
+		if r.debugLogger.Enabled() && len(chunk.Choices) > 0 && len(chunk.Choices[0].Delta.ToolCalls) > 0 {
 			tc := chunk.Choices[0].Delta.ToolCalls[0]
-			fmt.Fprintf(os.Stderr, "[DEBUG] Stream tool call chunk: Index=%d, ID=%q, Name=%q, Args=%q\n",
+			r.debugLogger.Logf("Stream tool call chunk: Index=%d, ID=%q, Name=%q, Args=%q",
 				tc.Index, tc.ID, tc.Function.Name, tc.Function.Arguments)
 		}
 
@@ -163,48 +168,24 @@ func (r *openaiSSEReader) Next() (*StreamEvent, error) {
 
 			// Process delta content
 			if choice.Delta.Content != "" {
-				// Send content_block_start first if not done yet
 				if !r.textBlockStarted {
 					r.textBlockStarted = true
-					r.pendingEvents = append(r.pendingEvents, r.createContentDeltaEvent(choice.Delta.Content))
-					// Return pending events first (including message_start if queued)
-					if len(r.pendingEvents) > 1 {
-						ev := r.pendingEvents[0]
-						r.pendingEvents = r.pendingEvents[1:]
-						r.pendingEvents = append(r.pendingEvents, r.createContentBlockStartEvent(0, "text"))
-						return ev, nil
-					}
-					return r.createContentBlockStartEvent(0, "text"), nil
+					r.pendingEvents = append(r.pendingEvents, r.createContentBlockStartEvent(0, "text"))
 				}
-				// Return pending events first
-				if len(r.pendingEvents) > 0 {
-					r.pendingEvents = append(r.pendingEvents, r.createContentDeltaEvent(choice.Delta.Content))
-					ev := r.pendingEvents[0]
-					r.pendingEvents = r.pendingEvents[1:]
-					return ev, nil
-				}
-				return r.createContentDeltaEvent(choice.Delta.Content), nil
+				r.pendingEvents = append(r.pendingEvents, r.createContentDeltaEvent(choice.Delta.Content))
+				ev := r.pendingEvents[0]
+				r.pendingEvents = r.pendingEvents[1:]
+				return ev, nil
 			}
 
 			// Process tool calls
 			if len(choice.Delta.ToolCalls) > 0 {
-				ev, err := r.processToolCallDelta(&choice.Delta.ToolCalls[0], choice.Index)
-				if err != nil {
-					return nil, err
-				}
-				// Return pending events first (including message_start if queued)
+				r.processToolCallDelta(&choice.Delta.ToolCalls[0])
 				if len(r.pendingEvents) > 0 {
-					if ev != nil {
-						r.pendingEvents = append(r.pendingEvents, ev)
-					}
 					retEv := r.pendingEvents[0]
 					r.pendingEvents = r.pendingEvents[1:]
 					return retEv, nil
 				}
-				if ev != nil {
-					return ev, nil
-				}
-				// If ev is nil, continue processing next chunk
 				continue
 			}
 
@@ -294,18 +275,15 @@ func (r *openaiSSEReader) createContentDeltaEvent(text string) *StreamEvent {
 }
 
 // processToolCallDelta processes incremental tool call data.
-func (r *openaiSSEReader) processToolCallDelta(tc *openaiToolCall, _ int) (*StreamEvent, error) {
-	// Use the tool call's own index, not the choice index
+func (r *openaiSSEReader) processToolCallDelta(tc *openaiToolCall) {
 	toolIndex := tc.Index
 
-	// Get or create accumulated tool call
 	acc, exists := r.toolCalls[toolIndex]
 	if !exists {
 		acc = &accumulatedToolCall{}
 		r.toolCalls[toolIndex] = acc
 	}
 
-	// Update accumulated data BEFORE checking if we need to send block start
 	if tc.ID != "" {
 		acc.ID = tc.ID
 	}
@@ -316,55 +294,36 @@ func (r *openaiSSEReader) processToolCallDelta(tc *openaiToolCall, _ int) (*Stre
 		acc.Arguments.WriteString(tc.Function.Arguments)
 	}
 
-	// Block index: text is 0, tools start at 1
 	blockIndex := toolIndex + 1
 	if !r.textBlockStarted {
-		// If no text was sent, tools start at 0
 		blockIndex = toolIndex
 	}
 
-	// Send content_block_start first if not done yet for this tool
 	if !r.toolBlockStarted[toolIndex] {
 		r.toolBlockStarted[toolIndex] = true
-		// Queue the delta event
-		if tc.Function.Arguments != "" {
-			delta := &ContentBlockDeltaData{
-				Index: blockIndex,
-				Delta: Delta{
-					Type:        "input_json_delta",
-					PartialJSON: tc.Function.Arguments,
-				},
-			}
-			data, _ := json.Marshal(delta)
-			r.pendingEvents = append(r.pendingEvents, &StreamEvent{
-				Type:              EventContentBlockDelta,
-				Data:              data,
-				ContentBlockDelta: delta,
-			})
-		}
-		// Return content_block_start for tool_use
-		return r.createToolUseBlockStartEvent(blockIndex, acc.ID, acc.Name), nil
+		r.pendingEvents = append(r.pendingEvents, r.createToolUseBlockStartEvent(blockIndex, acc.ID, acc.Name))
 	}
 
-	// Return a partial JSON delta (similar to Anthropic's input_json_delta)
 	if tc.Function.Arguments != "" {
-		delta := &ContentBlockDeltaData{
-			Index: blockIndex,
-			Delta: Delta{
-				Type:        "input_json_delta",
-				PartialJSON: tc.Function.Arguments,
-			},
-		}
-		data, _ := json.Marshal(delta)
-		return &StreamEvent{
-			Type:              EventContentBlockDelta,
-			Data:              data,
-			ContentBlockDelta: delta,
-		}, nil
+		r.pendingEvents = append(r.pendingEvents, r.createToolCallDeltaEvent(blockIndex, tc.Function.Arguments))
 	}
+}
 
-	// No content to return, continue processing
-	return nil, nil
+// createToolCallDeltaEvent creates a content_block_delta event for tool input JSON.
+func (r *openaiSSEReader) createToolCallDeltaEvent(index int, partialJSON string) *StreamEvent {
+	delta := &ContentBlockDeltaData{
+		Index: index,
+		Delta: Delta{
+			Type:        "input_json_delta",
+			PartialJSON: partialJSON,
+		},
+	}
+	data, _ := json.Marshal(delta)
+	return &StreamEvent{
+		Type:              EventContentBlockDelta,
+		Data:              data,
+		ContentBlockDelta: delta,
+	}
 }
 
 // createToolUseBlockStartEvent creates a content_block_start event for tool use.

@@ -491,6 +491,108 @@ data: [DONE]
 }
 
 // TestOpenAIClientError tests error handling.
+func TestOpenAIClientStreamToolCallsWithArgumentsInFirstChunk(t *testing.T) {
+	// Some OpenAI-compatible providers send tool id/name/arguments together in the first chunk.
+	sseData := `data: {"id":"chatcmpl-789","object":"chat.completion.chunk","created":1677652288,"model":"deepseek-v3.1-terminus","choices":[{"index":0,"delta":{"role":"assistant","tool_calls":[{"index":0,"id":"call_first_chunk","type":"function","function":{"name":"Read","arguments":"{\"file_path\":\"/test.txt\"}"}}]},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-789","object":"chat.completion.chunk","created":1677652288,"model":"deepseek-v3.1-terminus","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}]}
+
+data: [DONE]
+
+`
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+		_, _ = w.Write([]byte(sseData))
+	}))
+	defer server.Close()
+
+	cfg := ClientConfig{
+		Provider: ProviderOpenAI,
+		APIKey:   "test-key",
+		BaseURL:  server.URL,
+	}
+	client, err := NewClient(cfg, nil)
+	if err != nil {
+		t.Fatalf("failed to create client: %v", err)
+	}
+
+	req := &MessageRequest{
+		Model:     "deepseek-v3.1-terminus",
+		MaxTokens: 100,
+		Messages: []MessageParam{{
+			Role:    "user",
+			Content: json.RawMessage(`"Read the test file"`),
+		}},
+		Tools: []ToolSchema{{
+			Name:        "Read",
+			Description: "Read a file",
+			InputSchema: json.RawMessage(`{"type":"object","properties":{"file_path":{"type":"string"}},"required":["file_path"]}`),
+		}},
+	}
+
+	reader, err := client.Stream(context.Background(), req)
+	if err != nil {
+		t.Fatalf("Stream failed: %v", err)
+	}
+	defer reader.Close()
+
+	var events []*StreamEvent
+	for {
+		ev, nextErr := reader.Next()
+		if nextErr == io.EOF {
+			break
+		}
+		if nextErr != nil {
+			t.Fatalf("Next failed: %v", nextErr)
+		}
+		events = append(events, ev)
+	}
+
+	if len(events) < 4 {
+		t.Fatalf("expected at least 4 events, got %d", len(events))
+	}
+	if events[0].Type != EventMessageStart {
+		t.Fatalf("expected first event message_start, got %s", events[0].Type)
+	}
+	if events[1].Type != EventContentBlockStart {
+		t.Fatalf("expected second event content_block_start, got %s", events[1].Type)
+	}
+	if events[2].Type != EventContentBlockDelta {
+		t.Fatalf("expected third event content_block_delta, got %s", events[2].Type)
+	}
+
+	acc := &Accumulator{}
+	for _, ev := range events {
+		if err := acc.Process(ev); err != nil {
+			t.Fatalf("Accumulator.Process failed: %v", err)
+		}
+	}
+	result := acc.Result()
+	if result.StopReason != "tool_use" {
+		t.Fatalf("expected stop_reason tool_use, got %s", result.StopReason)
+	}
+	if len(result.Content) != 1 {
+		t.Fatalf("expected 1 content block, got %d", len(result.Content))
+	}
+	if result.Content[0].Type != "tool_use" {
+		t.Fatalf("expected tool_use block, got %s", result.Content[0].Type)
+	}
+	if result.Content[0].ID != "call_first_chunk" {
+		t.Fatalf("expected tool ID call_first_chunk, got %s", result.Content[0].ID)
+	}
+
+	var input map[string]string
+	if err := json.Unmarshal(result.Content[0].Input, &input); err != nil {
+		t.Fatalf("failed to unmarshal tool input: %v", err)
+	}
+	if input["file_path"] != "/test.txt" {
+		t.Fatalf("expected file_path /test.txt, got %s", input["file_path"])
+	}
+}
+
 func TestOpenAIClientError(t *testing.T) {
 	tests := []struct {
 		name           string
@@ -622,6 +724,8 @@ func TestOpenAIClientHeaders(t *testing.T) {
 func TestOpenAIMessageConversion(t *testing.T) {
 	client := &openaiClient{}
 
+	strPtr := func(s string) *string { return &s }
+
 	tests := []struct {
 		name     string
 		input    MessageParam
@@ -634,7 +738,7 @@ func TestOpenAIMessageConversion(t *testing.T) {
 				Content: json.RawMessage(`"Hello world"`),
 			},
 			expected: []openaiMessage{
-				{Role: "user", Content: "Hello world"},
+				{Role: "user", Content: strPtr("Hello world")},
 			},
 		},
 		{
@@ -644,7 +748,7 @@ func TestOpenAIMessageConversion(t *testing.T) {
 				Content: json.RawMessage(`[{"type":"text","text":"Hello!"}]`),
 			},
 			expected: []openaiMessage{
-				{Role: "assistant", Content: "Hello!"},
+				{Role: "assistant", Content: strPtr("Hello!")},
 			},
 		},
 		{
@@ -654,7 +758,7 @@ func TestOpenAIMessageConversion(t *testing.T) {
 				Content: json.RawMessage(`[{"type":"tool_result","tool_use_id":"call_abc123","content":[{"type":"text","text":"File content here"}]}]`),
 			},
 			expected: []openaiMessage{
-				{Role: "tool", Content: "File content here", ToolCallID: "call_abc123"},
+				{Role: "tool", Content: strPtr("File content here"), ToolCallID: "call_abc123"},
 			},
 		},
 		{
@@ -664,7 +768,7 @@ func TestOpenAIMessageConversion(t *testing.T) {
 				Content: json.RawMessage(`[{"type":"tool_result","tool_use_id":"call_xyz789","content":"Simple result"}]`),
 			},
 			expected: []openaiMessage{
-				{Role: "tool", Content: "Simple result", ToolCallID: "call_xyz789"},
+				{Role: "tool", Content: strPtr("Simple result"), ToolCallID: "call_xyz789"},
 			},
 		},
 		{
@@ -676,11 +780,12 @@ func TestOpenAIMessageConversion(t *testing.T) {
 			expected: []openaiMessage{
 				{
 					Role:    "assistant",
-					Content: "Let me check that file.",
+					Content: strPtr("Let me check that file."),
 					ToolCalls: []openaiToolCall{
 						{
-							ID:   "call_123",
-							Type: "function",
+							Index: 0,
+							ID:    "call_123",
+							Type:  "function",
 							Function: openaiToolCallFunction{
 								Name:      "Read",
 								Arguments: `{"path":"/tmp/test.txt"}`,
@@ -699,11 +804,12 @@ func TestOpenAIMessageConversion(t *testing.T) {
 			expected: []openaiMessage{
 				{
 					Role:    "assistant",
-					Content: "",
+					Content: strPtr(""),
 					ToolCalls: []openaiToolCall{
 						{
-							ID:   "call_456",
-							Type: "function",
+							Index: 0,
+							ID:    "call_456",
+							Type:  "function",
 							Function: openaiToolCallFunction{
 								Name:      "Write",
 								Arguments: `{"content":"hello","path":"/tmp/out.txt"}`,
@@ -725,8 +831,16 @@ func TestOpenAIMessageConversion(t *testing.T) {
 				if result[i].Role != exp.Role {
 					t.Errorf("message %d: expected role %s, got %s", i, exp.Role, result[i].Role)
 				}
-				if result[i].Content != exp.Content {
-					t.Errorf("message %d: expected content %s, got %s", i, exp.Content, result[i].Content)
+				gotContent := ""
+				if result[i].Content != nil {
+					gotContent = *result[i].Content
+				}
+				expContent := ""
+				if exp.Content != nil {
+					expContent = *exp.Content
+				}
+				if gotContent != expContent {
+					t.Errorf("message %d: expected content %q, got %q", i, expContent, gotContent)
 				}
 			}
 		})

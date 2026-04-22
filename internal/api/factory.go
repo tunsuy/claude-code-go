@@ -33,6 +33,9 @@ type ClientConfig struct {
 	// OpenAI-specific
 	OpenAIOrganization string // Optional organization ID
 	OpenAIProject      string // Optional project ID
+	// Debug options
+	Debug     bool   // Enable debug logging
+	DebugFile string // Write debug log to this file path (empty = stderr)
 }
 
 // defaultBaseURL is the Anthropic API base URL.

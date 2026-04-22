@@ -332,7 +332,7 @@ func renderToolUseBlock(blk types.ContentBlock, theme Theme, lookups MessageLook
 	isError := lookups.ErroredToolUseIDs[toolID]
 
 	// Render bullet with appropriate color based on status
-	bullet := blackCircle() + " "
+	var bullet string
 	if isResolved {
 		if isError {
 			// Red bullet for errors

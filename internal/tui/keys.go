@@ -176,17 +176,18 @@ func (m AppModel) handleIdleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // handleMouse handles mouse events (scroll wheel).
 func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
-	switch msg.Type {
-	case tea.MouseWheelUp:
-		m.pinnedToBottom = false
-		m.viewport.LineUp(3)
-	case tea.MouseWheelDown:
-		m.viewport.LineDown(3)
-		if m.viewport.AtBottom() {
-			m.pinnedToBottom = true
+	switch msg.Action {
+	case tea.MouseActionPress:
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			m.pinnedToBottom = false
+			m.viewport.LineUp(3)
+		case tea.MouseButtonWheelDown:
+			m.viewport.LineDown(3)
+			if m.viewport.AtBottom() {
+				m.pinnedToBottom = true
+			}
 		}
-	default:
-		// Ignore other mouse events.
 	}
 	return m, nil
 }

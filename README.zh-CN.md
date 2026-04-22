@@ -159,6 +159,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # 在浏览器中打开 OAuth 授权流程
 ```
 
+## API 提供商
+
+Claude Code Go 支持多种 API 提供商，不仅可以使用 Anthropic 的 API，还可以使用 OpenAI 兼容的 API。
+
+### 支持的提供商
+
+| 提供商 | 说明 | 环境变量 |
+|--------|------|----------|
+| `direct`（默认） | Anthropic 直连 API | `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI 及兼容 API | `OPENAI_API_KEY`、`OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | 通过环境变量设置 AWS 凭证 |
+| `vertex` | Google Cloud Vertex AI | 通过环境变量设置 GCP 凭证 |
+
+### 使用 OpenAI 兼容 API
+
+支持 OpenAI、DeepSeek、通义千问、Moonshot 或任何 OpenAI 兼容 API：
+
+**方式一：环境变量**
+
+```bash
+# 设置提供商为 openai
+export CLAUDE_PROVIDER=openai
+
+# 设置 API Key
+export OPENAI_API_KEY=sk-xxx
+
+# 可选：设置自定义 Base URL（用于 OpenAI 兼容服务）
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# 设置模型
+export OPENAI_MODEL=deepseek-chat
+
+# 启动 Claude Code
+claude
+```
+
+**方式二：配置文件**
+
+创建或编辑 `~/.config/claude-code/settings.json`：
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### 各提供商配置示例
+
+**OpenAI：**
+- 支持所有 GPT-4 和 GPT-3.5 模型
+- 完整的工具/函数调用支持
+- 流式响应
+
+**DeepSeek：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama（本地部署）：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## 使用说明
 
 ### 交互模式

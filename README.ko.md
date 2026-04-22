@@ -157,6 +157,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # 브라우저에서 OAuth 플로우 열기
 ```
 
+## API 프로바이더
+
+Claude Code Go는 여러 API 프로바이더를 지원하여 Anthropic의 API뿐만 아니라 OpenAI 호환 API도 사용할 수 있습니다.
+
+### 지원되는 프로바이더
+
+| 프로바이더 | 설명 | 환경 변수 |
+|-----------|------|----------|
+| `direct` (기본값) | Anthropic Direct API | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI 및 호환 API | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | 환경 변수를 통한 AWS 자격 증명 |
+| `vertex` | Google Cloud Vertex AI | 환경 변수를 통한 GCP 자격 증명 |
+
+### OpenAI 호환 API 사용
+
+OpenAI, DeepSeek, Qwen, Moonshot 또는 OpenAI 호환 API를 사용하려면:
+
+**방법 1: 환경 변수**
+
+```bash
+# 프로바이더를 openai로 설정
+export CLAUDE_PROVIDER=openai
+
+# API 키 설정
+export OPENAI_API_KEY=sk-xxx
+
+# 선택사항: 커스텀 Base URL 설정 (OpenAI 호환 서비스용)
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# 모델 설정
+export OPENAI_MODEL=deepseek-chat
+
+# Claude Code 실행
+claude
+```
+
+**방법 2: 설정 파일**
+
+`~/.config/claude-code/settings.json`을 생성하거나 편집:
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### 프로바이더별 설정 예시
+
+**OpenAI:**
+- 모든 GPT-4 및 GPT-3.5 모델 지원
+- 완전한 도구/함수 호출 지원
+- 스트리밍 응답
+
+**DeepSeek:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama (로컬):**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## 사용법
 
 ### 대화형 모드

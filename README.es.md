@@ -157,6 +157,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # abre el flujo OAuth en tu navegador
 ```
 
+## Proveedores de API
+
+Claude Code Go soporta múltiples proveedores de API, permitiéndote usar no solo la API de Anthropic, sino también APIs compatibles con OpenAI.
+
+### Proveedores soportados
+
+| Proveedor | Descripción | Variables de entorno |
+|-----------|-------------|---------------------|
+| `direct` (predeterminado) | API directa de Anthropic | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI y APIs compatibles | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | Credenciales AWS vía entorno |
+| `vertex` | Google Cloud Vertex AI | Credenciales GCP vía entorno |
+
+### Usando APIs compatibles con OpenAI
+
+Para usar OpenAI, DeepSeek, Qwen, Moonshot o cualquier API compatible con OpenAI:
+
+**Método 1: Variables de entorno**
+
+```bash
+# Establecer proveedor a openai
+export CLAUDE_PROVIDER=openai
+
+# Establecer tu clave API
+export OPENAI_API_KEY=sk-xxx
+
+# Opcionalmente establecer una URL base personalizada (para servicios compatibles con OpenAI)
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# Establecer el modelo
+export OPENAI_MODEL=deepseek-chat
+
+# Ejecutar Claude Code
+claude
+```
+
+**Método 2: Archivo de configuración**
+
+Crea o edita `~/.config/claude-code/settings.json`:
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### Notas específicas por proveedor
+
+**OpenAI:**
+- Soporta todos los modelos GPT-4 y GPT-3.5
+- Soporte completo de herramientas/llamadas a funciones
+- Respuestas en streaming
+
+**DeepSeek:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama (local):**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## Uso
 
 ### Modo interactivo

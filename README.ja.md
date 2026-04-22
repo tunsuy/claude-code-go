@@ -157,6 +157,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # ブラウザで OAuth フローを開きます
 ```
 
+## API プロバイダー
+
+Claude Code Go は複数の API プロバイダーをサポートしており、Anthropic の API だけでなく、OpenAI 互換の API も使用できます。
+
+### サポートされるプロバイダー
+
+| プロバイダー | 説明 | 環境変数 |
+|-------------|------|----------|
+| `direct`（デフォルト） | Anthropic Direct API | `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI および互換 API | `OPENAI_API_KEY`、`OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | 環境変数経由の AWS 認証情報 |
+| `vertex` | Google Cloud Vertex AI | 環境変数経由の GCP 認証情報 |
+
+### OpenAI 互換 API の使用
+
+OpenAI、DeepSeek、Qwen、Moonshot、または任意の OpenAI 互換 API を使用するには：
+
+**方法 1：環境変数**
+
+```bash
+# プロバイダーを openai に設定
+export CLAUDE_PROVIDER=openai
+
+# API キーを設定
+export OPENAI_API_KEY=sk-xxx
+
+# オプション：カスタム Base URL を設定（OpenAI 互換サービス用）
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# モデルを設定
+export OPENAI_MODEL=deepseek-chat
+
+# Claude Code を実行
+claude
+```
+
+**方法 2：設定ファイル**
+
+`~/.config/claude-code/settings.json` を作成または編集：
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### プロバイダー別の設定例
+
+**OpenAI：**
+- すべての GPT-4 および GPT-3.5 モデルをサポート
+- 完全なツール/関数呼び出しサポート
+- ストリーミングレスポンス
+
+**DeepSeek：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama（ローカル）：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## 使用方法
 
 ### インタラクティブモード

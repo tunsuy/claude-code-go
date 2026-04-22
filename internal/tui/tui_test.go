@@ -178,14 +178,29 @@ func TestDispatchEngineMsg(t *testing.T) {
 			wantType: "StreamToolResultMsg",
 		},
 		{
-			name:     "turn complete",
+			name:     "turn complete end_turn",
+			msg:      engine.Msg{Type: engine.MsgTypeTurnComplete, StopReason: "end_turn"},
+			wantType: "StreamDoneMsg",
+		},
+		{
+			name:     "turn complete empty stop reason",
 			msg:      engine.Msg{Type: engine.MsgTypeTurnComplete},
 			wantType: "StreamDoneMsg",
 		},
 		{
+			name:     "turn complete tool_use",
+			msg:      engine.Msg{Type: engine.MsgTypeTurnComplete, StopReason: "tool_use"},
+			wantType: "StreamAssistantTurnMsg",
+		},
+		{
+			name:     "turn complete max_tokens",
+			msg:      engine.Msg{Type: engine.MsgTypeTurnComplete, StopReason: "max_tokens"},
+			wantType: "StreamAssistantTurnMsg",
+		},
+		{
 			name:     "assistant message",
 			msg:      engine.Msg{Type: engine.MsgTypeAssistantMessage, AssistantMsg: &types.Message{Role: types.RoleAssistant}},
-			wantType: "StreamDoneMsg",
+			wantType: "StreamAssistantTurnMsg",
 		},
 		{
 			name:     "error",
@@ -222,9 +237,11 @@ func TestDispatchEngineMsg(t *testing.T) {
 					gotType = "StreamToolUseInputDeltaMsg"
 				case StreamToolUseCompleteMsg:
 					gotType = "StreamToolUseCompleteMsg"
-				case StreamToolResultMsg:
-					gotType = "StreamToolResultMsg"
-				case StreamDoneMsg:
+			case StreamToolResultMsg:
+				gotType = "StreamToolResultMsg"
+			case StreamAssistantTurnMsg:
+				gotType = "StreamAssistantTurnMsg"
+			case StreamDoneMsg:
 					gotType = "StreamDoneMsg"
 				case StreamErrorMsg:
 					gotType = "StreamErrorMsg"

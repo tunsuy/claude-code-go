@@ -157,6 +157,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # 브라우저에서 OAuth 플로우 열기
 ```
 
+## API 프로바이더
+
+Claude Code Go는 여러 API 프로바이더를 지원하여 Anthropic의 API뿐만 아니라 OpenAI 호환 API도 사용할 수 있습니다.
+
+### 지원되는 프로바이더
+
+| 프로바이더 | 설명 | 환경 변수 |
+|-----------|------|----------|
+| `direct` (기본값) | Anthropic Direct API | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI 및 호환 API | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | 환경 변수를 통한 AWS 자격 증명 |
+| `vertex` | Google Cloud Vertex AI | 환경 변수를 통한 GCP 자격 증명 |
+
+### OpenAI 호환 API 사용
+
+OpenAI, DeepSeek, Qwen, Moonshot 또는 OpenAI 호환 API를 사용하려면:
+
+**방법 1: 환경 변수**
+
+```bash
+# 프로바이더를 openai로 설정
+export CLAUDE_PROVIDER=openai
+
+# API 키 설정
+export OPENAI_API_KEY=sk-xxx
+
+# 선택사항: 커스텀 Base URL 설정 (OpenAI 호환 서비스용)
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# 모델 설정
+export OPENAI_MODEL=deepseek-chat
+
+# Claude Code 실행
+claude
+```
+
+**방법 2: 설정 파일**
+
+`~/.config/claude-code/settings.json`을 생성하거나 편집:
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### 프로바이더별 설정 예시
+
+**OpenAI:**
+- 모든 GPT-4 및 GPT-3.5 모델 지원
+- 완전한 도구/함수 호출 지원
+- 스트리밍 응답
+
+**DeepSeek:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama (로컬):**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## 사용법
 
 ### 대화형 모드
@@ -224,6 +307,31 @@ make lint
 # 빌드 + 테스트 + vet
 make all
 ```
+
+## 로드맵
+
+Claude Code Go는 현재 원본 TypeScript 버전과의 기능 대등도가 약 **65%** 입니다. v1.0을 향한 단계별 계획:
+
+| 단계 | 버전 | 주요 목표 | 타임라인 |
+|------|------|-----------|----------|
+| **Phase 1** | v0.2.0 | 🔒 권한 시스템 통합, Hook 시스템 연결, 테스트 커버리지 기준, CI 강화 | +3주 |
+| **Phase 2** | v0.3.0 | 🔧 22개 전체 도구 완성(현재 11개), CLI 하위 명령, 슬래시 명령 강화, Agent 도구 | +3주 |
+| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock & GCP Vertex 프로바이더, MCP WebSocket, 플러그인 시스템, Feature Flags | +4주 |
+| **Phase 4** | v0.5.0 | 🚀 LSP 통합, Remote/Server 모드, 음성 입력, Vim 모드, Extended Thinking, 비용 추적기 | +4주 |
+| **Phase 5** | v1.0.0 | 🎯 성능 최적화, 보안 감사, 문서 완성, 멀티 플랫폼 릴리스 | +2주 |
+
+### 현재 상태
+
+```
+완성도: ████████████░░░░░░░░ 65%
+
+✅ 완료: 코어 엔진, TUI, API 클라이언트(Direct + OpenAI), 컨텍스트 압축,
+        OAuth, 세션 지속성, 11개 도구, 14개 슬래시 명령
+⚠️  진행 중: Bedrock/Vertex 프로바이더, MCP WebSocket, 나머지 도구 및 명령
+❌ 미완료: 권한 연결, Hook 연결, LSP, 플러그인 시스템, Remote 모드
+```
+
+📋 자세한 작업 분류, 아키텍처 다이어그램 및 완료 기준은 **[전체 로드맵](docs/ROADMAP.md)**을 참조하세요.
 
 ## 기여
 

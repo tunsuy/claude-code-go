@@ -157,6 +157,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # ブラウザで OAuth フローを開きます
 ```
 
+## API プロバイダー
+
+Claude Code Go は複数の API プロバイダーをサポートしており、Anthropic の API だけでなく、OpenAI 互換の API も使用できます。
+
+### サポートされるプロバイダー
+
+| プロバイダー | 説明 | 環境変数 |
+|-------------|------|----------|
+| `direct`（デフォルト） | Anthropic Direct API | `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI および互換 API | `OPENAI_API_KEY`、`OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | 環境変数経由の AWS 認証情報 |
+| `vertex` | Google Cloud Vertex AI | 環境変数経由の GCP 認証情報 |
+
+### OpenAI 互換 API の使用
+
+OpenAI、DeepSeek、Qwen、Moonshot、または任意の OpenAI 互換 API を使用するには：
+
+**方法 1：環境変数**
+
+```bash
+# プロバイダーを openai に設定
+export CLAUDE_PROVIDER=openai
+
+# API キーを設定
+export OPENAI_API_KEY=sk-xxx
+
+# オプション：カスタム Base URL を設定（OpenAI 互換サービス用）
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# モデルを設定
+export OPENAI_MODEL=deepseek-chat
+
+# Claude Code を実行
+claude
+```
+
+**方法 2：設定ファイル**
+
+`~/.config/claude-code/settings.json` を作成または編集：
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### プロバイダー別の設定例
+
+**OpenAI：**
+- すべての GPT-4 および GPT-3.5 モデルをサポート
+- 完全なツール/関数呼び出しサポート
+- ストリーミングレスポンス
+
+**DeepSeek：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama（ローカル）：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## 使用方法
 
 ### インタラクティブモード
@@ -224,6 +307,31 @@ make lint
 # ビルド + テスト + vet
 make all
 ```
+
+## ロードマップ
+
+Claude Code Go は現在、オリジナルの TypeScript 版との機能パリティが約 **65%** です。v1.0 に向けたフェーズ別計画：
+
+| フェーズ | バージョン | 主な目標 | タイムライン |
+|----------|-----------|----------|-------------|
+| **Phase 1** | v0.2.0 | 🔒 権限システムの統合、Hook システムの接続、テストカバレッジ基準、CI 強化 | +3 週間 |
+| **Phase 2** | v0.3.0 | 🔧 全 22 ツール完成（現在 11）、CLI サブコマンド、スラッシュコマンド強化、Agent ツール | +3 週間 |
+| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock & GCP Vertex プロバイダー、MCP WebSocket、プラグインシステム、Feature Flags | +4 週間 |
+| **Phase 4** | v0.5.0 | 🚀 LSP 統合、Remote/Server モード、音声入力、Vim モード、Extended Thinking、コストトラッカー | +4 週間 |
+| **Phase 5** | v1.0.0 | 🎯 パフォーマンス最適化、セキュリティ監査、ドキュメント完成、マルチプラットフォームリリース | +2 週間 |
+
+### 現在の状態
+
+```
+完成度: ████████████░░░░░░░░ 65%
+
+✅ 完了: コアエンジン、TUI、API クライアント（Direct + OpenAI）、コンテキスト圧縮、
+        OAuth、セッション永続化、11 ツール、14 スラッシュコマンド
+⚠️  進行中: Bedrock/Vertex プロバイダー、MCP WebSocket、残りのツールとコマンド
+❌ 未着手: 権限接続、Hook 接続、LSP、プラグインシステム、Remote モード
+```
+
+📋 詳細なタスク分解、アーキテクチャ図、完成基準は **[完全なロードマップ](docs/ROADMAP.md)** をご覧ください。
 
 ## 貢献
 

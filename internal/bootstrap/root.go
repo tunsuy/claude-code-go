@@ -183,6 +183,7 @@ func runInteractiveOrHeadless(cmd *cobra.Command, f *rootFlags, args []string) e
 		ModelOverride: f.model,
 		Verbose:    f.verbose,
 		Debug:      f.debug,
+		DebugFile:  f.debugFile,
 	}
 
 	if f.print {

@@ -37,29 +37,32 @@ type AttributionConfig struct {
 // SettingsJson corresponds to the complete settings.json file structure.
 // All fields use omitempty to ensure unset fields are not written back (backwards-compatible).
 type SettingsJson struct {
-	Schema              string                           `json:"$schema,omitempty"`
-	APIKey              string                           `json:"apiKey,omitempty"`
-	APIKeyHelper        string                           `json:"apiKeyHelper,omitempty"`
-	BaseURL             string                           `json:"baseUrl,omitempty"`
-	AWSCredentialExport string                           `json:"awsCredentialExport,omitempty"`
-	AWSAuthRefresh      string                           `json:"awsAuthRefresh,omitempty"`
-	GCPAuthRefresh      string                           `json:"gcpAuthRefresh,omitempty"`
-	RespectGitignore    *bool                            `json:"respectGitignore,omitempty"`
-	CleanupPeriodDays   *int                             `json:"cleanupPeriodDays,omitempty"`
-	Env                 map[string]string                `json:"env,omitempty"`
-	Attribution         *AttributionConfig               `json:"attribution,omitempty"`
-	Permissions         *PermissionsConfig               `json:"permissions,omitempty"`
-	Model               string                           `json:"model,omitempty"`
-	AvailableModels     []string                         `json:"availableModels,omitempty"`
-	ModelOverrides      map[string]string                `json:"modelOverrides,omitempty"`
-	EnableAllProjectMCP *bool                            `json:"enableAllProjectMcpServers,omitempty"`
-	EnabledMCPServers   []string                         `json:"enabledMcpjsonServers,omitempty"`
-	DisabledMCPServers  []string                         `json:"disabledMcpjsonServers,omitempty"`
+	Schema              string                                    `json:"$schema,omitempty"`
+	APIKey              string                                    `json:"apiKey,omitempty"`
+	APIKeyHelper        string                                    `json:"apiKeyHelper,omitempty"`
+	BaseURL             string                                    `json:"baseUrl,omitempty"`
+	Provider            string                                    `json:"provider,omitempty"` // API provider: direct, bedrock, vertex, foundry, openai
+	AWSCredentialExport string                                    `json:"awsCredentialExport,omitempty"`
+	AWSAuthRefresh      string                                    `json:"awsAuthRefresh,omitempty"`
+	GCPAuthRefresh      string                                    `json:"gcpAuthRefresh,omitempty"`
+	OpenAIOrganization  string                                    `json:"openaiOrganization,omitempty"` // OpenAI organization ID
+	OpenAIProject       string                                    `json:"openaiProject,omitempty"`      // OpenAI project ID
+	RespectGitignore    *bool                                     `json:"respectGitignore,omitempty"`
+	CleanupPeriodDays   *int                                      `json:"cleanupPeriodDays,omitempty"`
+	Env                 map[string]string                         `json:"env,omitempty"`
+	Attribution         *AttributionConfig                        `json:"attribution,omitempty"`
+	Permissions         *PermissionsConfig                        `json:"permissions,omitempty"`
+	Model               string                                    `json:"model,omitempty"`
+	AvailableModels     []string                                  `json:"availableModels,omitempty"`
+	ModelOverrides      map[string]string                         `json:"modelOverrides,omitempty"`
+	EnableAllProjectMCP *bool                                     `json:"enableAllProjectMcpServers,omitempty"`
+	EnabledMCPServers   []string                                  `json:"enabledMcpjsonServers,omitempty"`
+	DisabledMCPServers  []string                                  `json:"disabledMcpjsonServers,omitempty"`
 	Hooks               map[types.HookType][]types.HookDefinition `json:"hooks,omitempty"`
-	Worktree            *WorktreeConfig                  `json:"worktree,omitempty"`
-	DisableAllHooks     *bool                            `json:"disableAllHooks,omitempty"`
-	DefaultShell        string                           `json:"defaultShell,omitempty"`
-	AllowManagedHooksOnly *bool                          `json:"allowManagedHooksOnly,omitempty"`
+	Worktree            *WorktreeConfig                           `json:"worktree,omitempty"`
+	DisableAllHooks     *bool                                     `json:"disableAllHooks,omitempty"`
+	DefaultShell        string                                    `json:"defaultShell,omitempty"`
+	AllowManagedHooksOnly *bool                                   `json:"allowManagedHooksOnly,omitempty"`
 }
 
 // SettingSource identifies the configuration layer.
@@ -191,6 +194,9 @@ func applyLayer(dst, src *SettingsJson) {
 	if src.BaseURL != "" {
 		dst.BaseURL = src.BaseURL
 	}
+	if src.Provider != "" {
+		dst.Provider = src.Provider
+	}
 	if src.AWSCredentialExport != "" {
 		dst.AWSCredentialExport = src.AWSCredentialExport
 	}
@@ -199,6 +205,12 @@ func applyLayer(dst, src *SettingsJson) {
 	}
 	if src.GCPAuthRefresh != "" {
 		dst.GCPAuthRefresh = src.GCPAuthRefresh
+	}
+	if src.OpenAIOrganization != "" {
+		dst.OpenAIOrganization = src.OpenAIOrganization
+	}
+	if src.OpenAIProject != "" {
+		dst.OpenAIProject = src.OpenAIProject
 	}
 	if src.Model != "" {
 		dst.Model = src.Model
@@ -315,6 +327,9 @@ func applyPolicyOverrides(base *SettingsJson, policy *SettingsJson) *SettingsJso
 	if policy.BaseURL != "" {
 		base.BaseURL = policy.BaseURL
 	}
+	if policy.Provider != "" {
+		base.Provider = policy.Provider
+	}
 	if policy.DefaultShell != "" {
 		base.DefaultShell = policy.DefaultShell
 	}
@@ -341,6 +356,12 @@ func applyPolicyOverrides(base *SettingsJson, policy *SettingsJson) *SettingsJso
 	}
 	if policy.GCPAuthRefresh != "" {
 		base.GCPAuthRefresh = policy.GCPAuthRefresh
+	}
+	if policy.OpenAIOrganization != "" {
+		base.OpenAIOrganization = policy.OpenAIOrganization
+	}
+	if policy.OpenAIProject != "" {
+		base.OpenAIProject = policy.OpenAIProject
 	}
 	// Policy permissions: override (not append) to enforce enterprise rules.
 	if policy.Permissions != nil {
@@ -378,17 +399,51 @@ func applyPolicyOverrides(base *SettingsJson, policy *SettingsJson) *SettingsJso
 // on top of file-based settings.  Environment variables have higher priority
 // than any file but lower priority than Policy.
 func applyEnvOverrides(s *SettingsJson) {
+	// Provider selection: CLAUDE_PROVIDER or API_PROVIDER
+	if v := os.Getenv("CLAUDE_PROVIDER"); v != "" {
+		s.Provider = v
+	} else if v := os.Getenv("API_PROVIDER"); v != "" {
+		s.Provider = v
+	}
+
+	// API Key: prefer ANTHROPIC_API_KEY, then OPENAI_API_KEY (if provider is openai)
 	if v := os.Getenv("ANTHROPIC_API_KEY"); v != "" {
 		s.APIKey = v
+	} else if v := os.Getenv("OPENAI_API_KEY"); v != "" {
+		s.APIKey = v
+		// Auto-detect provider if not explicitly set
+		if s.Provider == "" {
+			s.Provider = "openai"
+		}
 	}
+
+	// Base URL: ANTHROPIC_BASE_URL or OPENAI_BASE_URL
 	if v := os.Getenv("ANTHROPIC_BASE_URL"); v != "" {
 		s.BaseURL = v
+	} else if v := os.Getenv("OPENAI_BASE_URL"); v != "" {
+		s.BaseURL = v
+	} else if v := os.Getenv("OPENAI_API_BASE"); v != "" {
+		// Alternative env var used by some OpenAI clients
+		s.BaseURL = v
 	}
-	// Model: prefer ANTHROPIC_MODEL, fall back to CLAUDE_MODEL.
+
+	// Model: prefer ANTHROPIC_MODEL, then CLAUDE_MODEL, then OPENAI_MODEL
 	if v := os.Getenv("ANTHROPIC_MODEL"); v != "" {
 		s.Model = v
 	} else if v := os.Getenv("CLAUDE_MODEL"); v != "" {
 		s.Model = v
+	} else if v := os.Getenv("OPENAI_MODEL"); v != "" {
+		s.Model = v
+	}
+
+	// OpenAI specific
+	if v := os.Getenv("OPENAI_ORGANIZATION"); v != "" {
+		s.OpenAIOrganization = v
+	} else if v := os.Getenv("OPENAI_ORG_ID"); v != "" {
+		s.OpenAIOrganization = v
+	}
+	if v := os.Getenv("OPENAI_PROJECT"); v != "" {
+		s.OpenAIProject = v
 	}
 }
 

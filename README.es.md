@@ -157,6 +157,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # abre el flujo OAuth en tu navegador
 ```
 
+## Proveedores de API
+
+Claude Code Go soporta múltiples proveedores de API, permitiéndote usar no solo la API de Anthropic, sino también APIs compatibles con OpenAI.
+
+### Proveedores soportados
+
+| Proveedor | Descripción | Variables de entorno |
+|-----------|-------------|---------------------|
+| `direct` (predeterminado) | API directa de Anthropic | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI y APIs compatibles | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | Credenciales AWS vía entorno |
+| `vertex` | Google Cloud Vertex AI | Credenciales GCP vía entorno |
+
+### Usando APIs compatibles con OpenAI
+
+Para usar OpenAI, DeepSeek, Qwen, Moonshot o cualquier API compatible con OpenAI:
+
+**Método 1: Variables de entorno**
+
+```bash
+# Establecer proveedor a openai
+export CLAUDE_PROVIDER=openai
+
+# Establecer tu clave API
+export OPENAI_API_KEY=sk-xxx
+
+# Opcionalmente establecer una URL base personalizada (para servicios compatibles con OpenAI)
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# Establecer el modelo
+export OPENAI_MODEL=deepseek-chat
+
+# Ejecutar Claude Code
+claude
+```
+
+**Método 2: Archivo de configuración**
+
+Crea o edita `~/.config/claude-code/settings.json`:
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### Notas específicas por proveedor
+
+**OpenAI:**
+- Soporta todos los modelos GPT-4 y GPT-3.5
+- Soporte completo de herramientas/llamadas a funciones
+- Respuestas en streaming
+
+**DeepSeek:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama (local):**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI:**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## Uso
 
 ### Modo interactivo
@@ -224,6 +307,31 @@ make lint
 # Compilar + probar + vet
 make all
 ```
+
+## Hoja de ruta
+
+Claude Code Go actualmente tiene una paridad de funciones de aproximadamente **65%** con la versión original en TypeScript. Aquí está nuestro plan por fases para llegar a v1.0:
+
+| Fase | Versión | Objetivos clave | Plazo |
+|------|---------|-----------------|-------|
+| **Phase 1** | v0.2.0 | 🔒 Integración del sistema de permisos, conexión del sistema Hook, base de cobertura de pruebas, refuerzo de CI | +3 semanas |
+| **Phase 2** | v0.3.0 | 🔧 Completar las 22 herramientas (actualmente 11), subcomandos CLI, mejoras de comandos slash, herramienta Agent | +3 semanas |
+| **Phase 3** | v0.4.0 | 🌐 Proveedores AWS Bedrock y GCP Vertex, transporte MCP WebSocket, sistema de plugins, Feature Flags | +4 semanas |
+| **Phase 4** | v0.5.0 | 🚀 Integración LSP, modo Remote/Server, entrada de voz, modo Vim, Extended Thinking, rastreador de costos | +4 semanas |
+| **Phase 5** | v1.0.0 | 🎯 Optimización de rendimiento, auditoría de seguridad, documentación completa, lanzamiento multiplataforma | +2 semanas |
+
+### Estado actual
+
+```
+Completado: ████████████░░░░░░░░ 65%
+
+✅ Hecho: Motor central, TUI, cliente API (Direct + OpenAI), compactación de contexto,
+          OAuth, persistencia de sesiones, 11 herramientas, 14 comandos slash
+⚠️  En progreso: Proveedores Bedrock/Vertex, MCP WebSocket, herramientas y comandos restantes
+❌ Pendiente: Conexión de permisos, conexión de Hooks, LSP, sistema de plugins, modo Remote
+```
+
+📋 Consulta la **[hoja de ruta completa](docs/ROADMAP.md)** para desgloses detallados de tareas, diagramas de arquitectura y criterios de finalización.
 
 ## Contribuir
 

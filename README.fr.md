@@ -157,6 +157,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # ouvre le flux OAuth dans votre navigateur
 ```
 
+## Fournisseurs d'API
+
+Claude Code Go prend en charge plusieurs fournisseurs d'API, vous permettant d'utiliser non seulement l'API d'Anthropic, mais aussi des APIs compatibles OpenAI.
+
+### Fournisseurs pris en charge
+
+| Fournisseur | Description | Variables d'environnement |
+|-------------|-------------|--------------------------|
+| `direct` (par défaut) | API directe d'Anthropic | `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI et APIs compatibles | `OPENAI_API_KEY`, `OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | Identifiants AWS via environnement |
+| `vertex` | Google Cloud Vertex AI | Identifiants GCP via environnement |
+
+### Utilisation d'APIs compatibles OpenAI
+
+Pour utiliser OpenAI, DeepSeek, Qwen, Moonshot ou toute API compatible OpenAI :
+
+**Méthode 1 : Variables d'environnement**
+
+```bash
+# Définir le fournisseur à openai
+export CLAUDE_PROVIDER=openai
+
+# Définir votre clé API
+export OPENAI_API_KEY=sk-xxx
+
+# Optionnel : définir une URL de base personnalisée (pour les services compatibles OpenAI)
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# Définir le modèle
+export OPENAI_MODEL=deepseek-chat
+
+# Lancer Claude Code
+claude
+```
+
+**Méthode 2 : Fichier de configuration**
+
+Créez ou éditez `~/.config/claude-code/settings.json` :
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### Notes spécifiques par fournisseur
+
+**OpenAI :**
+- Prend en charge tous les modèles GPT-4 et GPT-3.5
+- Support complet des outils/appels de fonctions
+- Réponses en streaming
+
+**DeepSeek :**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama (local) :**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI :**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## Utilisation
 
 ### Mode interactif
@@ -224,6 +307,31 @@ make lint
 # Compiler + tester + vet
 make all
 ```
+
+## Feuille de route
+
+Claude Code Go est actuellement à environ **65%** de parité fonctionnelle avec la version TypeScript originale. Voici notre plan par phases pour atteindre la v1.0 :
+
+| Phase | Version | Objectifs clés | Délai |
+|-------|---------|----------------|-------|
+| **Phase 1** | v0.2.0 | 🔒 Intégration du système de permissions, connexion du système Hook, base de couverture de tests, renforcement CI | +3 semaines |
+| **Phase 2** | v0.3.0 | 🔧 Compléter les 22 outils (actuellement 11), sous-commandes CLI, améliorations des commandes slash, outil Agent | +3 semaines |
+| **Phase 3** | v0.4.0 | 🌐 Fournisseurs AWS Bedrock & GCP Vertex, transport MCP WebSocket, système de plugins, Feature Flags | +4 semaines |
+| **Phase 4** | v0.5.0 | 🚀 Intégration LSP, mode Remote/Server, entrée vocale, mode Vim, Extended Thinking, suivi des coûts | +4 semaines |
+| **Phase 5** | v1.0.0 | 🎯 Optimisation des performances, audit de sécurité, documentation complète, publication multiplateforme | +2 semaines |
+
+### État actuel
+
+```
+Achèvement : ████████████░░░░░░░░ 65%
+
+✅ Terminé : Moteur central, TUI, client API (Direct + OpenAI), compaction de contexte,
+             OAuth, persistance de session, 11 outils, 14 commandes slash
+⚠️  En cours : Fournisseurs Bedrock/Vertex, MCP WebSocket, outils et commandes restants
+❌ À faire : Connexion des permissions, connexion des Hooks, LSP, système de plugins, mode Remote
+```
+
+📋 Consultez la **[feuille de route complète](docs/ROADMAP.md)** pour les détails des tâches, les diagrammes d'architecture et les critères d'achèvement.
 
 ## Contribuer
 

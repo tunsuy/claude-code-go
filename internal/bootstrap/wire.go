@@ -38,6 +38,7 @@ type ContainerOptions struct {
 	ModelOverride string
 	Verbose       bool
 	Debug         bool
+	DebugFile     string // File path for debug log output (empty = stderr when Debug is true)
 }
 
 // AppContainer holds all wired application dependencies.
@@ -81,7 +82,7 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	}
 
 	// ── Phase 3: API client ──────────────────────────────────────────────────
-	apiClient, err := buildAPIClient(settings, apiKey)
+	apiClient, err := buildAPIClient(settings, apiKey, opts)
 	if err != nil {
 		return nil, fmt.Errorf("wire: build API client: %w", err)
 	}
@@ -167,7 +168,7 @@ func loadSettings(homeDir, workingDir string) (*config.LayeredSettings, error) {
 }
 
 // resolveAPIKey returns the API key to use.
-// Priority: OAuth token → settings.APIKey → ANTHROPIC_API_KEY env var.
+// Priority: OAuth token → settings.APIKey → ANTHROPIC_API_KEY/OPENAI_API_KEY env var.
 func resolveAPIKey(settings *config.LayeredSettings) (string, error) {
 	// Try OAuth token store first (Phase 3 pre-warm).
 	tokenStore := oauth.NewTokenStore()
@@ -186,8 +187,11 @@ func resolveAPIKey(settings *config.LayeredSettings) (string, error) {
 		return settings.Merged.APIKey, nil
 	}
 
-	// Finally, environment variable.
+	// Environment variable - check ANTHROPIC_API_KEY first, then OPENAI_API_KEY.
 	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+		return key, nil
+	}
+	if key := os.Getenv("OPENAI_API_KEY"); key != "" {
 		return key, nil
 	}
 
@@ -196,14 +200,27 @@ func resolveAPIKey(settings *config.LayeredSettings) (string, error) {
 }
 
 // buildAPIClient constructs the api.Client from merged settings.
-func buildAPIClient(settings *config.LayeredSettings, apiKey string) (api.Client, error) {
+func buildAPIClient(settings *config.LayeredSettings, apiKey string, opts ContainerOptions) (api.Client, error) {
 	cfg := api.ClientConfig{
-		Provider: api.ProviderDirect,
-		APIKey:   apiKey,
+		Provider:  api.ProviderDirect,
+		APIKey:    apiKey,
+		Debug:     opts.Debug,
+		DebugFile: opts.DebugFile,
 	}
 	if settings.Merged != nil {
 		if settings.Merged.BaseURL != "" {
 			cfg.BaseURL = settings.Merged.BaseURL
+		}
+		// Set provider from settings
+		if settings.Merged.Provider != "" {
+			cfg.Provider = api.Provider(settings.Merged.Provider)
+		}
+		// OpenAI specific settings
+		if settings.Merged.OpenAIOrganization != "" {
+			cfg.OpenAIOrganization = settings.Merged.OpenAIOrganization
+		}
+		if settings.Merged.OpenAIProject != "" {
+			cfg.OpenAIProject = settings.Merged.OpenAIProject
 		}
 		// Bedrock/Vertex detection via env is handled inside api.NewClient.
 	}
@@ -227,9 +244,16 @@ func buildAppState(settings *config.LayeredSettings, opts ContainerOptions, mode
 	appState := state.GetDefaultAppState()
 	appState.WorkingDir = opts.WorkingDir
 	appState.Verbose = opts.Verbose
+
+	// Determine provider name
+	provider := "anthropic"
+	if settings.Merged != nil && settings.Merged.Provider != "" {
+		provider = settings.Merged.Provider
+	}
+
 	appState.MainLoopModel = state.ModelSetting{
 		ModelID:  model,
-		Provider: "anthropic",
+		Provider: provider,
 	}
 
 	if settings.Merged != nil {

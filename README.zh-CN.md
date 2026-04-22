@@ -159,6 +159,89 @@ export ANTHROPIC_API_KEY=sk-ant-...
 claude /config    # 在浏览器中打开 OAuth 授权流程
 ```
 
+## API 提供商
+
+Claude Code Go 支持多种 API 提供商，不仅可以使用 Anthropic 的 API，还可以使用 OpenAI 兼容的 API。
+
+### 支持的提供商
+
+| 提供商 | 说明 | 环境变量 |
+|--------|------|----------|
+| `direct`（默认） | Anthropic 直连 API | `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` |
+| `openai` | OpenAI 及兼容 API | `OPENAI_API_KEY`、`OPENAI_BASE_URL` |
+| `bedrock` | AWS Bedrock | 通过环境变量设置 AWS 凭证 |
+| `vertex` | Google Cloud Vertex AI | 通过环境变量设置 GCP 凭证 |
+
+### 使用 OpenAI 兼容 API
+
+支持 OpenAI、DeepSeek、通义千问、Moonshot 或任何 OpenAI 兼容 API：
+
+**方式一：环境变量**
+
+```bash
+# 设置提供商为 openai
+export CLAUDE_PROVIDER=openai
+
+# 设置 API Key
+export OPENAI_API_KEY=sk-xxx
+
+# 可选：设置自定义 Base URL（用于 OpenAI 兼容服务）
+export OPENAI_BASE_URL=https://api.deepseek.com  # DeepSeek
+# export OPENAI_BASE_URL=https://api.moonshot.cn/v1  # Moonshot
+# export OPENAI_BASE_URL=http://localhost:11434/v1  # Ollama
+
+# 设置模型
+export OPENAI_MODEL=deepseek-chat
+
+# 启动 Claude Code
+claude
+```
+
+**方式二：配置文件**
+
+创建或编辑 `~/.config/claude-code/settings.json`：
+
+```json
+{
+  "provider": "openai",
+  "apiKey": "sk-xxx",
+  "baseUrl": "https://api.openai.com",
+  "model": "gpt-4-turbo",
+  "openaiOrganization": "org-xxx",
+  "openaiProject": "proj-xxx"
+}
+```
+
+### 各提供商配置示例
+
+**OpenAI：**
+- 支持所有 GPT-4 和 GPT-3.5 模型
+- 完整的工具/函数调用支持
+- 流式响应
+
+**DeepSeek：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=sk-xxx
+export OPENAI_BASE_URL=https://api.deepseek.com
+export OPENAI_MODEL=deepseek-chat
+```
+
+**Ollama（本地部署）：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_BASE_URL=http://localhost:11434/v1
+export OPENAI_MODEL=llama3
+```
+
+**Azure OpenAI：**
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=your-azure-key
+export OPENAI_BASE_URL=https://your-resource.openai.azure.com
+export OPENAI_MODEL=your-deployment-name
+```
+
 ## 使用说明
 
 ### 交互模式
@@ -264,6 +347,31 @@ claude-code-go/
 ├── Makefile
 └── go.mod
 ```
+
+## 路线图
+
+Claude Code Go 目前与原版 TypeScript 版本的功能对等度约为 **~65%**。以下是达到 v1.0 的分阶段计划：
+
+| 阶段 | 版本 | 关键目标 | 时间线 |
+|------|------|----------|--------|
+| **Phase 1** | v0.2.0 | 🔒 权限系统接入引擎、Hook 系统接入、测试覆盖率基线、CI 强化 | +3 周 |
+| **Phase 2** | v0.3.0 | 🔧 补齐全部 22 个工具（当前 11 个）、CLI 子命令补全、斜杠命令增强、Agent 工具 | +3 周 |
+| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock 与 GCP Vertex 提供商、MCP WebSocket 传输、插件系统、Feature Flags | +4 周 |
+| **Phase 4** | v0.5.0 | 🚀 LSP 集成、Remote/Server 模式、语音输入、Vim 模式、Extended Thinking、费用追踪 | +4 周 |
+| **Phase 5** | v1.0.0 | 🎯 性能调优、安全审计、完善文档、多平台发布 | +2 周 |
+
+### 当前状态
+
+```
+完成度: ████████████░░░░░░░░ 65%
+
+✅ 已完成: 核心引擎、TUI、API 客户端（Direct + OpenAI）、上下文压缩、
+          OAuth、会话持久化、11 个工具、14 个斜杠命令
+⚠️  进行中: Bedrock/Vertex 提供商、MCP WebSocket、剩余工具与命令
+❌ 待完成: 权限接入、Hook 接入、LSP、插件系统、Remote 模式
+```
+
+📋 查看 **[完整路线图](docs/ROADMAP.md)** 了解详细任务拆解、架构图和完成标准。
 
 ## 贡献指南
 

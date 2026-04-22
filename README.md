@@ -350,6 +350,31 @@ claude-code-go/
 └── go.mod
 ```
 
+## Roadmap
+
+Claude Code Go is currently at **~65% feature parity** with the original TypeScript version. Here's our phased plan to reach v1.0:
+
+| Phase | Version | Key Goals | Timeline |
+|-------|---------|-----------|----------|
+| **Phase 1** | v0.2.0 | 🔒 Permission system integration, Hook system wiring, test coverage baseline, CI hardening | +3 weeks |
+| **Phase 2** | v0.3.0 | 🔧 Complete all 22 tools (currently 11), full CLI subcommands, slash command enhancements, Agent tool | +3 weeks |
+| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock & GCP Vertex providers, MCP WebSocket transport, plugin system, feature flags | +4 weeks |
+| **Phase 4** | v0.5.0 | 🚀 LSP integration, Remote/Server mode, Voice input, Vim mode, Extended Thinking, Cost Tracker | +4 weeks |
+| **Phase 5** | v1.0.0 | 🎯 Performance tuning, security audit, full documentation, multi-platform release | +2 weeks |
+
+### Current Status
+
+```
+Completion: ████████████░░░░░░░░ 65%
+
+✅ Done: Core engine, TUI, API client (Direct + OpenAI), context compaction,
+         OAuth, session persistence, 11 tools, 14 slash commands
+⚠️  WIP:  Bedrock/Vertex providers, MCP WebSocket, remaining tools & commands
+❌ Todo: Permission wiring, Hook wiring, LSP, plugin system, Remote mode
+```
+
+📋 See the **[full Roadmap](docs/ROADMAP.md)** for detailed task breakdowns, architecture diagrams, and completion criteria.
+
 ## Contributing
 
 We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.

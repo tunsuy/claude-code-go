@@ -308,6 +308,31 @@ make lint
 make all
 ```
 
+## Feuille de route
+
+Claude Code Go est actuellement à environ **65%** de parité fonctionnelle avec la version TypeScript originale. Voici notre plan par phases pour atteindre la v1.0 :
+
+| Phase | Version | Objectifs clés | Délai |
+|-------|---------|----------------|-------|
+| **Phase 1** | v0.2.0 | 🔒 Intégration du système de permissions, connexion du système Hook, base de couverture de tests, renforcement CI | +3 semaines |
+| **Phase 2** | v0.3.0 | 🔧 Compléter les 22 outils (actuellement 11), sous-commandes CLI, améliorations des commandes slash, outil Agent | +3 semaines |
+| **Phase 3** | v0.4.0 | 🌐 Fournisseurs AWS Bedrock & GCP Vertex, transport MCP WebSocket, système de plugins, Feature Flags | +4 semaines |
+| **Phase 4** | v0.5.0 | 🚀 Intégration LSP, mode Remote/Server, entrée vocale, mode Vim, Extended Thinking, suivi des coûts | +4 semaines |
+| **Phase 5** | v1.0.0 | 🎯 Optimisation des performances, audit de sécurité, documentation complète, publication multiplateforme | +2 semaines |
+
+### État actuel
+
+```
+Achèvement : ████████████░░░░░░░░ 65%
+
+✅ Terminé : Moteur central, TUI, client API (Direct + OpenAI), compaction de contexte,
+             OAuth, persistance de session, 11 outils, 14 commandes slash
+⚠️  En cours : Fournisseurs Bedrock/Vertex, MCP WebSocket, outils et commandes restants
+❌ À faire : Connexion des permissions, connexion des Hooks, LSP, système de plugins, mode Remote
+```
+
+📋 Consultez la **[feuille de route complète](docs/ROADMAP.md)** pour les détails des tâches, les diagrammes d'architecture et les critères d'achèvement.
+
 ## Contribuer
 
 Les contributions sont les bienvenues ! Veuillez lire [CONTRIBUTING.md](CONTRIBUTING.md) avant de soumettre une pull request.

@@ -348,6 +348,31 @@ claude-code-go/
 └── go.mod
 ```
 
+## 路线图
+
+Claude Code Go 目前与原版 TypeScript 版本的功能对等度约为 **~65%**。以下是达到 v1.0 的分阶段计划：
+
+| 阶段 | 版本 | 关键目标 | 时间线 |
+|------|------|----------|--------|
+| **Phase 1** | v0.2.0 | 🔒 权限系统接入引擎、Hook 系统接入、测试覆盖率基线、CI 强化 | +3 周 |
+| **Phase 2** | v0.3.0 | 🔧 补齐全部 22 个工具（当前 11 个）、CLI 子命令补全、斜杠命令增强、Agent 工具 | +3 周 |
+| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock 与 GCP Vertex 提供商、MCP WebSocket 传输、插件系统、Feature Flags | +4 周 |
+| **Phase 4** | v0.5.0 | 🚀 LSP 集成、Remote/Server 模式、语音输入、Vim 模式、Extended Thinking、费用追踪 | +4 周 |
+| **Phase 5** | v1.0.0 | 🎯 性能调优、安全审计、完善文档、多平台发布 | +2 周 |
+
+### 当前状态
+
+```
+完成度: ████████████░░░░░░░░ 65%
+
+✅ 已完成: 核心引擎、TUI、API 客户端（Direct + OpenAI）、上下文压缩、
+          OAuth、会话持久化、11 个工具、14 个斜杠命令
+⚠️  进行中: Bedrock/Vertex 提供商、MCP WebSocket、剩余工具与命令
+❌ 待完成: 权限接入、Hook 接入、LSP、插件系统、Remote 模式
+```
+
+📋 查看 **[完整路线图](docs/ROADMAP.md)** 了解详细任务拆解、架构图和完成标准。
+
 ## 贡献指南
 
 欢迎贡献！提交 Pull Request 前请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md)。

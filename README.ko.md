@@ -308,6 +308,31 @@ make lint
 make all
 ```
 
+## 로드맵
+
+Claude Code Go는 현재 원본 TypeScript 버전과의 기능 대등도가 약 **65%** 입니다. v1.0을 향한 단계별 계획:
+
+| 단계 | 버전 | 주요 목표 | 타임라인 |
+|------|------|-----------|----------|
+| **Phase 1** | v0.2.0 | 🔒 권한 시스템 통합, Hook 시스템 연결, 테스트 커버리지 기준, CI 강화 | +3주 |
+| **Phase 2** | v0.3.0 | 🔧 22개 전체 도구 완성(현재 11개), CLI 하위 명령, 슬래시 명령 강화, Agent 도구 | +3주 |
+| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock & GCP Vertex 프로바이더, MCP WebSocket, 플러그인 시스템, Feature Flags | +4주 |
+| **Phase 4** | v0.5.0 | 🚀 LSP 통합, Remote/Server 모드, 음성 입력, Vim 모드, Extended Thinking, 비용 추적기 | +4주 |
+| **Phase 5** | v1.0.0 | 🎯 성능 최적화, 보안 감사, 문서 완성, 멀티 플랫폼 릴리스 | +2주 |
+
+### 현재 상태
+
+```
+완성도: ████████████░░░░░░░░ 65%
+
+✅ 완료: 코어 엔진, TUI, API 클라이언트(Direct + OpenAI), 컨텍스트 압축,
+        OAuth, 세션 지속성, 11개 도구, 14개 슬래시 명령
+⚠️  진행 중: Bedrock/Vertex 프로바이더, MCP WebSocket, 나머지 도구 및 명령
+❌ 미완료: 권한 연결, Hook 연결, LSP, 플러그인 시스템, Remote 모드
+```
+
+📋 자세한 작업 분류, 아키텍처 다이어그램 및 완료 기준은 **[전체 로드맵](docs/ROADMAP.md)**을 참조하세요.
+
 ## 기여
 
 기여를 환영합니다! Pull Request를 제출하기 전에 [CONTRIBUTING.md](CONTRIBUTING.md)를 읽어주세요.

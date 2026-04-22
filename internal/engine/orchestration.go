@@ -267,19 +267,20 @@ func executeOneTool(
 		if callResult.ContextModifier != nil && !t.IsConcurrencySafe(tc.input) {
 			callResult.ContextModifier(uctx)
 		}
-		// Serialize content.
-		switch v := callResult.Content.(type) {
-		case string:
-			contentStr = v
-		case []byte:
-			contentStr = string(v)
-		case nil:
-			contentStr = ""
-		default:
-			raw, merr := json.Marshal(v)
-			if merr != nil {
-				contentStr = fmt.Sprintf("error marshalling result: %v", merr)
+		// Use MapResultToToolResultBlock to get properly formatted content.
+		// This allows tools like Bash to format stdout/stderr nicely.
+		raw, merr := t.MapResultToToolResultBlock(callResult.Content, tc.id)
+		if merr != nil {
+			contentStr = fmt.Sprintf("error formatting result: %v", merr)
+		} else {
+			// Parse the tool_result block to extract the content field.
+			var block struct {
+				Content string `json:"content"`
+			}
+			if json.Unmarshal(raw, &block) == nil {
+				contentStr = block.Content
 			} else {
+				// Fallback: use the raw JSON.
 				contentStr = string(raw)
 			}
 		}

@@ -31,7 +31,15 @@
 ---
 
 <p align="center">
-  <img src="assets/demo.png" alt="Claude Code Go 데모" width="800">
+  <img src="assets/image.png" alt="Claude Code Go - 대화형 세션" width="800">
+  <br>
+  <em>파일 읽기 및 실시간 사고 표시를 지원하는 대화형 TUI</em>
+</p>
+
+<p align="center">
+  <img src="assets/image1.png" alt="Claude Code Go - 프로젝트 분석" width="800">
+  <br>
+  <em>아키텍처 세부 정보를 포함한 종합적인 프로젝트 분석</em>
 </p>
 
 ---

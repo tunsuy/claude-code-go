@@ -3,9 +3,9 @@ package tui
 import (
 	"context"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/pkg/types"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // startQueryCmd builds a tea.Cmd that launches a new query against the engine.
@@ -46,9 +46,9 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 	}
 
 	params := engine.QueryParams{
-		Messages:    messages,
+		Messages:     messages,
 		SystemPrompt: sysPrompt,
-		QuerySource: "foreground",
+		QuerySource:  "foreground",
 	}
 
 	qe := m.queryEngine
@@ -120,6 +120,8 @@ func dispatchEngineMsg(msg engine.Msg) tea.Msg {
 		}
 	case engine.MsgTypeAssistantMessage:
 		return StreamAssistantTurnMsg{FinalMessage: msg.AssistantMsg}
+	case engine.MsgTypeUserMessage:
+		return StreamUserTurnMsg{FinalMessage: msg.UserMsg}
 	case engine.MsgTypeTurnComplete:
 		// Only treat as "stream done" when the stop reason is terminal.
 		// For tool_use / max_tokens the engine will continue the loop,

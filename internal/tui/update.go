@@ -1,10 +1,10 @@
 package tui
 
 import (
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
 	"github.com/tunsuy/claude-code-go/internal/state"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // Update is the BubbleTea Update method — the single message dispatcher.
@@ -15,6 +15,10 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.termWidth = msg.Width
 		m.termHeight = msg.Height
 		m.input = m.input.SetWidth(msg.Width - 2)
+		// Resize the viewport to fill available space.
+		m.viewport.Width = msg.Width
+		m.viewport.Height = m.viewportHeight()
+		m.syncViewportContent()
 		return m, nil
 
 	// --- Periodic tick (spinner + task eviction) ---
@@ -28,8 +32,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// --- Memdir load complete ---
 	case MemdirLoadedMsg:
-		// P1-E fix: store paths and eagerly load the concatenated CLAUDE.md content
-		// so startQueryCmd can inject it as a system prompt on every query.
 		m.memdirPaths = msg.Paths
 		m.memdirPrompt = memdir.LoadMemoryPrompt(msg.Paths)
 		return m, nil
@@ -42,20 +44,19 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitForStreamEvent(msg.ch)
 
 	// --- Streaming events ---
-	// Note: isLoading guards; channel mismatch is prevented by context cancellation.
 	case StreamTokenMsg:
 		if m.streamCh == nil {
 			return m, nil
 		}
 		m = m.appendStreamDelta(msg.Delta)
 		m.streamingHasMsg = true
+		m.syncViewportContent()
 		return m, waitForStreamEvent(m.streamCh)
 
 	case StreamThinkingMsg:
 		if m.streamCh == nil {
 			return m, nil
 		}
-		// Thinking deltas not rendered in streaming view; just continue pulling.
 		return m, waitForStreamEvent(m.streamCh)
 
 	case StreamToolUseStartMsg:
@@ -83,10 +84,6 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, waitForStreamEvent(m.streamCh)
 
 	case StreamAssistantTurnMsg:
-		// One LLM turn completed (e.g. before tool execution). Save the
-		// assistant message and reset streaming text, but keep pulling
-		// events — the engine may continue with tool execution + another
-		// LLM call.
 		if m.streamCh == nil {
 			return m, nil
 		}
@@ -95,6 +92,17 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.streamingText = ""
 		m.streamingHasMsg = false
+		m.syncViewportContent()
+		return m, waitForStreamEvent(m.streamCh)
+
+	case StreamUserTurnMsg:
+		if m.streamCh == nil {
+			return m, nil
+		}
+		if msg.FinalMessage != nil {
+			m.messages = append(m.messages, *msg.FinalMessage)
+		}
+		m.syncViewportContent()
 		return m, waitForStreamEvent(m.streamCh)
 
 	case StreamDoneMsg:
@@ -105,15 +113,14 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.streamCh = nil
 
 		if msg.FinalMessage != nil {
-			// FinalMessage replaces any in-progress partial.
 			m.messages = append(m.messages, *msg.FinalMessage)
 		} else if m.streamingHasMsg && m.streamingText != "" {
-			// No explicit final message — promote the streamed text.
 			m.messages = append(m.messages, m.inProgressAssistantMessage())
 		}
 		m.streamingText = ""
 		m.streamingHasMsg = false
 		m.pinnedToBottom = true
+		m.syncViewportContent()
 		return m, nil
 
 	case StreamErrorMsg:
@@ -126,11 +133,13 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.streamingHasMsg = false
 		errText := "Error: " + msg.Err.Error()
 		m.messages = append(m.messages, newSystemMessage(errText))
+		m.syncViewportContent()
 		return m, nil
 
 	// --- System informational text ---
 	case SystemTextMsg:
 		m.messages = append(m.messages, newSystemMessage(msg.Text))
+		m.syncViewportContent()
 		return m, nil
 
 	// --- Permission dialog ---
@@ -145,6 +154,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.commandResult = &msg
 		if msg.Text != "" {
 			m.messages = append(m.messages, newSystemMessage(msg.Text))
+			m.syncViewportContent()
 		}
 		return m, nil
 
@@ -159,7 +169,12 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case CompactDoneMsg:
 		m.messages = append(m.messages, newSystemMessage("Conversation compacted: "+msg.Summary))
 		m.activeDialog = dialogNone
+		m.syncViewportContent()
 		return m, nil
+
+	// --- Mouse events (scroll wheel) ---
+	case tea.MouseMsg:
+		return m.handleMouse(msg)
 
 	// --- Keyboard / input ---
 	case tea.KeyMsg:
@@ -179,6 +194,7 @@ func (m AppModel) handleSlashCommand(text string) (AppModel, tea.Cmd) {
 	slashCmd := m.commandRegistry.Lookup(name)
 	if slashCmd == nil {
 		m.messages = append(m.messages, newSystemMessage("Unknown command: /"+name))
+		m.syncViewportContent()
 		return m, nil
 	}
 
@@ -189,6 +205,7 @@ func (m AppModel) handleSlashCommand(text string) (AppModel, tea.Cmd) {
 		SessionID:    m.sessionID,
 		DarkMode:     m.darkMode,
 		VimEnabled:   m.input.vimEnabled,
+		Effort:       m.effort,
 		MessageCount: len(m.messages),
 	}
 
@@ -208,6 +225,7 @@ func (m AppModel) applyCommandResult(result commands.Result, name string) (AppMo
 			m.darkMode = result.NewTheme != "light"
 		} else {
 			m.messages = append(m.messages, newSystemMessage("Unknown theme: "+result.NewTheme))
+			m.syncViewportContent()
 			return m, nil
 		}
 	}
@@ -225,7 +243,12 @@ func (m AppModel) applyCommandResult(result commands.Result, name string) (AppMo
 		})
 	}
 
-	// P1-B fix: use semantic OpenDialog field instead of magic name=="compact" string.
+	if result.NewEffort != "" {
+		m.effort = result.NewEffort
+		// Update status bar to show new effort level
+		m.statusBar.effort = result.NewEffort
+	}
+
 	if result.OpenDialog != "" {
 		switch result.OpenDialog {
 		case "compact":
@@ -238,25 +261,26 @@ func (m AppModel) applyCommandResult(result commands.Result, name string) (AppMo
 		return m, nil
 	}
 
-	// P1-B fix: use ClearHistory field instead of magic name=="clear" string.
 	if result.ClearHistory {
 		m.messages = nil
 		m.queryEngine.SetMessages(nil)
 		m.streamingText = ""
 		m.streamingHasMsg = false
+		m.syncViewportContent()
 	}
 
 	switch result.Display {
 	case commands.DisplayMessage:
 		if result.Text != "" {
 			m.messages = append(m.messages, newSystemMessage(result.Text))
+			m.syncViewportContent()
 		}
 	case commands.DisplayError:
 		if result.Text != "" {
 			m.messages = append(m.messages, newSystemMessage("Error: "+result.Text))
+			m.syncViewportContent()
 		}
 	case commands.DisplayNone:
-		// If there is a text payload it becomes the user query (e.g. /review, /commit).
 		if result.Text != "" {
 			m.isLoading = true
 			m.showSpinner = true

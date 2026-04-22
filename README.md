@@ -31,7 +31,15 @@
 ---
 
 <p align="center">
-  <img src="assets/demo.png" alt="Claude Code Go Demo" width="800">
+  <img src="assets/image.png" alt="Claude Code Go - Interactive Session" width="800">
+  <br>
+  <em>Interactive TUI with file reading and real-time thinking display</em>
+</p>
+
+<p align="center">
+  <img src="assets/image1.png" alt="Claude Code Go - Project Analysis" width="800">
+  <br>
+  <em>Comprehensive project analysis with architecture breakdown</em>
 </p>
 
 ---

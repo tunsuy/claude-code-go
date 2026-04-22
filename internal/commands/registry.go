@@ -35,6 +35,9 @@ type Result struct {
 	NewTheme string
 	// NewModel is set by /model.
 	NewModel string
+	// NewEffort is set by /effort to change the effort level.
+	// Valid values: "low", "medium", "high"
+	NewEffort string
 	// ToggleVim is set by /vim.
 	ToggleVim bool
 	// OpenDialog is set to a dialog name to open a specific modal dialog.
@@ -56,6 +59,8 @@ type CommandContext struct {
 	DarkMode bool
 	// VimEnabled is true when Vim key bindings are enabled.
 	VimEnabled bool
+	// Effort is the current effort level (low, medium, high).
+	Effort string
 	// MessageCount is the number of messages in the current conversation.
 	MessageCount int
 	// TokensInput is the number of input tokens used in the session so far.

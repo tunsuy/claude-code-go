@@ -13,6 +13,7 @@ func RegisterBuiltins(r *Registry) {
 	r.Register(cmdVim())
 	r.Register(cmdTheme())
 	r.Register(cmdModel())
+	r.Register(cmdEffort())
 	r.Register(cmdStatus())
 	r.Register(cmdCost())
 	r.Register(cmdSession())
@@ -131,6 +132,55 @@ func cmdModel() *Command {
 				Text:     fmt.Sprintf("Model set to %q.", name),
 				Display:  DisplayMessage,
 				NewModel: name,
+			}
+		},
+	}
+}
+
+func cmdEffort() *Command {
+	return &Command{
+		Name:        "effort",
+		Description: "Set effort level (low, medium, high) to tune speed vs. intelligence",
+		Execute: func(ctx CommandContext, args string) Result {
+			level := strings.TrimSpace(strings.ToLower(args))
+			validLevels := map[string]string{
+				"low":    "low",
+				"l":      "low",
+				"medium": "medium",
+				"med":    "medium",
+				"m":      "medium",
+				"high":   "high",
+				"h":      "high",
+			}
+
+			if level == "" {
+				current := ctx.Effort
+				if current == "" {
+					current = "medium"
+				}
+				return Result{
+					Text: fmt.Sprintf("Current effort level: %s\n\n"+
+						"Usage: /effort <level>\n"+
+						"  low    - Fast responses, less thorough (good for simple tasks)\n"+
+						"  medium - Balanced speed and intelligence (default)\n"+
+						"  high   - Thorough thinking, slower responses (good for complex tasks)",
+						current),
+					Display: DisplayMessage,
+				}
+			}
+
+			normalized, valid := validLevels[level]
+			if !valid {
+				return Result{
+					Text:    fmt.Sprintf("Invalid effort level %q. Use: low, medium, or high", level),
+					Display: DisplayError,
+				}
+			}
+
+			return Result{
+				Text:      fmt.Sprintf("Effort level set to %q.", normalized),
+				Display:   DisplayMessage,
+				NewEffort: normalized,
 			}
 		},
 	}

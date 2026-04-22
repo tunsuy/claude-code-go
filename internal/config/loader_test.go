@@ -49,6 +49,11 @@ func TestLoad_NoFiles(t *testing.T) {
 
 // TestLoad_AllThreeLayers verifies priority: Local > Project > User.
 func TestLoad_AllThreeLayers(t *testing.T) {
+	// Clear environment variables that could interfere with the test
+	t.Setenv("ANTHROPIC_MODEL", "")
+	t.Setenv("CLAUDE_MODEL", "")
+	t.Setenv("OPENAI_MODEL", "")
+	
 	home := t.TempDir()
 	project := t.TempDir()
 

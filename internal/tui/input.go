@@ -188,7 +188,9 @@ func (m InputModel) View(theme Theme) string {
 			indicator = accentStyle(theme).Render("[VISUAL] ")
 		}
 	}
-	return indicator + m.textarea.View()
+	// Add > prompt prefix to match original Claude Code style
+	prompt := accentStyle(theme).Bold(true).Render("> ")
+	return prompt + indicator + m.textarea.View()
 }
 
 // IsSlashCommand returns true when the current value starts with '/'.

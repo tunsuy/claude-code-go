@@ -19,6 +19,7 @@ type TokenUsage struct {
 type StatusBar struct {
 	model       string
 	cwd         string
+	effort      string // low, medium, high
 	tokenUsage  TokenUsage
 	cost        float64
 	coordinator bool
@@ -29,6 +30,11 @@ func (s StatusBar) View(width int, theme Theme) string {
 	modelStr := s.model
 	if modelStr == "" {
 		modelStr = "claude"
+	}
+
+	effortStr := s.effort
+	if effortStr == "" {
+		effortStr = "medium"
 	}
 
 	left := lipgloss.JoinHorizontal(
@@ -42,11 +48,26 @@ func (s StatusBar) View(width int, theme Theme) string {
 			accentStyle(theme).Render("Coordinator")
 	}
 
-	right := mutedStyle(theme).Render(fmt.Sprintf(
-		"%s tok · $%.4f",
-		formatTokens(s.tokenUsage),
-		s.cost,
-	))
+	// Show effort level with icon
+	effortIcon := map[string]string{
+		"low":    "⚡",
+		"medium": "⚖️",
+		"high":   "🧠",
+	}
+	icon := effortIcon[effortStr]
+	if icon == "" {
+		icon = "⚖️"
+	}
+
+	right := lipgloss.JoinHorizontal(
+		lipgloss.Left,
+		mutedStyle(theme).Render(icon+" "+effortStr+" | "),
+		mutedStyle(theme).Render(fmt.Sprintf(
+			"%s tok · $%.4f",
+			formatTokens(s.tokenUsage),
+			s.cost,
+		)),
+	)
 
 	leftW := lipgloss.Width(left)
 	rightW := lipgloss.Width(right)

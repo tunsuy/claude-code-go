@@ -64,6 +64,12 @@ type StreamAssistantTurnMsg struct {
 	FinalMessage *types.Message // the completed assistant message for this turn
 }
 
+// StreamUserTurnMsg is emitted when a user turn is added to the conversation,
+// typically containing tool_result blocks after tools have executed.
+type StreamUserTurnMsg struct {
+	FinalMessage *types.Message // the completed user message (tool results)
+}
+
 // StreamDoneMsg is emitted when the entire query cycle is finished.
 // No more events will arrive on the stream channel after this.
 type StreamDoneMsg struct {

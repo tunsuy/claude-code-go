@@ -4,6 +4,19 @@ import (
 	"strings"
 )
 
+// reservedLines is the number of terminal lines reserved for non-message UI
+// (status bar + input area + spinner + padding).
+const reservedLines = 6
+
+// viewportHeight returns the available height for the message viewport.
+func (m AppModel) viewportHeight() int {
+	h := m.termHeight - reservedLines
+	if h < 1 {
+		h = 1
+	}
+	return h
+}
+
 // View is the BubbleTea View method. It renders the entire TUI to a string.
 func (m AppModel) View() string {
 	if m.termWidth == 0 {
@@ -21,35 +34,13 @@ func (m AppModel) View() string {
 		}
 	}
 
-	// --- Message list ---
-	msgs := m.visibleMessages()
-	msgView := MessageListView(msgs, m.termWidth, m.darkMode, m.theme, m.markdownRenderer())
-
-	// Apply scroll offset if not pinned to bottom.
-	if m.pinnedToBottom || m.scrollOffset == 0 {
-		sb.WriteString(msgView)
-	} else {
-		lines := strings.Split(msgView, "\n")
-		start := 0
-		if m.scrollOffset < len(lines) {
-			start = len(lines) - m.scrollOffset
-			if start < 0 {
-				start = 0
-			}
-		}
-		// P1-A fix: clamp the visible window to the available viewport height so
-		// the message list never overflows the terminal.
-		const reservedLines = 5 // status bar (1) + input (2) + spinner (1) + padding (1)
-		viewH := m.termHeight - reservedLines
-		if viewH < 1 {
-			viewH = 1
-		}
-		end := start + viewH
-		if end > len(lines) {
-			end = len(lines)
-		}
-		visible := lines[start:end]
-		sb.WriteString(strings.Join(visible, "\n"))
+	// --- Message list rendered through viewport ---
+	// Only show viewport area when there is content to display;
+	// otherwise avoid filling the terminal with blank lines.
+	vpContent := strings.TrimRight(m.viewport.View(), "\n ")
+	if vpContent != "" {
+		sb.WriteString(vpContent)
+		sb.WriteString("\n")
 	}
 
 	// --- Spinner / loading indicator ---
@@ -69,8 +60,6 @@ func (m AppModel) View() string {
 	switch m.activeDialog {
 	case dialogPermission:
 		if m.permReq != nil {
-			// The dialog is rendered as an overlay by appending after the main view.
-			// In a real Lipgloss overlay this would be layered; here we suffix it.
 			sb.WriteString("\n")
 			sb.WriteString(m.permReq.View(m.termWidth, m.theme))
 		}
@@ -91,6 +80,31 @@ func (m AppModel) View() string {
 	}
 
 	return sb.String()
+}
+
+// syncViewportContent re-renders the message list into the viewport content
+// and optionally scrolls to bottom when pinnedToBottom is true.
+// The welcome header is included as part of the content so it scrolls with messages.
+func (m *AppModel) syncViewportContent() {
+	var contentBuilder strings.Builder
+
+	// Always include welcome header at the top of the content
+	header := m.welcomeHeader.View(m.termWidth, m.theme)
+	if header != "" {
+		contentBuilder.WriteString(header)
+	}
+
+	// Render messages
+	msgs := m.visibleMessages()
+	msgContent := MessageListView(msgs, m.termWidth, m.darkMode, m.theme, m.markdownRenderer(), m.expandedToolResults)
+	contentBuilder.WriteString(msgContent)
+
+	// Trim trailing newlines to avoid excessive blank space at bottom.
+	content := strings.TrimRight(contentBuilder.String(), "\n")
+	m.viewport.SetContent(content)
+	if m.pinnedToBottom {
+		m.viewport.GotoBottom()
+	}
 }
 
 // renderConfirmDialog renders a minimal yes/no confirmation dialog.

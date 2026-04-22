@@ -75,6 +75,6 @@ func (k *KeychainStore) Delete() error {
 		"-s", k.serviceName,
 		"-a", k.accountName,
 	)
-	cmd.Run() // ignore error (not found is OK)
+	_ = cmd.Run() // ignore error (not found is OK)
 	return nil
 }

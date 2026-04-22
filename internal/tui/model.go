@@ -5,12 +5,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/glamour"
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/state"
 	"github.com/tunsuy/claude-code-go/pkg/types"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/glamour"
 )
 
 // dialogKind enumerates active modal dialogs.
@@ -37,8 +38,8 @@ type AppModel struct {
 	// starts; startQueryCmd resets it before creating the new context.
 	messages  []types.Message
 	isLoading bool
-	abortFn      context.CancelFunc // nil when idle
-	abortCtx     context.Context    // current query context
+	abortFn   context.CancelFunc // nil when idle
+	abortCtx  context.Context    // current query context
 
 	// --- UI sub-view state ---
 	activeDialog dialogKind
@@ -46,16 +47,21 @@ type AppModel struct {
 	showSpinner  bool
 	spinner      SpinnerModel
 
+	// --- Tool result expansion state ---
+	// expandedToolResults tracks which tool results should be shown expanded.
+	// Key is ToolUseID, value is true if expanded.
+	expandedToolResults map[string]bool
+
 	// --- Streaming accumulation ---
 	// streamingText accumulates the assistant's text as tokens arrive.
 	// When StreamDoneMsg arrives its FinalMessage replaces the last partial message.
-	streamingText    string
-	streamingHasMsg  bool // true if we have appended a partial message
+	streamingText   string
+	streamingHasMsg bool // true if we have appended a partial message
 
 	// --- Scroll & layout ---
-	termWidth    int
-	termHeight   int
-	scrollOffset int
+	termWidth      int
+	termHeight     int
+	viewport       viewport.Model
 	pinnedToBottom bool
 
 	// --- Slash commands ---
@@ -63,9 +69,9 @@ type AppModel struct {
 	commandResult   *CommandResultMsg
 
 	// --- Multi-agent / coordinator ---
-	coordinatorMode bool
+	coordinatorMode  bool
 	coordinatorPanel CoordinatorPanel
-	lastTickTime    time.Time
+	lastTickTime     time.Time
 
 	// --- Input ---
 	input InputModel
@@ -74,8 +80,16 @@ type AppModel struct {
 	theme    Theme
 	darkMode bool
 
+	// --- Effort level ---
+	// effort controls the speed vs. intelligence tradeoff.
+	// Valid values: "low", "medium", "high". Default is "medium".
+	effort string
+
 	// --- Status bar ---
 	statusBar StatusBar
+
+	// --- Welcome header (shown once on startup) ---
+	welcomeHeader WelcomeHeader
 
 	// --- Dependencies (injected via New()) ---
 	queryEngine engine.QueryEngine
@@ -97,8 +111,6 @@ type AppModel struct {
 	mdRendererDark  bool
 }
 
-
-
 // newAppModel is the internal constructor; callers use New().
 func newAppModel(
 	qe engine.QueryEngine,
@@ -117,14 +129,16 @@ func newAppModel(
 	}
 
 	m := AppModel{
-		theme:           t,
-		darkMode:        dark,
-		queryEngine:     qe,
-		appState:        appStore,
-		commandRegistry: reg,
-		spinner:         newSpinner(),
-		input:           NewInput(vimEnabled),
-		lastTickTime:    time.Now(),
+		theme:               t,
+		darkMode:            dark,
+		effort:              "medium", // default effort level
+		queryEngine:         qe,
+		appState:            appStore,
+		commandRegistry:     reg,
+		spinner:             newSpinner(),
+		input:               NewInput(vimEnabled),
+		lastTickTime:        time.Now(),
+		expandedToolResults: make(map[string]bool),
 		coordinatorPanel: CoordinatorPanel{
 			Tasks:     make(map[string]AgentTaskState),
 			TaskOrder: []string{},
@@ -133,7 +147,9 @@ func newAppModel(
 			model: model,
 			cwd:   cwd,
 		},
+		welcomeHeader:  NewWelcomeHeader(model, cwd),
 		pinnedToBottom: true,
+		viewport:       viewport.New(80, 20),
 	}
 	return m
 }
@@ -196,16 +212,13 @@ func (m *AppModel) markdownRenderer() *glamour.TermRenderer {
 		m.mdRendererDark == m.darkMode {
 		return m.mdRenderer
 	}
-	style := "dark"
-	if !m.darkMode {
-		style = "light"
-	}
 	width := m.termWidth - 2
 	if width <= 0 {
 		width = 80
 	}
+	// Use custom style with no padding to avoid interfering with our layout
 	r, err := glamour.NewTermRenderer(
-		glamour.WithStylePath(style),
+		glamour.WithStyles(newGlamourStyle(m.darkMode)),
 		glamour.WithWordWrap(width),
 	)
 	if err != nil {

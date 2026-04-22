@@ -15,6 +15,9 @@ func (m AppModel) handleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case tea.KeyCtrlD:
 		return m, tea.Quit
+	case tea.KeyCtrlO:
+		// Toggle all tool results expansion
+		return m.toggleAllToolResults()
 	}
 
 	// --- Route to the active dialog ---
@@ -118,16 +121,24 @@ func (m AppModel) handleIdleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyPgUp:
 		m.pinnedToBottom = false
-		if m.scrollOffset+10 < 1000 {
-			m.scrollOffset += 10
-		}
+		m.viewport.HalfViewUp()
 		return m, nil
 
 	case tea.KeyPgDown:
-		if m.scrollOffset > 10 {
-			m.scrollOffset -= 10
-		} else {
-			m.scrollOffset = 0
+		m.viewport.HalfViewDown()
+		if m.viewport.AtBottom() {
+			m.pinnedToBottom = true
+		}
+		return m, nil
+
+	case tea.KeyUp:
+		m.pinnedToBottom = false
+		m.viewport.LineUp(3)
+		return m, nil
+
+	case tea.KeyDown:
+		m.viewport.LineDown(3)
+		if m.viewport.AtBottom() {
 			m.pinnedToBottom = true
 		}
 		return m, nil
@@ -138,15 +149,21 @@ func (m AppModel) handleIdleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 		switch key.String() {
 		case "k":
 			m.pinnedToBottom = false
-			m.scrollOffset += 3
+			m.viewport.LineUp(3)
 			return m, nil
 		case "j":
-			if m.scrollOffset > 3 {
-				m.scrollOffset -= 3
-			} else {
-				m.scrollOffset = 0
+			m.viewport.LineDown(3)
+			if m.viewport.AtBottom() {
 				m.pinnedToBottom = true
 			}
+			return m, nil
+		case "g":
+			m.pinnedToBottom = false
+			m.viewport.GotoTop()
+			return m, nil
+		case "G":
+			m.pinnedToBottom = true
+			m.viewport.GotoBottom()
 			return m, nil
 		}
 	}
@@ -157,12 +174,32 @@ func (m AppModel) handleIdleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
+// handleMouse handles mouse events (scroll wheel).
+func (m AppModel) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	switch msg.Action {
+	case tea.MouseActionPress:
+		switch msg.Button {
+		case tea.MouseButtonWheelUp:
+			m.pinnedToBottom = false
+			m.viewport.LineUp(3)
+		case tea.MouseButtonWheelDown:
+			m.viewport.LineDown(3)
+			if m.viewport.AtBottom() {
+				m.pinnedToBottom = true
+			}
+		}
+	}
+	return m, nil
+}
+
 // handleSubmit is called when the user presses Enter in the input box.
 func (m AppModel) handleSubmit() (tea.Model, tea.Cmd) {
 	text := m.input.Value()
 	if text == "" {
 		return m, nil
 	}
+
+	// Keep welcome header visible (always show)
 
 	// Clear input.
 	m.input = m.input.SetValue("")
@@ -175,6 +212,7 @@ func (m AppModel) handleSubmit() (tea.Model, tea.Cmd) {
 
 	// Append user message to local display.
 	m.messages = append(m.messages, newUserMessage(text))
+	m.syncViewportContent()
 
 	// Normal query.
 	m.isLoading = true
@@ -212,4 +250,52 @@ func (m AppModel) doAbort() (tea.Model, tea.Cmd) {
 	m.abortFn = nil
 	m.streamCh = nil
 	return m, abortCmd
+}
+
+// toggleAllToolResults toggles the expansion state of all tool results.
+// If any are collapsed, expand all; if all are expanded, collapse all.
+func (m AppModel) toggleAllToolResults() (tea.Model, tea.Cmd) {
+	// Collect all tool use IDs from messages
+	toolIDs := m.collectToolUseIDs()
+	if len(toolIDs) == 0 {
+		return m, nil
+	}
+
+	// Check if any are currently collapsed
+	anyCollapsed := false
+	for _, id := range toolIDs {
+		if !m.expandedToolResults[id] {
+			anyCollapsed = true
+			break
+		}
+	}
+
+	// Toggle: if any collapsed, expand all; otherwise collapse all
+	if anyCollapsed {
+		for _, id := range toolIDs {
+			m.expandedToolResults[id] = true
+		}
+	} else {
+		for _, id := range toolIDs {
+			m.expandedToolResults[id] = false
+		}
+	}
+
+	m.syncViewportContent()
+	return m, nil
+}
+
+// collectToolUseIDs returns all tool use IDs from the message history.
+// We collect from tool_use blocks in assistant messages (not tool_result in user messages)
+// because tool_use.ID is the primary key for tracking expansion state.
+func (m AppModel) collectToolUseIDs() []string {
+	var ids []string
+	for _, msg := range m.messages {
+		for _, blk := range msg.Content {
+			if blk.Type == "tool_use" && blk.ID != nil {
+				ids = append(ids, *blk.ID)
+			}
+		}
+	}
+	return ids
 }

@@ -31,7 +31,15 @@
 ---
 
 <p align="center">
-  <img src="assets/demo.png" alt="Claude Code Go 演示" width="800">
+  <img src="assets/image.png" alt="Claude Code Go - 交互式会话" width="800">
+  <br>
+  <em>交互式 TUI 界面，支持文件读取和实时思考状态显示</em>
+</p>
+
+<p align="center">
+  <img src="assets/image1.png" alt="Claude Code Go - 项目分析" width="800">
+  <br>
+  <em>全面的项目分析报告，包含架构层级详情</em>
 </p>
 
 ---

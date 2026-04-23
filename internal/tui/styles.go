@@ -42,9 +42,3 @@ func toolNameStyle(t Theme) lipgloss.Style {
 func toolInputStyle(t Theme) lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(t.ToolInput)
 }
-
-func codeStyle(t Theme) lipgloss.Style {
-	return lipgloss.NewStyle().
-		Background(t.CodeBG).
-		Foreground(t.CodeFG)
-}

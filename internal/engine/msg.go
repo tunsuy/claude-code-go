@@ -114,12 +114,12 @@ type ToolResultMsg struct {
 // PermissionRequestMsg carries a permission request for a tool call.
 // The TUI layer should display a dialog and call RespFn with the user's decision.
 type PermissionRequestMsg struct {
-	RequestID string
-	ToolUseID string
-	ToolName  string
-	Message   string
-	Input     string // JSON input for display
+	RequestID string `json:"request_id"`
+	ToolUseID string `json:"tool_use_id"`
+	ToolName  string `json:"tool_name"`
+	Message   string `json:"message"`
+	Input     string `json:"input"` // JSON input for display
 	// RespFn is called by the TUI once the user makes a decision.
 	// allow=true means permit the tool call; allow=false means deny.
-	RespFn func(allow bool)
+	RespFn func(allow bool) `json:"-"` // excluded from JSON serialization
 }

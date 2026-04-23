@@ -6,6 +6,7 @@ import (
 
 	"github.com/tunsuy/claude-code-go/internal/api"
 	"github.com/tunsuy/claude-code-go/internal/compact"
+	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
@@ -99,6 +100,10 @@ type engineImpl struct {
 	microCompactor *compact.MicroCompactor
 	// autoCompactor performs LLM-based summarisation when context is near the limit.
 	autoCompactor *compact.AutoCompactor
+
+	// permChecker is the permission checker for HIL (Human-in-the-Loop) support.
+	// If nil, all tools are allowed without asking.
+	permChecker permissions.Checker
 }
 
 // Config is the constructor parameter bundle for New.
@@ -111,6 +116,9 @@ type Config struct {
 	Model string
 	// MaxTokens is the default max_tokens for API requests (0 → 8192).
 	MaxTokens int
+	// PermissionChecker is the optional HIL permission checker.
+	// If nil, all tools are allowed without asking.
+	PermissionChecker permissions.Checker
 }
 
 // Compile-time interface assertion: engineImpl must satisfy QueryEngine.
@@ -130,6 +138,7 @@ func New(cfg Config) QueryEngine {
 		abortCh:        make(chan struct{}),
 		microCompactor: compact.NewMicroCompactor(),
 		autoCompactor:  compact.NewAutoCompactor(cfg.Client, cfg.Model, maxTokens),
+		permChecker:    cfg.PermissionChecker,
 	}
 }
 

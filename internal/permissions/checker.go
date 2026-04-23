@@ -7,6 +7,7 @@ package permissions
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/tunsuy/claude-code-go/internal/hooks"
@@ -143,6 +144,11 @@ func (c *checker) CanUseTool(
 	}
 
 	// 7. PermissionMode default decisions.
+	// DEBUG log
+	if f, ferr := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
+		fmt.Fprintf(f, "[DEBUG] CanUseTool step 7: tool=%s, mode=%s\n", toolName, c.permCtx.Mode)
+		f.Close()
+	}
 	switch c.permCtx.Mode {
 	case types.PermissionModeDontAsk:
 		return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
@@ -208,6 +214,13 @@ func (c *checker) RequestPermission(
 		return result, err
 	}
 
+	// DEBUG: Write to file for TUI debugging
+	if f, ferr := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
+		fmt.Fprintf(f, "[DEBUG] RequestPermission: tool=%s, behavior=%s, mode=%s, askCh=%v, respCh=%v\n",
+			req.ToolName, result.Behavior, c.permCtx.Mode, c.askCh != nil, c.respCh != nil)
+		f.Close()
+	}
+
 	switch result.Behavior {
 	case tools.PermissionAllow:
 		return result, nil
@@ -238,6 +251,7 @@ func (c *checker) RequestPermission(
 			ToolUseID:   req.ToolUseID,
 			Message:     result.Reason,
 			Input:       req.Input,
+			ProjectPath: getProjectPath(),
 		}
 		select {
 		case c.askCh <- askReq:
@@ -340,4 +354,13 @@ func matchPattern(pattern, toolName string, matcherFn func(string) bool) bool {
 
 	// No matcher available — content patterns require a matcher; deny match.
 	return false
+}
+
+// getProjectPath returns the current working directory as the project path.
+func getProjectPath() string {
+	wd, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return wd
 }

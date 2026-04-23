@@ -8,8 +8,10 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/api"
 	"github.com/tunsuy/claude-code-go/internal/config"
 	"github.com/tunsuy/claude-code-go/internal/engine"
+	"github.com/tunsuy/claude-code-go/internal/hooks"
 	"github.com/tunsuy/claude-code-go/internal/mcp"
 	"github.com/tunsuy/claude-code-go/internal/oauth"
+	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
 	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
@@ -54,6 +56,10 @@ type AppContainer struct {
 	MCPPool *mcp.Pool
 	// Settings is the merged layered config.
 	Settings *config.LayeredSettings
+	// PermAskCh receives permission requests from the engine (for TUI to consume).
+	PermAskCh <-chan permissions.AskRequest
+	// PermRespCh is used by TUI to send permission responses back to the engine.
+	PermRespCh chan<- permissions.AskResponse
 }
 
 // defaultModel is used when no model override is provided.
@@ -66,8 +72,9 @@ const defaultModel = "claude-opus-4-5"
 //  2. OAuth token pre-warm
 //  3. API client construction
 //  4. Tool registry setup
-//  5. Engine construction
-//  6. App state store construction
+//  5. Permission checker setup (HIL support)
+//  6. Engine construction
+//  7. App state store construction
 func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	// ── Phase 1: Config ─────────────────────────────────────────────────────
 	settings, err := loadSettings(opts.HomeDir, opts.WorkingDir)
@@ -94,16 +101,32 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────
 	pool := mcp.NewPool()
 
-	// ── Phase 6: Engine + AppStateStore ─────────────────────────────────────
+	// ── Phase 6: App state store (needed for permission context) ─────────────
 	model := resolveModel(settings, opts.ModelOverride)
-	eng := engine.New(engine.Config{
-		Client:   apiClient,
-		Registry: reg,
-		Model:    model,
-	})
-
 	appState := buildAppState(settings, opts, model)
 	store := state.NewAppStateStore(appState)
+
+	// ── Phase 7: Permission checker (HIL support) ────────────────────────────
+	// Create permission channels for TUI ↔ Engine communication.
+	askCh := make(chan permissions.AskRequest, 1)
+	respCh := make(chan permissions.AskResponse, 1)
+
+	// Build the permission checker with the tool registry and channels.
+	permChecker := permissions.NewChecker(permissions.CheckerConfig{
+		PermCtx:    appState.ToolPermissionContext,
+		Dispatcher: hooks.NewDispatcher(nil, false), // Empty dispatcher (no hooks configured yet)
+		Registry:   reg,
+		AskCh:      askCh,
+		RespCh:     respCh,
+	})
+
+	// ── Phase 8: Engine construction ─────────────────────────────────────────
+	eng := engine.New(engine.Config{
+		Client:            apiClient,
+		Registry:          reg,
+		Model:             model,
+		PermissionChecker: permChecker,
+	})
 
 	return &AppContainer{
 		QueryEngine:   eng,
@@ -111,6 +134,8 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 		ToolRegistry:  reg,
 		MCPPool:       pool,
 		Settings:      settings,
+		PermAskCh:     askCh,
+		PermRespCh:    respCh,
 	}, nil
 }
 
@@ -139,16 +164,30 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────
 	pool := mcp.NewPool()
 
-	// ── Phase 6: Engine + AppStateStore ─────────────────────────────────────
+	// ── Phase 6: App state store (needed for permission context) ─────────────
 	model := resolveModel(settings, opts.ModelOverride)
-	eng := engine.New(engine.Config{
-		Client:   client,
-		Registry: reg,
-		Model:    model,
-	})
-
 	appState := buildAppState(settings, opts, model)
 	store := state.NewAppStateStore(appState)
+
+	// ── Phase 7: Permission checker (HIL support) ────────────────────────────
+	askCh := make(chan permissions.AskRequest, 1)
+	respCh := make(chan permissions.AskResponse, 1)
+
+	permChecker := permissions.NewChecker(permissions.CheckerConfig{
+		PermCtx:    appState.ToolPermissionContext,
+		Dispatcher: hooks.NewDispatcher(nil, false),
+		Registry:   reg,
+		AskCh:      askCh,
+		RespCh:     respCh,
+	})
+
+	// ── Phase 8: Engine construction ─────────────────────────────────────────
+	eng := engine.New(engine.Config{
+		Client:            client,
+		Registry:          reg,
+		Model:             model,
+		PermissionChecker: permChecker,
+	})
 
 	return &AppContainer{
 		QueryEngine:   eng,
@@ -156,6 +195,8 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		ToolRegistry:  reg,
 		MCPPool:       pool,
 		Settings:      settings,
+		PermAskCh:     askCh,
+		PermRespCh:    respCh,
 	}, nil
 }
 

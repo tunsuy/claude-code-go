@@ -86,6 +86,18 @@ v0.1.0 (当前)          v0.2.0             v0.3.0             v0.4.0           
 | 1.1.4 | TUI 处理权限对话框 | `internal/tui/permissions.go` | 已有框架，需对接引擎 Msg |
 | 1.1.5 | 在 `bootstrap/wire.go` 中构建 Checker 并注入 | `internal/bootstrap/wire.go` | 组装 Hook Dispatcher + Checker |
 
+### 1.1.6 权限系统安全增强 🔴 P0
+
+> 详细分析见：[权限系统差异分析报告](analysis/permission-system-gap-analysis.md)
+
+| # | 任务 | 文件 | 说明 |
+|---|------|------|------|
+| 1.1.6.1 | 实现危险文件/目录保护列表 | `internal/permissions/filesystem.go` | 防止修改 `.bashrc`、`.gitconfig` 等 |
+| 1.1.6.2 | 实现 Bash 命令基础安全检查 | `internal/tools/shell/security.go` | 检测 `sudo`、`rm -rf`、`eval` 等 |
+| 1.1.6.3 | 实现权限持久化（Always Allow 生效） | `internal/permissions/persist.go` | 用户选择 "Always Allow" 后保存到配置 |
+| 1.1.6.4 | 实现拒绝降级机制 | `internal/permissions/denial.go` | 连续拒绝 3 次后自动切换到交互模式 |
+| 1.1.6.5 | 完善 Shell 规则通配符匹配 | `internal/permissions/shellmatch.go` | 支持 `git *`、`npm run *` 等模式 |
+
 **架构改动**：
 
 ```

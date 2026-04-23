@@ -78,7 +78,8 @@ func newTestModel() AppModel {
 	})
 	reg := commands.NewRegistry()
 	commands.RegisterBuiltins(reg)
-	m := newAppModel(fe, appStore, false, true, reg)
+	// Pass nil for permission channels in tests (HIL disabled).
+	m := newAppModel(fe, appStore, false, true, reg, nil, nil)
 	m.termWidth = 80
 	m.termHeight = 24
 	m.viewport.Width = 80
@@ -885,10 +886,20 @@ func TestPermissionDialog_UpDown(t *testing.T) {
 		t.Errorf("after Down cursor should be 1, got %d", d.cursor)
 	}
 
-	// Can't go further than last option.
 	d = d.Down()
+	if d.cursor != 2 {
+		t.Errorf("after Down cursor should be 2, got %d", d.cursor)
+	}
+
+	// Can't go further than last option (index 2 with 3 options).
+	d = d.Down()
+	if d.cursor != 2 {
+		t.Errorf("cursor should stay at 2 (last option), got %d", d.cursor)
+	}
+
+	d = d.Up()
 	if d.cursor != 1 {
-		t.Errorf("cursor should stay at 1 (last option), got %d", d.cursor)
+		t.Errorf("after Up cursor should be 1, got %d", d.cursor)
 	}
 
 	d = d.Up()
@@ -905,15 +916,30 @@ func TestPermissionDialog_UpDown(t *testing.T) {
 
 func TestPermissionDialog_Confirm(t *testing.T) {
 	d := newPermissionDialog(PermissionRequestMsg{ToolName: "test"})
-	// cursor=0 → "Yes, allow once"
+	// cursor=0 → "Yes" (allow)
 	if !d.Confirm() {
 		t.Error("cursor=0 should return allow=true")
 	}
+	if d.Choice() != PermissionChoiceYes {
+		t.Error("cursor=0 should return PermissionChoiceYes")
+	}
 
 	d = d.Down()
-	// cursor=1 → "No, deny"
+	// cursor=1 → "Yes, and always allow" (also allow)
+	if !d.Confirm() {
+		t.Error("cursor=1 should return allow=true (always allow)")
+	}
+	if d.Choice() != PermissionChoiceAlwaysAllow {
+		t.Error("cursor=1 should return PermissionChoiceAlwaysAllow")
+	}
+
+	d = d.Down()
+	// cursor=2 → "No" (deny)
 	if d.Confirm() {
-		t.Error("cursor=1 should return allow=false")
+		t.Error("cursor=2 should return allow=false")
+	}
+	if d.Choice() != PermissionChoiceNo {
+		t.Error("cursor=2 should return PermissionChoiceNo")
 	}
 }
 
@@ -993,8 +1019,15 @@ func TestView_DialogPermission(t *testing.T) {
 	m.activeDialog = dialogPermission
 	m.permReq = &d
 	v := m.View()
-	if !strings.Contains(v, "Permission") {
-		t.Errorf("expected permission dialog in view, got: %q", v)
+	// Check for new dialog format: "Bash command" title and options
+	if !strings.Contains(v, "Bash command") {
+		t.Errorf("expected 'Bash command' in permission dialog view, got: %q", v)
+	}
+	if !strings.Contains(v, "Do you want to proceed?") {
+		t.Errorf("expected 'Do you want to proceed?' in permission dialog view, got: %q", v)
+	}
+	if !strings.Contains(v, "Yes") {
+		t.Errorf("expected 'Yes' option in permission dialog view, got: %q", v)
 	}
 }
 

@@ -218,8 +218,15 @@ func runInteractive(f *rootFlags, opts ContainerOptions) error {
 		// propagate via context cancellation.
 	}()
 
-	// Build and run the TUI.
-	m := tui.New(container.QueryEngine, container.AppStateStore, false, true)
+	// Build and run the TUI with permission channels for HIL support.
+	m := tui.New(
+		container.QueryEngine,
+		container.AppStateStore,
+		false, // vimEnabled
+		true,  // dark mode
+		container.PermAskCh,
+		container.PermRespCh,
+	)
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("tui: %w", err)

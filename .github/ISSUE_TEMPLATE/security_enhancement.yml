@@ -1,0 +1,85 @@
+name: "🔒 Security Enhancement"
+description: Propose security-related improvements or report security gaps
+title: "[Security] "
+labels: ["security", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve the security of claude-code-go! 🔒
+        
+        ⚠️ **Important**: If you're reporting a security vulnerability, please DO NOT create a public issue.
+        Instead, follow our [Security Policy](../../SECURITY.md).
+        
+        This template is for security enhancements, not vulnerability reports.
+
+  - type: dropdown
+    id: security-area
+    attributes:
+      label: Security Area
+      description: Which area of security does this relate to?
+      options:
+        - Permission System
+        - File System Protection
+        - Shell Command Safety
+        - Input Validation
+        - Authentication/Authorization
+        - Data Protection
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How critical is this enhancement?
+      options:
+        - "P0 - Critical (security risk)"
+        - "P1 - High (important gap)"
+        - "P2 - Medium (nice to have)"
+        - "P3 - Low (future consideration)"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the security enhancement you're proposing.
+      placeholder: |
+        Current behavior:
+        Expected behavior:
+        Security impact:
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Suggestion
+      description: If you have ideas on how to implement this, please share them.
+      placeholder: |
+        Suggested approach:
+        Files to modify:
+        Estimated effort:
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference Implementation
+      description: If there's a reference implementation (e.g., in TypeScript version), please link it.
+      placeholder: |
+        Original implementation: src/utils/permissions/...
+        Documentation: docs/analysis/...
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: This is NOT a security vulnerability report
+          required: true
+        - label: I have read the relevant documentation

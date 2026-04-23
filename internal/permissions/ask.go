@@ -19,6 +19,8 @@ type AskRequest struct {
 	Suggestions []tools.PermissionResult
 	// BlockedPath is the file path blocked by the permission check (if any).
 	BlockedPath string
+	// ProjectPath is the project path for "always allow" option.
+	ProjectPath string
 }
 
 // AskResponse is sent from the TUI layer back to the permission system in reply

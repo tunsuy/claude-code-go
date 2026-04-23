@@ -83,11 +83,12 @@ type StreamErrorMsg struct{ Err error }
 
 // PermissionRequestMsg is sent when a tool call requires user confirmation.
 type PermissionRequestMsg struct {
-	RequestID string
-	ToolName  string
-	ToolUseID string
-	Message   string
-	Input     string // JSON
+	RequestID   string
+	ToolName    string
+	ToolUseID   string
+	Message     string
+	Input       string // JSON
+	ProjectPath string // Project path for "always allow" option
 	// RespFn is called by the TUI once the user makes a decision.
 	// Using a function avoids channel-send blocking issues.
 	RespFn func(allow bool)

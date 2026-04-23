@@ -211,7 +211,7 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 			}
 			// Execute tools.
 			batches := partitionToolCalls(toolCalls, e.registry)
-			results, toolErr := runTools(ctx, batches, e.registry, params.ToolUseContext, msgCh)
+			results, toolErr := runTools(ctx, batches, e.registry, params.ToolUseContext, msgCh, e.permChecker)
 			if toolErr != nil {
 				sendError(ctx, msgCh, toolErr)
 				return

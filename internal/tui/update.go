@@ -147,6 +147,10 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.activeDialog = dialogPermission
 		d := newPermissionDialog(msg)
 		m.permReq = &d
+		// Continue listening for the next permission request.
+		if m.permAskCh != nil {
+			return m, listenForPermissionRequest(m.permAskCh, m.permRespCh)
+		}
 		return m, nil
 
 	// --- Slash command result ---

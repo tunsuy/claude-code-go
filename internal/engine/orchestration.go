@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
@@ -92,11 +93,12 @@ func runTools(
 	registry *tools.Registry,
 	uctx *tools.UseContext,
 	msgCh chan<- Msg,
+	permChecker permissions.Checker,
 ) ([]types.ContentBlock, error) {
 	var allResults []types.ContentBlock
 
 	for _, batch := range batches {
-		results, err := executeBatch(ctx, batch, registry, uctx, msgCh)
+		results, err := executeBatch(ctx, batch, registry, uctx, msgCh, permChecker)
 		if err != nil {
 			return allResults, err
 		}
@@ -112,11 +114,12 @@ func executeBatch(
 	registry *tools.Registry,
 	uctx *tools.UseContext,
 	msgCh chan<- Msg,
+	permChecker permissions.Checker,
 ) ([]types.ContentBlock, error) {
 	if batch.concurrent {
-		return executeConcurrentBatch(ctx, batch.calls, registry, uctx, msgCh)
+		return executeConcurrentBatch(ctx, batch.calls, registry, uctx, msgCh, permChecker)
 	}
-	return executeSerialBatch(ctx, batch.calls, registry, uctx, msgCh)
+	return executeSerialBatch(ctx, batch.calls, registry, uctx, msgCh, permChecker)
 }
 
 // executeConcurrentBatch runs all calls in parallel up to the concurrency limit.
@@ -126,6 +129,7 @@ func executeConcurrentBatch(
 	registry *tools.Registry,
 	uctx *tools.UseContext,
 	msgCh chan<- Msg,
+	permChecker permissions.Checker,
 ) ([]types.ContentBlock, error) {
 	limit := maxToolConcurrency()
 	sem := make(chan struct{}, limit)
@@ -147,7 +151,7 @@ func executeConcurrentBatch(
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			result, err := executeOneTool(ctx, tc, registry, uctx, msgCh)
+			result, err := executeOneTool(ctx, tc, registry, uctx, msgCh, permChecker)
 			if err != nil {
 				errCh <- err
 				return
@@ -183,10 +187,11 @@ func executeSerialBatch(
 	registry *tools.Registry,
 	uctx *tools.UseContext,
 	msgCh chan<- Msg,
+	permChecker permissions.Checker,
 ) ([]types.ContentBlock, error) {
 	var results []types.ContentBlock
 	for _, tc := range calls {
-		result, err := executeOneTool(ctx, tc, registry, uctx, msgCh)
+		result, err := executeOneTool(ctx, tc, registry, uctx, msgCh, permChecker)
 		if err != nil {
 			return results, err
 		}
@@ -196,12 +201,16 @@ func executeSerialBatch(
 }
 
 // executeOneTool runs a single tool call and emits the appropriate Msg events.
+// If permChecker is non-nil, it checks permission before executing.
+// For write tools that require permission, it emits a PermissionRequestMsg and
+// blocks until the user responds.
 func executeOneTool(
 	ctx context.Context,
 	tc toolCall,
 	registry *tools.Registry,
 	uctx *tools.UseContext,
 	msgCh chan<- Msg,
+	permChecker permissions.Checker,
 ) (types.ContentBlock, error) {
 	t, ok := registry.Get(tc.name)
 	if !ok {
@@ -244,6 +253,58 @@ func executeOneTool(
 			Content:   []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr(reason)}},
 			IsError:   &trueVal,
 		}, nil
+	}
+
+	// Permission check (HIL: Human-in-the-Loop).
+	// DEBUG: Check if permChecker is nil
+	if f, ferr := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
+		fmt.Fprintf(f, "[DEBUG] executeOneTool: tool=%s, permChecker=%v\n", tc.name, permChecker != nil)
+		f.Close()
+	}
+	if permChecker != nil {
+		permReq := permissions.PermissionRequest{
+			ToolName:  tc.name,
+			ToolUseID: tc.id,
+			Input:     tc.input,
+		}
+
+		permResult, permErr := permChecker.RequestPermission(ctx, permReq, uctx)
+		if permErr != nil {
+			errMsg := fmt.Sprintf("permission check error: %v", permErr)
+			trueVal := true
+			return types.ContentBlock{
+				Type:      types.ContentTypeToolResult,
+				ToolUseID: &tc.id,
+				Content:   []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr(errMsg)}},
+				IsError:   &trueVal,
+			}, nil
+		}
+
+		if permResult.Behavior == tools.PermissionDeny {
+			reason := "permission denied"
+			if permResult.Reason != "" {
+				reason = permResult.Reason
+			}
+			// Emit ToolResult msg for the denied tool.
+			select {
+			case msgCh <- Msg{
+				Type: MsgTypeToolResult,
+				ToolResult: &ToolResultMsg{
+					ToolUseID: tc.id,
+					Content:   reason,
+					IsError:   true,
+				},
+			}:
+			case <-ctx.Done():
+			}
+			trueVal := true
+			return types.ContentBlock{
+				Type:      types.ContentTypeToolResult,
+				ToolUseID: &tc.id,
+				Content:   []types.ContentBlock{{Type: types.ContentTypeText, Text: strPtr(reason)}},
+				IsError:   &trueVal,
+			}, nil
+		}
 	}
 
 	// Progress callback: forward to engine msg channel.

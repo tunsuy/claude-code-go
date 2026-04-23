@@ -44,6 +44,10 @@ const (
 	MsgTypeSystemMessage MsgType = "system_message"
 	// MsgTypeTombstone marks a message that was deleted from the history.
 	MsgTypeTombstone MsgType = "tombstone"
+	// MsgTypePermissionRequest is emitted when a tool requires user permission.
+	MsgTypePermissionRequest MsgType = "permission_request"
+	// MsgTypePermissionResponse is received when the user responds to a permission request.
+	MsgTypePermissionResponse MsgType = "permission_response"
 )
 
 // Msg is the event type emitted by the engine over the channel returned by
@@ -95,6 +99,9 @@ type Msg struct {
 
 	// --- MsgTypeSystemMessage ---
 	SystemText string
+
+	// --- MsgTypePermissionRequest ---
+	PermissionReq *PermissionRequestMsg
 }
 
 // ToolResultMsg carries the result of a single tool execution.
@@ -102,4 +109,17 @@ type ToolResultMsg struct {
 	ToolUseID string
 	Content   string
 	IsError   bool
+}
+
+// PermissionRequestMsg carries a permission request for a tool call.
+// The TUI layer should display a dialog and call RespFn with the user's decision.
+type PermissionRequestMsg struct {
+	RequestID string
+	ToolUseID string
+	ToolName  string
+	Message   string
+	Input     string // JSON input for display
+	// RespFn is called by the TUI once the user makes a decision.
+	// allow=true means permit the tool call; allow=false means deny.
+	RespFn func(allow bool)
 }

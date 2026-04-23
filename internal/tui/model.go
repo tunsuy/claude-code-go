@@ -10,6 +10,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/engine"
+	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
@@ -109,6 +110,12 @@ type AppModel struct {
 	mdRenderer      *glamour.TermRenderer
 	mdRendererWidth int
 	mdRendererDark  bool
+
+	// --- Permission channels (HIL support) ---
+	// permAskCh receives permission requests from the engine.
+	// permRespCh is used to send permission responses back.
+	permAskCh  <-chan permissions.AskRequest
+	permRespCh chan<- permissions.AskResponse
 }
 
 // newAppModel is the internal constructor; callers use New().
@@ -118,6 +125,8 @@ func newAppModel(
 	vimEnabled bool,
 	dark bool,
 	reg *commands.Registry,
+	permAskCh <-chan permissions.AskRequest,
+	permRespCh chan<- permissions.AskResponse,
 ) AppModel {
 	st := appStore.GetState()
 	cwd := st.WorkingDir
@@ -150,6 +159,8 @@ func newAppModel(
 		welcomeHeader:  NewWelcomeHeader(model, cwd),
 		pinnedToBottom: true,
 		viewport:       viewport.New(80, 20),
+		permAskCh:      permAskCh,
+		permRespCh:     permRespCh,
 	}
 	return m
 }

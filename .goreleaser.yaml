@@ -111,7 +111,7 @@ brews:
     homepage: https://github.com/tunsuy/claude-code-go
     description: A Go reimplementation of Claude Code — AI coding assistant in your terminal
     license: MIT
-    skip_upload: auto
+    skip_upload: true
     install: |
       bin.install "claude"
     test: |

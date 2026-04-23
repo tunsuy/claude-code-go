@@ -1,13 +1,75 @@
 package agent_test
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"strings"
 	"testing"
 
 	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/internal/tools/agent"
 )
+
+// mockCoordinator is a test double for tools.AgentCoordinator.
+type mockCoordinator struct {
+	spawnFn     func(ctx context.Context, req tools.AgentSpawnRequest) (string, error)
+	sendMsgFn   func(ctx context.Context, agentID string, message string) error
+	stopFn      func(ctx context.Context, agentID string) error
+	statusFn    func(ctx context.Context, agentID string) (string, error)
+	resultFn    func(ctx context.Context, agentID string) (string, string, error)
+	listFn      func() map[string]string
+	waitFn      func(ctx context.Context, agentID string) (string, error)
+}
+
+func (m *mockCoordinator) SpawnAgent(ctx context.Context, req tools.AgentSpawnRequest) (string, error) {
+	if m.spawnFn != nil {
+		return m.spawnFn(ctx, req)
+	}
+	return "mock-agent-1", nil
+}
+
+func (m *mockCoordinator) SendMessage(ctx context.Context, agentID string, message string) error {
+	if m.sendMsgFn != nil {
+		return m.sendMsgFn(ctx, agentID, message)
+	}
+	return nil
+}
+
+func (m *mockCoordinator) StopAgent(ctx context.Context, agentID string) error {
+	if m.stopFn != nil {
+		return m.stopFn(ctx, agentID)
+	}
+	return nil
+}
+
+func (m *mockCoordinator) GetAgentStatus(ctx context.Context, agentID string) (string, error) {
+	if m.statusFn != nil {
+		return m.statusFn(ctx, agentID)
+	}
+	return "running", nil
+}
+
+func (m *mockCoordinator) GetAgentResult(ctx context.Context, agentID string) (string, string, error) {
+	if m.resultFn != nil {
+		return m.resultFn(ctx, agentID)
+	}
+	return "result", "completed", nil
+}
+
+func (m *mockCoordinator) ListAgents() map[string]string {
+	if m.listFn != nil {
+		return m.listFn()
+	}
+	return map[string]string{}
+}
+
+func (m *mockCoordinator) WaitForAgent(ctx context.Context, agentID string) (string, error) {
+	if m.waitFn != nil {
+		return m.waitFn(ctx, agentID)
+	}
+	return "done", nil
+}
 
 // ── AgentTool ─────────────────────────────────────────────────────────────────
 
@@ -17,10 +79,11 @@ func TestAgentTool_Name(t *testing.T) {
 	}
 }
 
-func TestAgentTool_IsConcurrencySafe_False(t *testing.T) {
-	// P1-1: must be false (state-mutating tool)
-	if agent.AgentTool.IsConcurrencySafe(nil) {
-		t.Error("AgentTool.IsConcurrencySafe must return false")
+func TestAgentTool_IsConcurrencySafe_True(t *testing.T) {
+	// AgentTool spawns agents via the coordinator which is concurrency-safe,
+	// allowing the LLM to launch multiple agents in parallel within one turn.
+	if !agent.AgentTool.IsConcurrencySafe(nil) {
+		t.Error("AgentTool.IsConcurrencySafe must return true to enable parallel agent spawning")
 	}
 }
 
@@ -207,4 +270,345 @@ func TestSendMessageTool_Call_ReturnsError(t *testing.T) {
 
 func TestSendMessageTool_ImplementsToolInterface(t *testing.T) {
 	var _ tools.Tool = agent.SendMessageTool
+}
+
+// ── AgentTool Call() with mock coordinator ───────────────────────────────────
+
+func TestAgentTool_Call_Success(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{
+		spawnFn: func(_ context.Context, req tools.AgentSpawnRequest) (string, error) {
+			if req.Prompt != "analyze code" {
+				t.Errorf("unexpected prompt: %q", req.Prompt)
+			}
+			return "agent-42", nil
+		},
+		waitFn: func(_ context.Context, agentID string) (string, error) {
+			if agentID != "agent-42" {
+				t.Errorf("unexpected agentID: %q", agentID)
+			}
+			return "analysis complete", nil
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.AgentInput{Prompt: "analyze code"})
+	result, err := agent.AgentTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected IsError: %s", result.Content)
+	}
+
+	var out agent.AgentOutput
+	if err := json.Unmarshal([]byte(result.Content.(string)), &out); err != nil {
+		t.Fatalf("failed to unmarshal output: %v", err)
+	}
+	if out.Response != "analysis complete" {
+		t.Errorf("expected 'analysis complete', got %q", out.Response)
+	}
+}
+
+func TestAgentTool_Call_WithMaxTurns(t *testing.T) {
+	t.Parallel()
+	var capturedReq tools.AgentSpawnRequest
+	mock := &mockCoordinator{
+		spawnFn: func(_ context.Context, req tools.AgentSpawnRequest) (string, error) {
+			capturedReq = req
+			return "agent-mt", nil
+		},
+		waitFn: func(_ context.Context, _ string) (string, error) {
+			return "ok", nil
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	maxTurns := 10
+	input, _ := json.Marshal(agent.AgentInput{
+		Prompt:       "task with limits",
+		AllowedTools: []string{"Read", "Bash"},
+		MaxTurns:     &maxTurns,
+	})
+	result, err := agent.AgentTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected IsError: %s", result.Content)
+	}
+	if capturedReq.MaxTurns != 10 {
+		t.Errorf("expected MaxTurns=10, got %d", capturedReq.MaxTurns)
+	}
+	if len(capturedReq.AllowedTools) != 2 {
+		t.Errorf("expected 2 AllowedTools, got %d", len(capturedReq.AllowedTools))
+	}
+}
+
+func TestAgentTool_Call_EmptyPrompt(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.AgentInput{Prompt: ""})
+	result, err := agent.AgentTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for empty prompt")
+	}
+	if !strings.Contains(result.Content.(string), "prompt is required") {
+		t.Errorf("unexpected error message: %v", result.Content)
+	}
+}
+
+func TestAgentTool_Call_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	result, err := agent.AgentTool.Call([]byte(`{bad json`), ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for invalid JSON")
+	}
+	if !strings.Contains(result.Content.(string), "invalid input") {
+		t.Errorf("unexpected error message: %v", result.Content)
+	}
+}
+
+func TestAgentTool_Call_SpawnError(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{
+		spawnFn: func(_ context.Context, _ tools.AgentSpawnRequest) (string, error) {
+			return "", errors.New("spawn limit reached")
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.AgentInput{Prompt: "do something"})
+	result, err := agent.AgentTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for spawn error")
+	}
+	if !strings.Contains(result.Content.(string), "failed to spawn agent") {
+		t.Errorf("unexpected error message: %v", result.Content)
+	}
+}
+
+func TestAgentTool_Call_WaitError(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{
+		spawnFn: func(_ context.Context, _ tools.AgentSpawnRequest) (string, error) {
+			return "agent-err", nil
+		},
+		waitFn: func(_ context.Context, _ string) (string, error) {
+			return "", errors.New("agent panicked")
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.AgentInput{Prompt: "do something"})
+	result, err := agent.AgentTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for wait error")
+	}
+	if !strings.Contains(result.Content.(string), "failed") {
+		t.Errorf("unexpected error message: %v", result.Content)
+	}
+}
+
+func TestAgentTool_Call_WithProgress(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{
+		spawnFn: func(_ context.Context, _ tools.AgentSpawnRequest) (string, error) {
+			return "agent-prog", nil
+		},
+		waitFn: func(_ context.Context, _ string) (string, error) {
+			return "done", nil
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	var progressData any
+	onProgress := func(data any) {
+		progressData = data
+	}
+
+	input, _ := json.Marshal(agent.AgentInput{Prompt: "progress task"})
+	result, err := agent.AgentTool.Call(input, ctx, onProgress)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected IsError: %s", result.Content)
+	}
+
+	// Verify progress was reported.
+	pm, ok := progressData.(map[string]string)
+	if !ok {
+		t.Fatalf("expected map[string]string, got %T", progressData)
+	}
+	if pm["agent_id"] != "agent-prog" {
+		t.Errorf("expected agent_id 'agent-prog', got %q", pm["agent_id"])
+	}
+	if pm["status"] != "spawned" {
+		t.Errorf("expected status 'spawned', got %q", pm["status"])
+	}
+}
+
+// ── SendMessageTool Call() with mock coordinator ─────────────────────────────
+
+func TestSendMessageTool_Call_Success(t *testing.T) {
+	t.Parallel()
+	var capturedID, capturedMsg string
+	mock := &mockCoordinator{
+		sendMsgFn: func(_ context.Context, agentID string, message string) error {
+			capturedID = agentID
+			capturedMsg = message
+			return nil
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.SendMessageInput{AgentID: "bot1", Content: "hello agent"})
+	result, err := agent.SendMessageTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected IsError: %s", result.Content)
+	}
+	if capturedID != "bot1" {
+		t.Errorf("expected agentID 'bot1', got %q", capturedID)
+	}
+	if capturedMsg != "hello agent" {
+		t.Errorf("expected message 'hello agent', got %q", capturedMsg)
+	}
+
+	// Verify output contains delivery confirmation.
+	var out agent.SendMessageOutput
+	if err := json.Unmarshal([]byte(result.Content.(string)), &out); err != nil {
+		t.Fatalf("failed to unmarshal output: %v", err)
+	}
+	if !strings.Contains(out.Response, "bot1") {
+		t.Errorf("response should mention agent ID: %q", out.Response)
+	}
+}
+
+func TestSendMessageTool_Call_EmptyAgentID(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.SendMessageInput{AgentID: "", Content: "hello"})
+	result, err := agent.SendMessageTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for empty agent_id")
+	}
+	if !strings.Contains(result.Content.(string), "agent_id is required") {
+		t.Errorf("unexpected error message: %v", result.Content)
+	}
+}
+
+func TestSendMessageTool_Call_EmptyContent(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.SendMessageInput{AgentID: "bot1", Content: ""})
+	result, err := agent.SendMessageTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for empty content")
+	}
+	if !strings.Contains(result.Content.(string), "content is required") {
+		t.Errorf("unexpected error message: %v", result.Content)
+	}
+}
+
+func TestSendMessageTool_Call_InvalidJSON(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	result, err := agent.SendMessageTool.Call([]byte(`{bad`), ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for invalid JSON")
+	}
+}
+
+func TestSendMessageTool_Call_SendError(t *testing.T) {
+	t.Parallel()
+	mock := &mockCoordinator{
+		sendMsgFn: func(_ context.Context, _ string, _ string) error {
+			return errors.New("agent not found")
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.SendMessageInput{AgentID: "ghost", Content: "hello"})
+	result, err := agent.SendMessageTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !result.IsError {
+		t.Error("expected IsError=true for send error")
+	}
+	if !strings.Contains(result.Content.(string), "failed to send message") {
+		t.Errorf("unexpected error message: %v", result.Content)
+	}
 }

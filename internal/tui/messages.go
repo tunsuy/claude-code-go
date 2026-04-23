@@ -107,8 +107,17 @@ type CompactDoneMsg struct{ Summary string }
 
 // AgentStatusMsg is pushed from Agent-Core to update a sub-agent's status.
 type AgentStatusMsg struct {
-	TaskID string
-	Status AgentStatus
+	TaskID      string
+	Status      AgentStatus
+	Description string // human-readable task description
+}
+
+// AgentProgressMsg is pushed from a running sub-agent to report real-time
+// progress updates (streaming text, tool calls, etc.) to the coordinator panel.
+type AgentProgressMsg struct {
+	TaskID   string
+	Activity string // short label, e.g. "Streaming", "Running Bash", "Reading file"
+	Detail   string // one-line detail, e.g. tool input summary or partial text
 }
 
 // CommandResultMsg carries the result of a slash command execution.

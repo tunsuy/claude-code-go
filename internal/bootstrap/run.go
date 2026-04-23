@@ -52,7 +52,8 @@ func headlessRun(
 	}()
 
 	useCtx := &tools.UseContext{
-		Ctx: ctx,
+		Ctx:         ctx,
+		Coordinator: container.AgentCoordinator,
 	}
 
 	params := engine.QueryParams{

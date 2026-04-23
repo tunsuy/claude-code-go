@@ -7,6 +7,7 @@ import (
 
 	"github.com/tunsuy/claude-code-go/internal/api"
 	"github.com/tunsuy/claude-code-go/internal/config"
+	"github.com/tunsuy/claude-code-go/internal/coordinator"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/hooks"
 	"github.com/tunsuy/claude-code-go/internal/mcp"
@@ -60,6 +61,12 @@ type AppContainer struct {
 	PermAskCh <-chan permissions.AskRequest
 	// PermRespCh is used by TUI to send permission responses back to the engine.
 	PermRespCh chan<- permissions.AskResponse
+	// Coordinator manages multi-agent lifecycle and message routing.
+	Coordinator coordinator.Coordinator
+	// AgentCoordinator is the tools-facing adapter for the coordinator.
+	AgentCoordinator tools.AgentCoordinator
+	// AgentEventCh receives sub-agent progress and status events for TUI display.
+	AgentEventCh <-chan coordinator.Event
 }
 
 // defaultModel is used when no model override is provided.
@@ -128,14 +135,31 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 		PermissionChecker: permChecker,
 	})
 
+	// ── Phase 9: Coordinator construction ────────────────────────────────────
+	agentEventCh := make(chan coordinator.Event, 64)
+
+	onProgress := buildOnProgressFn(agentEventCh)
+	onStatusChange := buildOnStatusChangeFn(agentEventCh)
+
+	coord := coordinator.New(coordinator.Config{
+		CoordinatorMode: true,
+		RunAgent:        buildRunAgentFn(eng, reg, appState, onProgress),
+		OnProgress:      onProgress,
+		OnStatusChange:  onStatusChange,
+	})
+	agentCoord := coordinator.NewAgentCoordinator(coord)
+
 	return &AppContainer{
-		QueryEngine:   eng,
-		AppStateStore: store,
-		ToolRegistry:  reg,
-		MCPPool:       pool,
-		Settings:      settings,
-		PermAskCh:     askCh,
-		PermRespCh:    respCh,
+		QueryEngine:      eng,
+		AppStateStore:    store,
+		ToolRegistry:     reg,
+		MCPPool:          pool,
+		Settings:         settings,
+		PermAskCh:        askCh,
+		PermRespCh:       respCh,
+		Coordinator:      coord,
+		AgentCoordinator: agentCoord,
+		AgentEventCh:     agentEventCh,
 	}, nil
 }
 
@@ -189,18 +213,212 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		PermissionChecker: permChecker,
 	})
 
+	// ── Phase 9: Coordinator construction ────────────────────────────────────
+	agentEventCh := make(chan coordinator.Event, 64)
+
+	onProgress := buildOnProgressFn(agentEventCh)
+	onStatusChange := buildOnStatusChangeFn(agentEventCh)
+
+	coord := coordinator.New(coordinator.Config{
+		CoordinatorMode: true,
+		RunAgent:        buildRunAgentFn(eng, reg, appState, onProgress),
+		OnProgress:      onProgress,
+		OnStatusChange:  onStatusChange,
+	})
+	agentCoord := coordinator.NewAgentCoordinator(coord)
+
 	return &AppContainer{
-		QueryEngine:   eng,
-		AppStateStore: store,
-		ToolRegistry:  reg,
-		MCPPool:       pool,
-		Settings:      settings,
-		PermAskCh:     askCh,
-		PermRespCh:    respCh,
+		QueryEngine:      eng,
+		AppStateStore:    store,
+		ToolRegistry:     reg,
+		MCPPool:          pool,
+		Settings:         settings,
+		PermAskCh:        askCh,
+		PermRespCh:       respCh,
+		Coordinator:      coord,
+		AgentCoordinator: agentCoord,
+		AgentEventCh:     agentEventCh,
 	}, nil
 }
 
+// coordinatorToolNames is the set of tool names that should NOT be available to
+// sub-agents. These are coordinator-only tools that, if visible to the LLM,
+// would cause sub-agents to attempt spawning their own sub-agents, leading to
+// infinite recursion.
+var coordinatorToolNames = map[string]bool{
+	"TaskCreate": true,
+	"TaskGet":    true,
+	"TaskList":   true,
+	"TaskUpdate": true,
+	"TaskStop":   true,
+	"TaskOutput": true,
+	"Agent":      true,
+	"SendMessage": true,
+}
+
+// buildRunAgentFn creates a RunAgentFn that uses the given QueryEngine to
+// execute sub-agent conversations. Each sub-agent gets its own query loop
+// with the prompt as the initial user message.
+//
+// Sub-agents do NOT have access to coordinator tools (TaskCreate, Agent, etc.)
+// to prevent infinite recursion. The ExcludeTools field in QueryParams filters
+// these tools from the LLM's tool schema, and the UseContext.Coordinator is
+// left nil so that even if a tool call somehow slips through, the Call method
+// will return an error.
+//
+// onProgress is called for each meaningful event so the TUI coordinator panel
+// can display real-time progress. It may be nil.
+func buildRunAgentFn(
+	eng engine.QueryEngine,
+	_ *tools.Registry,
+	_ state.AppState,
+	onProgress coordinator.OnProgressFn,
+) coordinator.RunAgentFn {
+	return func(ctx context.Context, agentID coordinator.AgentID, req coordinator.SpawnRequest, _ <-chan string) (string, error) {
+		desc := req.Description
+
+		// emitProgress is a local helper to safely call onProgress.
+		emitProgress := func(activity, detail string) {
+			if onProgress != nil {
+				onProgress(coordinator.ProgressEvent{
+					AgentID:     agentID,
+					Description: desc,
+					Activity:    activity,
+					Detail:      detail,
+				})
+			}
+		}
+
+		// Build a system prompt for the worker.
+		systemPrompt := engine.SystemPrompt{
+			Parts: []engine.SystemPromptPart{
+				{Text: "You are a worker agent. Complete the task described below. Be concise and thorough. " +
+					"You do NOT have access to task management or agent spawning tools. " +
+					"Focus on completing your assigned task using the available file, shell, and search tools."},
+			},
+		}
+
+		// Build the initial user message.
+		userMsg := types.Message{
+			Role: "user",
+			Content: []types.ContentBlock{
+				{Type: types.ContentTypeText, Text: strPtr(req.Prompt)},
+			},
+		}
+
+		// Create a UseContext for the sub-agent.
+		// NOTE: Coordinator is intentionally nil — sub-agents must NOT spawn
+		// further sub-agents.
+		uctx := &tools.UseContext{
+			Ctx:     ctx,
+			AbortCh: make(chan struct{}),
+		}
+
+		params := engine.QueryParams{
+			Messages:       []types.Message{userMsg},
+			SystemPrompt:   systemPrompt,
+			ToolUseContext: uctx,
+			QuerySource:    "sub-agent",
+			MaxTurns:       req.MaxTurns,
+			ExcludeTools:   coordinatorToolNames,
+		}
+
+		// Run the query loop.
+		msgCh, err := eng.Query(ctx, params)
+		if err != nil {
+			return "", fmt.Errorf("sub-agent query failed: %w", err)
+		}
+
+		emitProgress("Starting", desc)
+
+		// Collect the final assistant text while forwarding progress events.
+		var lastText string
+		for msg := range msgCh {
+			switch msg.Type {
+			case engine.MsgTypeStreamText:
+				lastText += msg.TextDelta
+				// Throttle: only report the tail of streamed text.
+				tail := lastText
+				if len(tail) > 80 {
+					tail = "…" + tail[len(tail)-77:]
+				}
+				emitProgress("Streaming", tail)
+
+			case engine.MsgTypeToolUseStart:
+				emitProgress("Running "+msg.ToolName, "")
+
+			case engine.MsgTypeToolUseInputDelta:
+				// Show partial tool input as it arrives.
+				emitProgress("Running "+msg.ToolName, truncateDetail(msg.InputDelta))
+
+			case engine.MsgTypeToolResult:
+				if msg.ToolResult != nil {
+					status := "✓"
+					if msg.ToolResult.IsError {
+						status = "✗"
+					}
+					emitProgress("Tool result "+status, truncateDetail(msg.ToolResult.Content))
+				}
+
+			case engine.MsgTypeError:
+				if msg.Err != nil {
+					return "", msg.Err
+				}
+
+			default:
+				// Consume other events (thinking, assistant/user turn, etc.).
+			}
+		}
+
+		emitProgress("Completed", "")
+
+		return lastText, nil
+	}
+}
+
+// truncateDetail truncates a string to a short summary suitable for the
+// coordinator panel detail line.
+func truncateDetail(s string) string {
+	const maxLen = 80
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "…"
+}
+
 // ── Internal helpers ──────────────────────────────────────────────────────────
+
+// buildOnProgressFn creates an OnProgressFn that pushes events to the channel.
+func buildOnProgressFn(ch chan<- coordinator.Event) coordinator.OnProgressFn {
+	return func(evt coordinator.ProgressEvent) {
+		select {
+		case ch <- coordinator.Event{
+			Kind:        coordinator.EventProgress,
+			AgentID:     string(evt.AgentID),
+			Description: evt.Description,
+			Activity:    evt.Activity,
+			Detail:      evt.Detail,
+		}:
+		default:
+			// Drop if buffer full — non-blocking to avoid deadlock.
+		}
+	}
+}
+
+// buildOnStatusChangeFn creates an OnStatusChangeFn that pushes events to the channel.
+func buildOnStatusChangeFn(ch chan<- coordinator.Event) coordinator.OnStatusChangeFn {
+	return func(agentID coordinator.AgentID, description string, status coordinator.AgentStatus) {
+		select {
+		case ch <- coordinator.Event{
+			Kind:        coordinator.EventStatusChange,
+			AgentID:     string(agentID),
+			Description: description,
+			Status:      string(status),
+		}:
+		default:
+		}
+	}
+}
 
 // loadSettings calls config.NewLoader and returns merged LayeredSettings.
 func loadSettings(homeDir, workingDir string) (*config.LayeredSettings, error) {

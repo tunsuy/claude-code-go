@@ -57,6 +57,10 @@ type QueryParams struct {
 	TaskBudget *TaskBudget
 	// FallbackModel is used if the primary model hits its context limit.
 	FallbackModel string
+	// ExcludeTools is a set of tool names that should NOT be included in the
+	// LLM's tool schema for this query. This is used to prevent sub-agents
+	// from seeing coordinator-only tools (e.g. TaskCreate, Agent).
+	ExcludeTools map[string]bool
 }
 
 // TaskBudget defines an optional task-level output token budget.

@@ -87,9 +87,11 @@ func TestTaskCreateTool_Name(t *testing.T) {
 	}
 }
 
-func TestTaskCreateTool_IsConcurrencySafe_False(t *testing.T) {
-	if tasks.TaskCreateTool.IsConcurrencySafe(nil) {
-		t.Error("TaskCreate must not be concurrency-safe")
+func TestTaskCreateTool_IsConcurrencySafe_True(t *testing.T) {
+	// TaskCreate spawns agents via the coordinator which is concurrency-safe,
+	// allowing multiple tasks to be created in parallel within one LLM turn.
+	if !tasks.TaskCreateTool.IsConcurrencySafe(nil) {
+		t.Error("TaskCreate must be concurrency-safe to enable parallel task spawning")
 	}
 }
 

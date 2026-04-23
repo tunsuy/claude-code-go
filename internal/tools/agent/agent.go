@@ -72,7 +72,7 @@ func (t *agentTool) InputSchema() tools.InputSchema {
 	)
 }
 
-func (t *agentTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *agentTool) IsConcurrencySafe(_ tools.Input) bool { return true }
 func (t *agentTool) IsReadOnly(_ tools.Input) bool        { return false }
 
 func (t *agentTool) UserFacingName(input tools.Input) string {

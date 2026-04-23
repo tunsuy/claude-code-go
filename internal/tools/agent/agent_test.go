@@ -79,10 +79,11 @@ func TestAgentTool_Name(t *testing.T) {
 	}
 }
 
-func TestAgentTool_IsConcurrencySafe_False(t *testing.T) {
-	// P1-1: must be false (state-mutating tool)
-	if agent.AgentTool.IsConcurrencySafe(nil) {
-		t.Error("AgentTool.IsConcurrencySafe must return false")
+func TestAgentTool_IsConcurrencySafe_True(t *testing.T) {
+	// AgentTool spawns agents via the coordinator which is concurrency-safe,
+	// allowing the LLM to launch multiple agents in parallel within one turn.
+	if !agent.AgentTool.IsConcurrencySafe(nil) {
+		t.Error("AgentTool.IsConcurrencySafe must return true to enable parallel agent spawning")
 	}
 }
 

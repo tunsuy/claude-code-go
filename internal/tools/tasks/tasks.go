@@ -73,7 +73,7 @@ func (t *taskCreateTool) InputSchema() tools.InputSchema {
 	)
 }
 
-func (t *taskCreateTool) IsConcurrencySafe(_ tools.Input) bool { return true }
+func (t *taskCreateTool) IsConcurrencySafe(_ tools.Input) bool { return false }
 func (t *taskCreateTool) IsReadOnly(_ tools.Input) bool        { return false }
 
 func (t *taskCreateTool) UserFacingName(input tools.Input) string {

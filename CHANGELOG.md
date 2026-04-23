@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-04-23
+
+### Added
+- **Permission System Integration**: Full integration of permission checker with engine orchestration
+- Permission ask/response message types for TUI communication
+- Permission dialog handling in TUI layer
+- Security enhancement GitHub Issue template
+- Permission system gap analysis documentation (Go vs TypeScript comparison)
+
+### Changed
+- Refactored engine to call permission checker before tool execution
+- Wired permission checker into bootstrap initialization
+- Reorganized analysis documentation into `docs/analysis/origin/` subdirectory
+- Updated ROADMAP with detailed permission system security enhancement tasks
+
+### Documentation
+- Added `docs/analysis/permission-system-gap-analysis.md` - comprehensive gap analysis
+- Added `docs/analysis/permission-system-issues.md` - GitHub Issue templates
+- Added `.github/ISSUE_TEMPLATE/security_enhancement.yml`
+
 ## [0.2.0] - 2026-04-22
 
 ### Added
@@ -49,6 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - GitHub Actions CI workflow (build, test, vet)
 - Open-source documentation (README, LICENSE, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY)
 
-[Unreleased]: https://github.com/tunsuy/claude-code-go/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/tunsuy/claude-code-go/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/tunsuy/claude-code-go/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/tunsuy/claude-code-go/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/tunsuy/claude-code-go/releases/tag/v0.1.1

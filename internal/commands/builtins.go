@@ -269,10 +269,30 @@ func cmdCompact() *Command {
 func cmdMemory() *Command {
 	return &Command{
 		Name:        "memory",
-		Description: "Show loaded CLAUDE.md memory files",
+		Description: "Show loaded CLAUDE.md memory files and auto-memories",
 		Execute: func(ctx CommandContext, args string) Result {
+			var sb strings.Builder
+
+			// Show CLAUDE.md files.
+			sb.WriteString("📝 Memory System Status\n\n")
+			sb.WriteString("## CLAUDE.md Files\n")
+			sb.WriteString("CLAUDE.md files are auto-discovered from the working directory\n")
+			sb.WriteString("up to the filesystem root and the home directory.\n\n")
+
+			// Show auto-memory info.
+			sb.WriteString("## Auto Memories\n")
+			sb.WriteString("Auto-memories are stored at: ~/.claude/projects/<slug>/memory/\n")
+			sb.WriteString("Use the MemoryRead tool to list all memories.\n")
+			sb.WriteString("Use the MemoryWrite tool to create new memories.\n")
+			sb.WriteString("Use the MemoryDelete tool to remove memories.\n\n")
+
+			sub := strings.TrimSpace(args)
+			if sub == "list" {
+				sb.WriteString("Tip: Ask the assistant to 'list my memories' or use the MemoryRead tool.\n")
+			}
+
 			return Result{
-				Text:    "Memory files are shown at session start.",
+				Text:    sb.String(),
 				Display: DisplayMessage,
 			}
 		},

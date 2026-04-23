@@ -5,6 +5,7 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/tools/agent"
 	"github.com/tunsuy/claude-code-go/internal/tools/fileops"
 	"github.com/tunsuy/claude-code-go/internal/tools/interact"
+	"github.com/tunsuy/claude-code-go/internal/tools/memory"
 	"github.com/tunsuy/claude-code-go/internal/tools/misc"
 	"github.com/tunsuy/claude-code-go/internal/tools/mcp"
 	"github.com/tunsuy/claude-code-go/internal/tools/shell"
@@ -60,4 +61,9 @@ func RegisterBuiltinTools(reg *tools.Registry) {
 	reg.Register(misc.ToolSearchTool)
 	reg.Register(misc.SleepTool)
 	reg.Register(misc.SyntheticOutputTool)
+
+	// ── Memory ────────────────────────────────────────────────────────────────
+	reg.Register(memory.MemoryReadTool)
+	reg.Register(memory.MemoryWriteTool)
+	reg.Register(memory.MemoryDeleteTool)
 }

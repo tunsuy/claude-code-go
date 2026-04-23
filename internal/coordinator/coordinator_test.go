@@ -3,6 +3,7 @@ package coordinator_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"testing"
@@ -26,14 +27,14 @@ func newCoordinator(fn coordinator.RunAgentFn) coordinator.Coordinator {
 
 // immediateAgent completes instantly with the given result.
 func immediateAgent(result string) coordinator.RunAgentFn {
-	return func(_ context.Context, _ coordinator.SpawnRequest, _ <-chan string) (string, error) {
+	return func(_ context.Context, _ coordinator.AgentID, _ coordinator.SpawnRequest, _ <-chan string) (string, error) {
 		return result, nil
 	}
 }
 
 // blockedAgent blocks until ctx is cancelled, then returns the given result.
 func blockedAgent(result string) coordinator.RunAgentFn {
-	return func(ctx context.Context, _ coordinator.SpawnRequest, _ <-chan string) (string, error) {
+	return func(ctx context.Context, _ coordinator.AgentID, _ coordinator.SpawnRequest, _ <-chan string) (string, error) {
 		<-ctx.Done()
 		return result, nil
 	}
@@ -41,7 +42,7 @@ func blockedAgent(result string) coordinator.RunAgentFn {
 
 // failingAgent always returns an error.
 func failingAgent(errMsg string) coordinator.RunAgentFn {
-	return func(_ context.Context, _ coordinator.SpawnRequest, _ <-chan string) (string, error) {
+	return func(_ context.Context, _ coordinator.AgentID, _ coordinator.SpawnRequest, _ <-chan string) (string, error) {
 		return "", errors.New(errMsg)
 	}
 }
@@ -49,7 +50,7 @@ func failingAgent(errMsg string) coordinator.RunAgentFn {
 // _inboxCapturingAgent reads all inbox messages then completes, returning them
 // concatenated with "|". (Prefixed with _ to indicate intentionally unused for now)
 var _ = func(readDeadline time.Duration) coordinator.RunAgentFn {
-	return func(_ context.Context, _ coordinator.SpawnRequest, inbox <-chan string) (string, error) {
+	return func(_ context.Context, _ coordinator.AgentID, _ coordinator.SpawnRequest, inbox <-chan string) (string, error) {
 		var msgs []string
 		deadline := time.After(readDeadline)
 		for {
@@ -74,15 +75,102 @@ func TestSpawnAgent_ReturnsUniqueIDs(t *testing.T) {
 	c := newCoordinator(nil)
 	ctx := context.Background()
 
-	req := coordinator.SpawnRequest{Prompt: "do something"}
-	id1, err1 := c.SpawnAgent(ctx, req)
-	id2, err2 := c.SpawnAgent(ctx, req)
+	// Use different descriptions so dedup does not kick in.
+	req1 := coordinator.SpawnRequest{Prompt: "do something", Description: "task-a"}
+	req2 := coordinator.SpawnRequest{Prompt: "do something else", Description: "task-b"}
+	id1, err1 := c.SpawnAgent(ctx, req1)
+	id2, err2 := c.SpawnAgent(ctx, req2)
 
 	if err1 != nil || err2 != nil {
 		t.Fatalf("SpawnAgent failed: %v / %v", err1, err2)
 	}
 	if id1 == id2 {
 		t.Errorf("expected distinct agent IDs, got %q twice", id1)
+	}
+}
+
+func TestSpawnAgent_DedupReturnsSameIDForRunningAgent(t *testing.T) {
+	// Use a blocked agent so the first spawn stays running.
+	c := newCoordinator(blockedAgent(""))
+	ctx := context.Background()
+
+	req := coordinator.SpawnRequest{Prompt: "shared task", Description: "shared-desc"}
+	id1, err1 := c.SpawnAgent(ctx, req)
+	if err1 != nil {
+		t.Fatalf("first SpawnAgent failed: %v", err1)
+	}
+
+	// Second spawn with the same description should return the same ID.
+	id2, err2 := c.SpawnAgent(ctx, req)
+	if err2 != nil {
+		t.Fatalf("second SpawnAgent failed: %v", err2)
+	}
+
+	if id1 != id2 {
+		t.Errorf("expected dedup to return same ID %q, got %q", id1, id2)
+	}
+}
+
+func TestSpawnAgent_DedupAllowsRespawnAfterCompletion(t *testing.T) {
+	c := newCoordinator(immediateAgent("done"))
+	ctx := context.Background()
+
+	req := coordinator.SpawnRequest{Prompt: "transient task", Description: "transient-desc"}
+	id1, err1 := c.SpawnAgent(ctx, req)
+	if err1 != nil {
+		t.Fatalf("first SpawnAgent failed: %v", err1)
+	}
+
+	// Wait for the agent to finish.
+	ch, _ := c.Subscribe(id1)
+	<-ch
+
+	// Now spawning with the same description should create a new agent
+	// because the first one is no longer running.
+	id2, err2 := c.SpawnAgent(ctx, req)
+	if err2 != nil {
+		t.Fatalf("second SpawnAgent failed: %v", err2)
+	}
+
+	if id1 == id2 {
+		t.Errorf("expected new ID after previous agent completed, got same %q", id1)
+	}
+}
+
+func TestSpawnAgent_DefaultMaxTurnsApplied(t *testing.T) {
+	var mu sync.Mutex
+	var captured coordinator.SpawnRequest
+	fn := func(_ context.Context, _ coordinator.AgentID, req coordinator.SpawnRequest, _ <-chan string) (string, error) {
+		mu.Lock()
+		captured = req
+		mu.Unlock()
+		return "", nil
+	}
+	c := newCoordinator(fn)
+
+	// MaxTurns=0 means caller did not specify; coordinator should fill in a default.
+	id, err := c.SpawnAgent(context.Background(), coordinator.SpawnRequest{
+		Prompt:      "work",
+		Description: "default-turns",
+		MaxTurns:    0,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Wait for the agent to finish via Subscribe instead of sleeping.
+	ch, subErr := c.Subscribe(id)
+	if subErr != nil {
+		t.Fatal(subErr)
+	}
+	<-ch
+
+	mu.Lock()
+	maxTurns := captured.MaxTurns
+	mu.Unlock()
+
+	if maxTurns <= 0 {
+		t.Errorf("expected positive default MaxTurns, got %d", maxTurns)
 	}
 }
 
@@ -230,7 +318,7 @@ func TestStopAgent_AlreadyStoppedReturnsError(t *testing.T) {
 func TestSendMessage_DeliveredToAgent(t *testing.T) {
 	// Agent that reads one inbox message then finishes.
 	received := make(chan string, 1)
-	fn := func(_ context.Context, _ coordinator.SpawnRequest, inbox <-chan string) (string, error) {
+	fn := func(_ context.Context, _ coordinator.AgentID, _ coordinator.SpawnRequest, inbox <-chan string) (string, error) {
 		select {
 		case msg := <-inbox:
 			received <- msg
@@ -442,7 +530,11 @@ func TestConcurrentSpawnAndQuery(t *testing.T) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			id, err := c.SpawnAgent(ctx, coordinator.SpawnRequest{Prompt: "concurrent work"})
+			// Use unique descriptions to avoid dedup.
+			id, err := c.SpawnAgent(ctx, coordinator.SpawnRequest{
+				Prompt:      "concurrent work",
+				Description: fmt.Sprintf("concurrent-task-%d", i),
+			})
 			if err != nil {
 				t.Errorf("SpawnAgent %d: %v", i, err)
 				return

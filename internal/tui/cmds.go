@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/engine"
+	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
@@ -49,6 +50,10 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 		Messages:     messages,
 		SystemPrompt: sysPrompt,
 		QuerySource:  "foreground",
+		ToolUseContext: &tools.UseContext{
+			Ctx:         ctx,
+			Coordinator: m.agentCoordinator,
+		},
 	}
 
 	qe := m.queryEngine

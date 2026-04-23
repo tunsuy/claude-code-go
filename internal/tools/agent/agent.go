@@ -72,7 +72,7 @@ func (t *agentTool) InputSchema() tools.InputSchema {
 	)
 }
 
-func (t *agentTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *agentTool) IsConcurrencySafe(_ tools.Input) bool { return true }
 func (t *agentTool) IsReadOnly(_ tools.Input) bool        { return false }
 
 func (t *agentTool) UserFacingName(input tools.Input) string {
@@ -87,10 +87,77 @@ func (t *agentTool) UserFacingName(input tools.Input) string {
 	return "Agent"
 }
 
-func (t *agentTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core SubAgentManager.
+func (t *agentTool) Call(input tools.Input, ctx *tools.UseContext, onProgress tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{
+			IsError: true,
+			Content: "Agent tool is not available: coordinator mode is not enabled",
+		}, nil
+	}
+
+	var in AgentInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return &tools.Result{
+			IsError: true,
+			Content: fmt.Sprintf("invalid input: %v", err),
+		}, nil
+	}
+	if in.Prompt == "" {
+		return &tools.Result{
+			IsError: true,
+			Content: "prompt is required",
+		}, nil
+	}
+
+	maxTurns := 0
+	if in.MaxTurns != nil {
+		maxTurns = *in.MaxTurns
+	}
+
+	// Spawn the sub-agent via the coordinator.
+	agentID, err := ctx.Coordinator.SpawnAgent(ctx.Ctx, tools.AgentSpawnRequest{
+		Description:  truncateStr(in.Prompt, 100),
+		Prompt:       in.Prompt,
+		AllowedTools: in.AllowedTools,
+		MaxTurns:     maxTurns,
+	})
+	if err != nil {
+		return &tools.Result{
+			IsError: true,
+			Content: fmt.Sprintf("failed to spawn agent: %v", err),
+		}, nil
+	}
+
+	// Report progress while waiting.
+	if onProgress != nil {
+		onProgress(map[string]string{
+			"agent_id": agentID,
+			"status":   "spawned",
+		})
+	}
+
+	// Wait for the sub-agent to finish.
+	result, err := ctx.Coordinator.WaitForAgent(ctx.Ctx, agentID)
+	if err != nil {
+		return &tools.Result{
+			IsError: true,
+			Content: fmt.Sprintf("agent %s failed: %v", agentID, err),
+		}, nil
+	}
+
+	// Marshal the output.
+	out := AgentOutput{Response: result}
+	outBytes, _ := json.Marshal(out)
+
 	return &tools.Result{
-		IsError: true,
-		Content: "Agent tool not yet implemented: requires Agent-Core orchestrator (TODO(dep))",
+		Content: string(outBytes),
 	}, nil
+}
+
+// truncateStr truncates s to maxLen runes, appending "…" if truncated.
+func truncateStr(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen] + "…"
 }

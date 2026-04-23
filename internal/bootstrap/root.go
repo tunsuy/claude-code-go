@@ -226,6 +226,8 @@ func runInteractive(f *rootFlags, opts ContainerOptions) error {
 		true,  // dark mode
 		container.PermAskCh,
 		container.PermRespCh,
+		container.AgentCoordinator,
+		container.AgentEventCh,
 	)
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {

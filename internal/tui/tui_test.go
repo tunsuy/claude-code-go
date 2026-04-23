@@ -79,7 +79,9 @@ func newTestModel() AppModel {
 	reg := commands.NewRegistry()
 	commands.RegisterBuiltins(reg)
 	// Pass nil for permission channels in tests (HIL disabled).
-	m := newAppModel(fe, appStore, false, true, reg, nil, nil)
+	// Pass nil for agentCoord (multi-agent disabled in basic tests).
+	// Pass nil for agentEventCh (coordinator events disabled in basic tests).
+	m := newAppModel(fe, appStore, false, true, reg, nil, nil, nil, nil)
 	m.termWidth = 80
 	m.termHeight = 24
 	m.viewport.Width = 80
@@ -434,10 +436,75 @@ func TestUpdate_PermissionRequestMsg(t *testing.T) {
 
 func TestUpdate_AgentStatusMsg(t *testing.T) {
 	m := newTestModel()
-	m.coordinatorPanel.Tasks["task1"] = AgentTaskState{Status: AgentRunning}
-	m = applyMsg(m, AgentStatusMsg{TaskID: "task1", Status: AgentCompleted})
+	// Pre-register task1 in panel.
+	m.coordinatorPanel.Tasks["task1"] = AgentTaskState{
+		ID:        "task1",
+		Name:      "Test task",
+		Status:    AgentRunning,
+		StartTime: time.Now(),
+	}
+	m.coordinatorPanel.TaskOrder = append(m.coordinatorPanel.TaskOrder, "task1")
+	m = applyMsg(m, AgentStatusMsg{TaskID: "task1", Status: AgentCompleted, Description: "Test task"})
 	if m.coordinatorPanel.Tasks["task1"].Status != AgentCompleted {
 		t.Error("expected task1 status to be Completed")
+	}
+	if m.coordinatorPanel.Tasks["task1"].EvictAfter == nil {
+		t.Error("expected EvictAfter to be set on completed task")
+	}
+}
+
+func TestUpdate_AgentStatusMsg_NewAgent(t *testing.T) {
+	m := newTestModel()
+	// Send status for an agent that doesn't exist yet — it should be auto-registered.
+	m = applyMsg(m, AgentStatusMsg{TaskID: "new-agent", Status: AgentRunning, Description: "New task"})
+	task, ok := m.coordinatorPanel.Tasks["new-agent"]
+	if !ok {
+		t.Fatal("expected new-agent to be registered in Tasks")
+	}
+	if task.Name != "New task" {
+		t.Errorf("expected Name='New task', got %q", task.Name)
+	}
+	if task.Status != AgentRunning {
+		t.Errorf("expected Running status, got %v", task.Status)
+	}
+	if len(m.coordinatorPanel.TaskOrder) != 1 || m.coordinatorPanel.TaskOrder[0] != "new-agent" {
+		t.Errorf("expected TaskOrder=['new-agent'], got %v", m.coordinatorPanel.TaskOrder)
+	}
+}
+
+func TestUpdate_AgentProgressMsg(t *testing.T) {
+	m := newTestModel()
+	// Pre-register an agent.
+	m.coordinatorPanel.Tasks["task1"] = AgentTaskState{
+		ID:        "task1",
+		Name:      "Test task",
+		Status:    AgentRunning,
+		StartTime: time.Now(),
+	}
+	m.coordinatorPanel.TaskOrder = append(m.coordinatorPanel.TaskOrder, "task1")
+	m = applyMsg(m, AgentProgressMsg{TaskID: "task1", Activity: "Streaming", Detail: "hello world"})
+	task := m.coordinatorPanel.Tasks["task1"]
+	if task.Activity != "Streaming" {
+		t.Errorf("expected Activity='Streaming', got %q", task.Activity)
+	}
+	if task.Detail != "hello world" {
+		t.Errorf("expected Detail='hello world', got %q", task.Detail)
+	}
+}
+
+func TestUpdate_AgentProgressMsg_UnknownAgent(t *testing.T) {
+	m := newTestModel()
+	// Progress for an unknown agent should auto-create a placeholder.
+	m = applyMsg(m, AgentProgressMsg{TaskID: "unknown-1", Activity: "Running Bash", Detail: "ls"})
+	task, ok := m.coordinatorPanel.Tasks["unknown-1"]
+	if !ok {
+		t.Fatal("expected unknown-1 to be auto-registered")
+	}
+	if task.Activity != "Running Bash" {
+		t.Errorf("expected Activity='Running Bash', got %q", task.Activity)
+	}
+	if task.Status != AgentRunning {
+		t.Errorf("expected status AgentRunning, got %v", task.Status)
 	}
 }
 

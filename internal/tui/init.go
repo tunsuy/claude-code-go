@@ -3,9 +3,11 @@ package tui
 import (
 	"fmt"
 	"os"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/commands"
+	"github.com/tunsuy/claude-code-go/internal/coordinator"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
@@ -18,6 +20,8 @@ import (
 //
 // permAskCh receives permission requests from the engine; if nil, HIL is disabled.
 // permRespCh is used to send permission responses back to the engine.
+// agentCoord is the multi-agent coordinator adapter; if nil, agent tools are disabled.
+// agentEventCh receives sub-agent progress/status events; if nil, coordinator panel is disabled.
 func New(
 	qe engine.QueryEngine,
 	appStore *state.AppStateStore,
@@ -25,17 +29,20 @@ func New(
 	dark bool,
 	permAskCh <-chan permissions.AskRequest,
 	permRespCh chan<- permissions.AskResponse,
+	agentCoord tools.AgentCoordinator,
+	agentEventCh <-chan coordinator.Event,
 ) tea.Model {
 	// DEBUG log
 	if f, err := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
-		fmt.Fprintf(f, "[DEBUG] TUI New: permAskCh=%v, permRespCh=%v\n", permAskCh != nil, permRespCh != nil)
+		fmt.Fprintf(f, "[DEBUG] TUI New: permAskCh=%v, permRespCh=%v, agentCoord=%v, agentEventCh=%v\n",
+			permAskCh != nil, permRespCh != nil, agentCoord != nil, agentEventCh != nil)
 		f.Close()
 	}
-	
+
 	reg := commands.NewRegistry()
 	commands.RegisterBuiltins(reg)
 
-	m := newAppModel(qe, appStore, vimEnabled, dark, reg, permAskCh, permRespCh)
+	m := newAppModel(qe, appStore, vimEnabled, dark, reg, permAskCh, permRespCh, agentCoord, agentEventCh)
 	return m
 }
 
@@ -43,6 +50,7 @@ func New(
 //   - Start the spinner ticker.
 //   - Load CLAUDE.md files from the working directory.
 //   - Start the permission request listener (if HIL is enabled).
+//   - Start the agent event listener (if coordinator is enabled).
 func (m AppModel) Init() tea.Cmd {
 	cmds := []tea.Cmd{
 		m.input.Init(),
@@ -52,6 +60,10 @@ func (m AppModel) Init() tea.Cmd {
 	// Start listening for permission requests if HIL is enabled.
 	if m.permAskCh != nil {
 		cmds = append(cmds, listenForPermissionRequest(m.permAskCh, m.permRespCh))
+	}
+	// Start listening for agent events if coordinator is enabled.
+	if m.agentEventCh != nil {
+		cmds = append(cmds, listenForAgentEvent(m.agentEventCh))
 	}
 	return tea.Batch(cmds...)
 }
@@ -98,3 +110,54 @@ func listenForPermissionRequest(
 		}
 	}
 }
+
+// listenForAgentEvent returns a Cmd that reads the next coordinator.Event from
+// the channel and converts it into an AgentProgressMsg or AgentStatusMsg for
+// the BubbleTea update loop. After dispatching one message it re-subscribes
+// itself (the Update handler calls listenForAgentEvent again).
+func listenForAgentEvent(ch <-chan coordinator.Event) tea.Cmd {
+	return func() tea.Msg {
+		evt, ok := <-ch
+		if !ok {
+			// Channel closed, stop listening.
+			return nil
+		}
+		switch evt.Kind {
+		case coordinator.EventProgress:
+			return AgentProgressMsg{
+				TaskID:   evt.AgentID,
+				Activity: evt.Activity,
+				Detail:   evt.Detail,
+			}
+		case coordinator.EventStatusChange:
+			status := mapCoordinatorStatus(evt.Status)
+			return AgentStatusMsg{
+				TaskID:      evt.AgentID,
+				Status:      status,
+				Description: evt.Description,
+			}
+		default:
+			return nil
+		}
+	}
+}
+
+// mapCoordinatorStatus converts a coordinator status string to a TUI AgentStatus.
+func mapCoordinatorStatus(s string) AgentStatus {
+	switch s {
+	case "running":
+		return AgentRunning
+	case "completed":
+		return AgentCompleted
+	case "failed":
+		return AgentFailed
+	case "killed":
+		return AgentFailed // treat killed as failed in TUI
+	default:
+		return AgentRunning
+	}
+}
+
+// agentEvictDelay is the duration a completed/failed task remains visible
+// before being evicted from the coordinator panel.
+const agentEvictDelay = 30 * time.Second

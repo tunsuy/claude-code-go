@@ -72,10 +72,48 @@ func (t *sendMessageTool) UserFacingName(input tools.Input) string {
 	return "SendMessage"
 }
 
-func (t *sendMessageTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core session routing.
+func (t *sendMessageTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{
+			IsError: true,
+			Content: "SendMessage tool is not available: coordinator mode is not enabled",
+		}, nil
+	}
+
+	var in SendMessageInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return &tools.Result{
+			IsError: true,
+			Content: fmt.Sprintf("invalid input: %v", err),
+		}, nil
+	}
+	if in.AgentID == "" {
+		return &tools.Result{
+			IsError: true,
+			Content: "agent_id is required",
+		}, nil
+	}
+	if in.Content == "" {
+		return &tools.Result{
+			IsError: true,
+			Content: "content is required",
+		}, nil
+	}
+
+	// Deliver the message via the coordinator.
+	if err := ctx.Coordinator.SendMessage(ctx.Ctx, in.AgentID, in.Content); err != nil {
+		return &tools.Result{
+			IsError: true,
+			Content: fmt.Sprintf("failed to send message to agent %s: %v", in.AgentID, err),
+		}, nil
+	}
+
+	out := SendMessageOutput{
+		Response: fmt.Sprintf("Message delivered to agent %s", in.AgentID),
+	}
+	outBytes, _ := json.Marshal(out)
+
 	return &tools.Result{
-		IsError: true,
-		Content: "SendMessage tool not yet implemented: requires Agent-Core session router (TODO(dep))",
+		Content: string(outBytes),
 	}, nil
 }

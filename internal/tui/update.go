@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
@@ -164,9 +166,57 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// --- Agent status (coordinator panel) ---
 	case AgentStatusMsg:
-		task := m.coordinatorPanel.Tasks[msg.TaskID]
+		task, exists := m.coordinatorPanel.Tasks[msg.TaskID]
+		if !exists {
+			// First time seeing this agent — register it.
+			task = AgentTaskState{
+				ID:        msg.TaskID,
+				Name:      msg.Description,
+				StartTime: time.Now(),
+			}
+			m.coordinatorPanel.TaskOrder = append(m.coordinatorPanel.TaskOrder, msg.TaskID)
+		}
 		task.Status = msg.Status
+		if msg.Description != "" {
+			task.Name = msg.Description
+			task.Description = msg.Description
+		}
+		// When agent completes/fails, set eviction timer and clear activity.
+		if msg.Status == AgentCompleted || msg.Status == AgentFailed {
+			evict := time.Now().Add(agentEvictDelay)
+			task.EvictAfter = &evict
+			task.ElapsedMs = time.Since(task.StartTime).Milliseconds()
+			task.Activity = ""
+			task.Detail = ""
+		}
 		m.coordinatorPanel.Tasks[msg.TaskID] = task
+		// Continue listening for agent events.
+		if m.agentEventCh != nil {
+			return m, listenForAgentEvent(m.agentEventCh)
+		}
+		return m, nil
+
+	// --- Agent progress (coordinator panel) ---
+	case AgentProgressMsg:
+		task, exists := m.coordinatorPanel.Tasks[msg.TaskID]
+		if !exists {
+			// Agent not yet registered — create a placeholder entry.
+			task = AgentTaskState{
+				ID:        msg.TaskID,
+				Name:      msg.TaskID,
+				Status:    AgentRunning,
+				StartTime: time.Now(),
+			}
+			m.coordinatorPanel.TaskOrder = append(m.coordinatorPanel.TaskOrder, msg.TaskID)
+		}
+		task.Activity = msg.Activity
+		task.Detail = msg.Detail
+		task.ElapsedMs = time.Since(task.StartTime).Milliseconds()
+		m.coordinatorPanel.Tasks[msg.TaskID] = task
+		// Continue listening for agent events.
+		if m.agentEventCh != nil {
+			return m, listenForAgentEvent(m.agentEventCh)
+		}
 		return m, nil
 
 	// --- Compact done ---

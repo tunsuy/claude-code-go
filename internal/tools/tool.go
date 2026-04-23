@@ -53,6 +53,43 @@ type PermissionContext interface {
 	Mode() string
 }
 
+// AgentCoordinator is the subset of coordinator.Coordinator that tools need.
+// Defined in tools to avoid a dependency cycle (tools → coordinator).
+// The concrete implementation lives in internal/coordinator.
+type AgentCoordinator interface {
+	// SpawnAgent launches a new sub-agent and returns its ID (string).
+	SpawnAgent(ctx context.Context, req AgentSpawnRequest) (string, error)
+
+	// SendMessage delivers a follow-up message to a running sub-agent.
+	SendMessage(ctx context.Context, agentID string, message string) error
+
+	// StopAgent stops a running sub-agent.
+	StopAgent(ctx context.Context, agentID string) error
+
+	// GetAgentStatus returns the current lifecycle state of a sub-agent.
+	GetAgentStatus(ctx context.Context, agentID string) (string, error)
+
+	// GetAgentResult returns the final result and status of a finished sub-agent.
+	// Returns ("", "", ErrNotFound) if unknown or ("", status, nil) if still running.
+	GetAgentResult(ctx context.Context, agentID string) (result string, status string, err error)
+
+	// ListAgents returns all agent IDs with their statuses.
+	ListAgents() map[string]string
+
+	// WaitForAgent blocks until the specified agent finishes (or ctx is cancelled).
+	// Returns the agent's final result and error.
+	WaitForAgent(ctx context.Context, agentID string) (string, error)
+}
+
+// AgentSpawnRequest is the parameter bundle for AgentCoordinator.SpawnAgent.
+// Mirrors coordinator.SpawnRequest but uses only standard-library types.
+type AgentSpawnRequest struct {
+	Description  string
+	Prompt       string
+	AllowedTools []string
+	MaxTurns     int
+}
+
 // UseContext is the per-call context passed into Tool methods.
 // The engine constructs a fresh UseContext for every tool invocation.
 //
@@ -66,6 +103,9 @@ type UseContext struct {
 	AbortCh <-chan struct{}
 	// PermCtx provides permission information to the tool.
 	PermCtx PermissionContext
+	// Coordinator provides access to the multi-agent coordinator.
+	// May be nil if coordinator mode is not enabled.
+	Coordinator AgentCoordinator
 }
 
 // ValidationResult is the output of ValidateInput.

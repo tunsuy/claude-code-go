@@ -9,9 +9,11 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/tunsuy/claude-code-go/internal/commands"
+	"github.com/tunsuy/claude-code-go/internal/coordinator"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
+	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
@@ -96,6 +98,11 @@ type AppModel struct {
 	queryEngine engine.QueryEngine
 	appState    *state.AppStateStore
 
+	// --- Multi-agent coordinator (injected via New()) ---
+	// agentCoordinator is the tools-facing adapter for the coordinator.
+	// May be nil if coordinator mode is not enabled.
+	agentCoordinator tools.AgentCoordinator
+
 	// --- Active stream channel (for pull-loop) ---
 	streamCh <-chan engine.Msg
 
@@ -116,6 +123,11 @@ type AppModel struct {
 	// permRespCh is used to send permission responses back.
 	permAskCh  <-chan permissions.AskRequest
 	permRespCh chan<- permissions.AskResponse
+
+	// --- Agent event channel (coordinator → TUI) ---
+	// agentEventCh receives sub-agent progress and status events.
+	// May be nil if coordinator mode is not enabled.
+	agentEventCh <-chan coordinator.Event
 }
 
 // newAppModel is the internal constructor; callers use New().
@@ -127,6 +139,8 @@ func newAppModel(
 	reg *commands.Registry,
 	permAskCh <-chan permissions.AskRequest,
 	permRespCh chan<- permissions.AskResponse,
+	agentCoord tools.AgentCoordinator,
+	agentEventCh <-chan coordinator.Event,
 ) AppModel {
 	st := appStore.GetState()
 	cwd := st.WorkingDir
@@ -143,6 +157,8 @@ func newAppModel(
 		effort:              "medium", // default effort level
 		queryEngine:         qe,
 		appState:            appStore,
+		agentCoordinator:    agentCoord,
+		coordinatorMode:     agentCoord != nil,
 		commandRegistry:     reg,
 		spinner:             newSpinner(),
 		input:               NewInput(vimEnabled),
@@ -161,6 +177,7 @@ func newAppModel(
 		viewport:       viewport.New(80, 20),
 		permAskCh:      permAskCh,
 		permRespCh:     permRespCh,
+		agentEventCh:   agentEventCh,
 	}
 	return m
 }

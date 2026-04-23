@@ -35,10 +35,13 @@ func (s AgentStatus) String() string {
 type AgentTaskState struct {
 	ID           string
 	Name         string
+	Description  string // human-readable task description
 	Status       AgentStatus
 	StartTime    time.Time
 	ElapsedMs    int64
 	OutputTokens int
+	Activity     string     // current activity label, e.g. "Streaming", "Running Bash"
+	Detail       string     // one-line detail of the current activity
 	EvictAfter   *time.Time // nil = never auto-hide
 }
 
@@ -93,6 +96,15 @@ func (p CoordinatorPanel) View(width int, theme Theme) string {
 			line = mutedStyle(theme).Render(line)
 		}
 		sb.WriteString(line + "\n")
+
+		// Render activity detail line for running tasks.
+		if task.Status == AgentRunning && task.Activity != "" {
+			detail := "  ↳ " + task.Activity
+			if task.Detail != "" {
+				detail += ": " + truncateStr(task.Detail, width-10)
+			}
+			sb.WriteString(mutedStyle(theme).Render(detail) + "\n")
+		}
 	}
 
 	sb.WriteString(mutedStyle(theme).Render(sep) + "\n")
@@ -135,6 +147,18 @@ func lipglossWidth(s string) int {
 	// Count visible characters (naïve — ANSI escape stripped).
 	// For accurate measurement we rely on lipgloss in styles.go; use it here.
 	return len([]rune(stripANSI(s)))
+}
+
+// truncateStr truncates s to maxLen runes, appending "…" if truncated.
+func truncateStr(s string, maxLen int) string {
+	if maxLen <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= maxLen {
+		return s
+	}
+	return string(runes[:maxLen]) + "…"
 }
 
 // stripANSI strips ANSI escape sequences from s.

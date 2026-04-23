@@ -33,6 +33,46 @@ const (
 	AgentStatusStopped   AgentStatus = "killed"
 )
 
+// ProgressEvent is emitted by the coordinator to report sub-agent activity.
+// The TUI layer converts these into AgentProgressMsg / AgentStatusMsg.
+type ProgressEvent struct {
+	AgentID     AgentID
+	Description string // human-readable task description
+	Activity    string // short label: "Streaming", "Running Bash", "Reading file"
+	Detail      string // one-line detail, e.g. partial text or tool input
+}
+
+// OnProgressFn is called by the coordinator to report real-time sub-agent
+// progress. Implementations must be safe for concurrent use.
+type OnProgressFn func(evt ProgressEvent)
+
+// OnStatusChangeFn is called when a sub-agent's lifecycle status changes.
+// Implementations must be safe for concurrent use.
+type OnStatusChangeFn func(agentID AgentID, description string, status AgentStatus)
+
+// EventKind discriminates Event types.
+type EventKind int
+
+const (
+	// EventProgress reports a real-time activity update from a running sub-agent.
+	EventProgress EventKind = iota
+	// EventStatusChange reports a lifecycle status change (running/completed/failed).
+	EventStatusChange
+)
+
+// Event is the unified event type pushed to consumers (TUI) from the coordinator.
+// It avoids import cycles between bootstrap/tui/coordinator layers.
+type Event struct {
+	Kind        EventKind
+	AgentID     string
+	Description string
+	// Progress fields (Kind == EventProgress)
+	Activity string
+	Detail   string
+	// Status fields (Kind == EventStatusChange)
+	Status string // "running", "completed", "failed", "killed"
+}
+
 // SpawnRequest is the parameter bundle passed to SpawnAgent.
 type SpawnRequest struct {
 	// Description is a human-readable summary of the sub-agent's task.
@@ -132,6 +172,8 @@ type agentEntry struct {
 type coordinatorImpl struct {
 	coordinatorMode bool
 	runAgent        RunAgentFn
+	onProgress      OnProgressFn
+	onStatusChange  OnStatusChangeFn
 
 	mu     sync.RWMutex
 	agents map[AgentID]*agentEntry
@@ -140,7 +182,10 @@ type coordinatorImpl struct {
 // RunAgentFn is the function signature used to actually run a sub-agent.
 // Implementations should block until the agent finishes and return (result, err).
 // An empty result with a nil error indicates successful completion with no output.
-type RunAgentFn func(ctx context.Context, req SpawnRequest, inboxCh <-chan string) (string, error)
+//
+// The agentID parameter is the unique identifier assigned by the coordinator,
+// allowing the function to emit progress events tagged with the correct ID.
+type RunAgentFn func(ctx context.Context, agentID AgentID, req SpawnRequest, inboxCh <-chan string) (string, error)
 
 // Config is the constructor parameter bundle for New.
 type Config struct {
@@ -150,6 +195,12 @@ type Config struct {
 	// If nil, a no-op stub is used (useful for testing the coordination logic
 	// without a real LLM).
 	RunAgent RunAgentFn
+	// OnProgress is called to report real-time sub-agent progress.
+	// May be nil; the coordinator tolerates a nil callback.
+	OnProgress OnProgressFn
+	// OnStatusChange is called when a sub-agent's lifecycle status changes.
+	// May be nil; the coordinator tolerates a nil callback.
+	OnStatusChange OnStatusChangeFn
 }
 
 // New creates and returns a new Coordinator.
@@ -161,6 +212,8 @@ func New(cfg Config) Coordinator {
 	return &coordinatorImpl{
 		coordinatorMode: cfg.CoordinatorMode,
 		runAgent:        fn,
+		onProgress:      cfg.OnProgress,
+		onStatusChange:  cfg.OnStatusChange,
 		agents:          make(map[AgentID]*agentEntry),
 	}
 }
@@ -168,7 +221,7 @@ func New(cfg Config) Coordinator {
 // noopRunAgent is the default RunAgentFn used when none is supplied.
 // It immediately returns an empty result so that coordination logic can be
 // exercised without a real LLM.
-func noopRunAgent(_ context.Context, _ SpawnRequest, _ <-chan string) (string, error) {
+func noopRunAgent(_ context.Context, _ AgentID, _ SpawnRequest, _ <-chan string) (string, error) {
 	return "", nil
 }
 
@@ -176,10 +229,37 @@ func noopRunAgent(_ context.Context, _ SpawnRequest, _ <-chan string) (string, e
 // Coordinator method implementations
 // ─────────────────────────────────────────────────────────────────────────────
 
+// defaultMaxTurns is the safety limit applied when the caller does not specify
+// a MaxTurns value. This prevents sub-agents from running indefinitely.
+const defaultMaxTurns = 30
+
 // SpawnAgent starts a new sub-agent goroutine and registers it.
+// If an agent with the same Description is already running, the existing
+// agent's ID is returned instead of spawning a duplicate.
 func (c *coordinatorImpl) SpawnAgent(ctx context.Context, req SpawnRequest) (AgentID, error) {
 	if req.Prompt == "" {
 		return "", fmt.Errorf("coordinator: SpawnRequest.Prompt must not be empty")
+	}
+
+	// Apply a default MaxTurns safety limit when the caller does not set one.
+	if req.MaxTurns <= 0 {
+		req.MaxTurns = defaultMaxTurns
+	}
+
+	// ── Deduplication + creation under a single write lock to prevent TOCTOU
+	// races where two concurrent spawns with the same description both pass
+	// the read-check and create duplicate agents. ──────────────────────────
+	c.mu.Lock()
+	for _, existing := range c.agents {
+		existing.mu.Lock()
+		sameDesc := existing.req.Description == req.Description
+		isRunning := existing.status == AgentStatusRunning
+		existingID := existing.id
+		existing.mu.Unlock()
+		if sameDesc && isRunning {
+			c.mu.Unlock()
+			return existingID, nil
+		}
 	}
 
 	// Generate a unique, correctly-formatted AgentID.
@@ -197,9 +277,13 @@ func (c *coordinatorImpl) SpawnAgent(ctx context.Context, req SpawnRequest) (Age
 		cancelFn:  cancelFn,
 	}
 
-	c.mu.Lock()
 	c.agents[agentID] = entry
 	c.mu.Unlock()
+
+	// Notify TUI of the new agent.
+	if c.onStatusChange != nil {
+		c.onStatusChange(agentID, req.Description, AgentStatusRunning)
+	}
 
 	// Run the agent asynchronously.
 	go c.runAgentLoop(agentCtx, entry)
@@ -209,7 +293,7 @@ func (c *coordinatorImpl) SpawnAgent(ctx context.Context, req SpawnRequest) (Age
 
 // runAgentLoop executes a sub-agent and updates its status when done.
 func (c *coordinatorImpl) runAgentLoop(ctx context.Context, entry *agentEntry) {
-	result, err := c.runAgent(ctx, entry.req, entry.inboxCh)
+	result, err := c.runAgent(ctx, entry.id, entry.req, entry.inboxCh)
 
 	entry.mu.Lock()
 	entry.finishedAt = time.Now()
@@ -220,6 +304,7 @@ func (c *coordinatorImpl) runAgentLoop(ctx context.Context, entry *agentEntry) {
 	} else {
 		entry.status = AgentStatusCompleted
 	}
+	finalStatus := entry.status
 	durationMs := entry.finishedAt.Sub(entry.startedAt).Milliseconds()
 
 	// Build notification.
@@ -236,7 +321,13 @@ func (c *coordinatorImpl) runAgentLoop(ctx context.Context, entry *agentEntry) {
 	// Fan-out to all subscribers, then close channels.
 	subs := entry.subscribers
 	entry.subscribers = nil
+	desc := entry.req.Description
 	entry.mu.Unlock()
+
+	// Notify TUI of status change.
+	if c.onStatusChange != nil {
+		c.onStatusChange(entry.id, desc, finalStatus)
+	}
 
 	for _, ch := range subs {
 		// Non-blocking send: if the subscriber's buffer is full we drop rather

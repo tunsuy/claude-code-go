@@ -3,6 +3,7 @@ package tasks
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/tunsuy/claude-code-go/internal/tools"
 )
@@ -33,7 +34,7 @@ type Task struct {
 
 // TaskCreateInput is the input schema for TaskCreate.
 type TaskCreateInput struct {
-	Description string   `json:"description"`
+	Description string `json:"description"`
 	// Tools is an optional list of tool names available to this task (optional).
 	Tools []string `json:"tools,omitempty"`
 	// Priority is an optional integer priority for the task (optional).
@@ -41,7 +42,6 @@ type TaskCreateInput struct {
 }
 
 // TaskCreateTool is the exported singleton instance.
-// TODO(dep): Requires Agent-Core TaskManager.
 var TaskCreateTool tools.Tool = &taskCreateTool{}
 
 type taskCreateTool struct{ tools.BaseTool }
@@ -73,7 +73,7 @@ func (t *taskCreateTool) InputSchema() tools.InputSchema {
 	)
 }
 
-func (t *taskCreateTool) IsConcurrencySafe(_ tools.Input) bool { return false }
+func (t *taskCreateTool) IsConcurrencySafe(_ tools.Input) bool { return true }
 func (t *taskCreateTool) IsReadOnly(_ tools.Input) bool        { return false }
 
 func (t *taskCreateTool) UserFacingName(input tools.Input) string {
@@ -88,9 +88,47 @@ func (t *taskCreateTool) UserFacingName(input tools.Input) string {
 	return "TaskCreate"
 }
 
-func (t *taskCreateTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tools.Result{IsError: true, Content: "TaskCreate not yet implemented (TODO(dep))"}, nil
+func (t *taskCreateTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{IsError: true, Content: "TaskCreate is not available: coordinator mode is not enabled"}, nil
+	}
+
+	var in TaskCreateInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("invalid input: %v", err)}, nil
+	}
+	if in.Description == "" {
+		return &tools.Result{IsError: true, Content: "description is required"}, nil
+	}
+
+	// Spawn a new agent as a "task".
+	agentID, err := ctx.Coordinator.SpawnAgent(ctx.Ctx, tools.AgentSpawnRequest{
+		Description:  in.Description,
+		Prompt:       in.Description,
+		AllowedTools: in.Tools,
+	})
+	if err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("failed to create task: %v", err)}, nil
+	}
+
+	task := Task{
+		ID:          agentID,
+		Description: in.Description,
+		Status:      TaskStatusRunning,
+		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
+	}
+	out, _ := json.Marshal(task)
+
+	// Return a structured response that explicitly tells the LLM:
+	// 1) The task is running in the background.
+	// 2) Use TaskGet to poll for results — do NOT call TaskCreate again.
+	result := fmt.Sprintf(
+		"%s\n\nTask %s is now running in the background. "+
+			"Do NOT create another task with the same description. "+
+			"Use TaskGet with id=%q to check its status and retrieve results when it completes.",
+		string(out), agentID, agentID,
+	)
+	return &tools.Result{Content: result}, nil
 }
 
 // ── TaskGet ───────────────────────────────────────────────────────────────────
@@ -101,7 +139,6 @@ type TaskGetInput struct {
 }
 
 // TaskGetTool is the exported singleton instance.
-// TODO(dep): Requires Agent-Core TaskManager.
 var TaskGetTool tools.Tool = &taskGetTool{}
 
 type taskGetTool struct{ tools.BaseTool }
@@ -135,9 +172,34 @@ func (t *taskGetTool) UserFacingName(input tools.Input) string {
 	return "TaskGet"
 }
 
-func (t *taskGetTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tools.Result{IsError: true, Content: "TaskGet not yet implemented (TODO(dep))"}, nil
+func (t *taskGetTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{IsError: true, Content: "TaskGet is not available: coordinator mode is not enabled"}, nil
+	}
+
+	var in TaskGetInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("invalid input: %v", err)}, nil
+	}
+	if in.ID == "" {
+		return &tools.Result{IsError: true, Content: "id is required"}, nil
+	}
+
+	result, status, err := ctx.Coordinator.GetAgentResult(ctx.Ctx, in.ID)
+	if err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("task not found: %v", err)}, nil
+	}
+
+	task := Task{
+		ID:     in.ID,
+		Status: TaskStatus(status),
+	}
+	if result != "" {
+		task.Description = result
+	}
+
+	out, _ := json.Marshal(task)
+	return &tools.Result{Content: string(out)}, nil
 }
 
 // ── TaskList ──────────────────────────────────────────────────────────────────
@@ -148,7 +210,6 @@ type TaskListInput struct {
 }
 
 // TaskListTool is the exported singleton instance.
-// TODO(dep): Requires Agent-Core TaskManager.
 var TaskListTool tools.Tool = &taskListTool{}
 
 type taskListTool struct{ tools.BaseTool }
@@ -176,9 +237,29 @@ func (t *taskListTool) IsConcurrencySafe(_ tools.Input) bool { return true }
 func (t *taskListTool) IsReadOnly(_ tools.Input) bool        { return true }
 func (t *taskListTool) UserFacingName(_ tools.Input) string  { return "TaskList" }
 
-func (t *taskListTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tools.Result{IsError: true, Content: "TaskList not yet implemented (TODO(dep))"}, nil
+func (t *taskListTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{IsError: true, Content: "TaskList is not available: coordinator mode is not enabled"}, nil
+	}
+
+	var in TaskListInput
+	// Tolerate missing input (all fields optional).
+	_ = json.Unmarshal(input, &in)
+
+	agents := ctx.Coordinator.ListAgents()
+	var taskList []Task
+	for id, status := range agents {
+		if in.Status != "" && status != in.Status {
+			continue
+		}
+		taskList = append(taskList, Task{
+			ID:     id,
+			Status: TaskStatus(status),
+		})
+	}
+
+	out, _ := json.Marshal(taskList)
+	return &tools.Result{Content: string(out)}, nil
 }
 
 // ── TaskUpdate ────────────────────────────────────────────────────────────────
@@ -191,7 +272,6 @@ type TaskUpdateInput struct {
 }
 
 // TaskUpdateTool is the exported singleton instance.
-// TODO(dep): Requires Agent-Core TaskManager.
 var TaskUpdateTool tools.Tool = &taskUpdateTool{}
 
 type taskUpdateTool struct{ tools.BaseTool }
@@ -234,9 +314,43 @@ func (t *taskUpdateTool) UserFacingName(input tools.Input) string {
 	return "TaskUpdate"
 }
 
-func (t *taskUpdateTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tools.Result{IsError: true, Content: "TaskUpdate not yet implemented (TODO(dep))"}, nil
+func (t *taskUpdateTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{IsError: true, Content: "TaskUpdate is not available: coordinator mode is not enabled"}, nil
+	}
+
+	var in TaskUpdateInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("invalid input: %v", err)}, nil
+	}
+	if in.ID == "" {
+		return &tools.Result{IsError: true, Content: "id is required"}, nil
+	}
+
+	// If the update requests a "stopped" status, stop the agent.
+	if in.Status == "stopped" {
+		if err := ctx.Coordinator.StopAgent(ctx.Ctx, in.ID); err != nil {
+			return &tools.Result{IsError: true, Content: fmt.Sprintf("failed to stop task: %v", err)}, nil
+		}
+	}
+
+	// Retrieve the current state to confirm the update.
+	_, status, err := ctx.Coordinator.GetAgentResult(ctx.Ctx, in.ID)
+	if err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("task not found: %v", err)}, nil
+	}
+
+	task := Task{
+		ID:        in.ID,
+		Status:    TaskStatus(status),
+		UpdatedAt: time.Now().UTC().Format(time.RFC3339),
+	}
+	if in.Description != "" {
+		task.Description = in.Description
+	}
+
+	out, _ := json.Marshal(task)
+	return &tools.Result{Content: string(out)}, nil
 }
 
 // ── TaskStop ──────────────────────────────────────────────────────────────────
@@ -247,7 +361,6 @@ type TaskStopInput struct {
 }
 
 // TaskStopTool is the exported singleton instance.
-// TODO(dep): Requires Agent-Core TaskManager.
 var TaskStopTool tools.Tool = &taskStopTool{}
 
 type taskStopTool struct{ tools.BaseTool }
@@ -282,9 +395,29 @@ func (t *taskStopTool) UserFacingName(input tools.Input) string {
 	return "TaskStop"
 }
 
-func (t *taskStopTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tools.Result{IsError: true, Content: "TaskStop not yet implemented (TODO(dep))"}, nil
+func (t *taskStopTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{IsError: true, Content: "TaskStop is not available: coordinator mode is not enabled"}, nil
+	}
+
+	var in TaskStopInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("invalid input: %v", err)}, nil
+	}
+	if in.ID == "" {
+		return &tools.Result{IsError: true, Content: "id is required"}, nil
+	}
+
+	if err := ctx.Coordinator.StopAgent(ctx.Ctx, in.ID); err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("failed to stop task %s: %v", in.ID, err)}, nil
+	}
+
+	result := map[string]string{
+		"id":     in.ID,
+		"status": "stopped",
+	}
+	out, _ := json.Marshal(result)
+	return &tools.Result{Content: string(out)}, nil
 }
 
 // ── TaskOutput ────────────────────────────────────────────────────────────────
@@ -297,7 +430,6 @@ type TaskOutputInput struct {
 }
 
 // TaskOutputTool is the exported singleton instance.
-// TODO(dep): Requires Agent-Core TaskManager.
 var TaskOutputTool tools.Tool = &taskOutputTool{}
 
 type taskOutputTool struct{ tools.BaseTool }
@@ -335,7 +467,34 @@ func (t *taskOutputTool) UserFacingName(input tools.Input) string {
 	return "TaskOutput"
 }
 
-func (t *taskOutputTool) Call(_ tools.Input, _ *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
-	// TODO(dep): Implement via Agent-Core TaskManager.
-	return &tools.Result{IsError: true, Content: "TaskOutput not yet implemented (TODO(dep))"}, nil
+func (t *taskOutputTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.OnProgressFn) (*tools.Result, error) {
+	if ctx == nil || ctx.Coordinator == nil {
+		return &tools.Result{IsError: true, Content: "TaskOutput is not available: coordinator mode is not enabled"}, nil
+	}
+
+	var in TaskOutputInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("invalid input: %v", err)}, nil
+	}
+	if in.ID == "" {
+		return &tools.Result{IsError: true, Content: "id is required"}, nil
+	}
+
+	result, status, err := ctx.Coordinator.GetAgentResult(ctx.Ctx, in.ID)
+	if err != nil {
+		return &tools.Result{IsError: true, Content: fmt.Sprintf("task not found: %v", err)}, nil
+	}
+
+	output := result
+	if in.Since != nil && *in.Since > 0 && *in.Since < len(output) {
+		output = output[*in.Since:]
+	}
+
+	taskOutput := map[string]string{
+		"id":     in.ID,
+		"status": status,
+		"output": output,
+	}
+	out, _ := json.Marshal(taskOutput)
+	return &tools.Result{Content: string(out)}, nil
 }

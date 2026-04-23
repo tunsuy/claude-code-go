@@ -422,10 +422,13 @@ func (e *engineImpl) buildRequestWithModel(params QueryParams, messages []types.
 	}
 	systemStr := joinStrings(systemParts, "\n\n")
 
-	// Build tool schemas.
+	// Build tool schemas, excluding any tools listed in ExcludeTools.
 	allTools := e.registry.All()
 	toolSchemas := make([]api.ToolSchema, 0, len(allTools))
 	for _, t := range allTools {
+		if len(params.ExcludeTools) > 0 && params.ExcludeTools[t.Name()] {
+			continue
+		}
 		schema := t.InputSchema()
 		schemaRaw, err := json.Marshal(schema)
 		if err != nil {

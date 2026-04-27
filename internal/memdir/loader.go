@@ -43,6 +43,56 @@ func LoadAndTruncate(paths []string, maxBytes int) string {
 	return truncated + notice
 }
 
+// LoadScopedMemoryPrompt loads all discovered files in scope order,
+// processing @include directives in each file.
+// Files are loaded in order: Managed → User → Project → Local (ascending priority).
+func LoadScopedMemoryPrompt(files []DiscoveredFile) string {
+	if len(files) == 0 {
+		return ""
+	}
+	var sb strings.Builder
+	for _, f := range files {
+		data, err := os.ReadFile(f.Path)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+
+		// Process @include directives.
+		processed, err := ProcessIncludes(content, f.Path, 0)
+		if err == nil {
+			content = processed
+		}
+
+		// Write scope-tagged header.
+		sb.WriteString("# ")
+		sb.WriteString(scopeHeader(f.Scope))
+		sb.WriteString("\n")
+		sb.WriteString("Contents of ")
+		sb.WriteString(f.Path)
+		sb.WriteString(":\n\n")
+		sb.WriteString(content)
+		sb.WriteString("\n\n")
+	}
+	return strings.TrimSpace(sb.String())
+}
+
+// scopeHeader returns a human-readable section header for the given scope.
+func scopeHeader(scope MemoryScope) string {
+	switch scope {
+	case ScopeManaged:
+		return "managedMd"
+	case ScopeUser:
+		return "userMd"
+	case ScopeProject:
+		return "claudeMd"
+	case ScopeLocal:
+		return "localMd"
+	default:
+		return "claudeMd"
+	}
+}
+
 // LoadAllMemory loads both CLAUDE.md files and auto-memory index for a project.
 // It combines traditional CLAUDE.md discovery with the project's MEMORY.md index.
 // Only the index is injected into the system prompt; individual memory files

@@ -5,6 +5,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/engine"
+	"github.com/tunsuy/claude-code-go/internal/memdir"
 	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
@@ -43,6 +44,29 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 			Parts: []engine.SystemPromptPart{
 				{Text: m.memdirPrompt, CacheControl: "ephemeral"},
 			},
+		}
+	}
+
+	// Surface relevant memories (if memory store is available).
+	if m.memoryStore != nil {
+		cfg := memdir.DefaultRelevanceConfig()
+		relevantMemories, err := memdir.SurfaceRelevantMemories(
+			m.memoryStore,
+			userText,
+			m.surfacedMemories,
+			m.sessionMemoryBytes,
+			cfg,
+		)
+		if err == nil && len(relevantMemories) > 0 {
+			reminderText := memdir.FormatRelevantMemoriesPrompt(relevantMemories)
+			sysPrompt.Parts = append(sysPrompt.Parts, engine.SystemPromptPart{
+				Text: reminderText,
+			})
+			// Update tracking state.
+			for _, rm := range relevantMemories {
+				m.surfacedMemories[rm.Path] = true
+				m.sessionMemoryBytes += len(rm.Content)
+			}
 		}
 	}
 

@@ -11,6 +11,7 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/hooks"
 	"github.com/tunsuy/claude-code-go/internal/mcp"
+	"github.com/tunsuy/claude-code-go/internal/memdir"
 	"github.com/tunsuy/claude-code-go/internal/oauth"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
@@ -127,12 +128,25 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 		RespCh:     respCh,
 	})
 
+	// ── Phase 7.5: StopHook registry (memory extraction) ────────────────────
+	stopHooks := engine.NewStopHookRegistry()
+
+	// Register the memory extraction stop hook. The MemoryStore is created
+	// lazily from the working directory; if creation fails the hook is a no-op.
+	extractStore, _ := memdir.NewMemoryStore(opts.WorkingDir)
+	extractCfg := memdir.DefaultExtractConfig()
+	extractCfg.Store = extractStore
+	stopHooks.Register("extract_memories", func(ctx context.Context, hookCtx *engine.StopHookContext) {
+		memdir.ExecuteExtractMemories(ctx, hookCtx, extractCfg)
+	})
+
 	// ── Phase 8: Engine construction ─────────────────────────────────────────
 	eng := engine.New(engine.Config{
 		Client:            apiClient,
 		Registry:          reg,
 		Model:             model,
 		PermissionChecker: permChecker,
+		StopHooks:         stopHooks,
 	})
 
 	// ── Phase 9: Coordinator construction ────────────────────────────────────
@@ -205,12 +219,22 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		RespCh:     respCh,
 	})
 
+	// ── Phase 7.5: StopHook registry ─────────────────────────────────────────
+	stopHooksTest := engine.NewStopHookRegistry()
+	testExtractStore, _ := memdir.NewMemoryStore(opts.WorkingDir)
+	testExtractCfg := memdir.DefaultExtractConfig()
+	testExtractCfg.Store = testExtractStore
+	stopHooksTest.Register("extract_memories", func(ctx context.Context, hookCtx *engine.StopHookContext) {
+		memdir.ExecuteExtractMemories(ctx, hookCtx, testExtractCfg)
+	})
+
 	// ── Phase 8: Engine construction ─────────────────────────────────────────
 	eng := engine.New(engine.Config{
 		Client:            client,
 		Registry:          reg,
 		Model:             model,
 		PermissionChecker: permChecker,
+		StopHooks:         stopHooksTest,
 	})
 
 	// ── Phase 9: Coordinator construction ────────────────────────────────────

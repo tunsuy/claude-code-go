@@ -71,8 +71,18 @@ func (m AppModel) Init() tea.Cmd {
 // loadMemdirCmd discovers and returns a MemdirLoadedMsg with the found paths.
 func loadMemdirCmd(workingDir string) tea.Cmd {
 	return func() tea.Msg {
-		paths := memdir.DiscoverClaudeMd(workingDir)
-		return MemdirLoadedMsg{Paths: paths}
+		scopedFiles, err := memdir.DiscoverAll(workingDir)
+		if err != nil {
+			// Fallback to legacy discovery.
+			paths := memdir.DiscoverClaudeMd(workingDir)
+			return MemdirLoadedMsg{Paths: paths}
+		}
+		// Extract paths for backward compatibility.
+		paths := make([]string, len(scopedFiles))
+		for i, f := range scopedFiles {
+			paths[i] = f.Path
+		}
+		return MemdirLoadedMsg{Paths: paths, ScopedFiles: scopedFiles}
 	}
 }
 

@@ -55,7 +55,12 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 
 	// Write the final message history back to the engine when the loop exits,
 	// under mu so GetMessages/SetMessages callers see a consistent snapshot.
+	// If NoWriteBack is set (forked agents), skip the write-back to avoid
+	// polluting the parent conversation.
 	defer func() {
+		if params.NoWriteBack {
+			return
+		}
 		e.mu.Lock()
 		e.messages = make([]types.Message, len(messages))
 		copy(e.messages, messages)
@@ -185,7 +190,8 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 		// Handle stop reasons.
 		switch stopReason {
 		case "end_turn", "stop_sequence", "":
-			// Normal completion.
+			// Normal completion — fire stop hooks (non-blocking background goroutines).
+			e.fireStopHooks(params, messages)
 			return
 
 		case "max_tokens":

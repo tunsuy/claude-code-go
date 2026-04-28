@@ -35,7 +35,8 @@ func (s AgentStatus) String() string {
 type AgentTaskState struct {
 	ID           string
 	Name         string
-	Description  string // human-readable task description
+	AgentType    string     // agent type key (e.g. "worker", "explore")
+	Description  string     // human-readable task description
 	Status       AgentStatus
 	StartTime    time.Time
 	ElapsedMs    int64
@@ -43,6 +44,7 @@ type AgentTaskState struct {
 	Activity     string     // current activity label, e.g. "Streaming", "Running Bash"
 	Detail       string     // one-line detail of the current activity
 	EvictAfter   *time.Time // nil = never auto-hide
+	Color        string     // hex color for this agent
 }
 
 // CoordinatorPanel renders the sub-agent status panel.
@@ -82,7 +84,7 @@ func (p CoordinatorPanel) View(width int, theme Theme) string {
 			tok = formatTokenCount(task.OutputTokens)
 		}
 
-		line := statusIcon + " " + task.Name
+		line := statusIcon + " " + agentTypeBadge(task.AgentType) + " " + task.Name
 		right := task.Status.String() + "  " + elapsed + "  " + tok
 		gap := width - lipglossWidth(line) - lipglossWidth(right) - 2
 		if gap < 1 {
@@ -125,6 +127,31 @@ func agentStatusIcon(s AgentStatus) string {
 		return "✗"
 	default:
 		return "○"
+	}
+}
+
+// agentTypeBadge returns a short badge for the agent type.
+func agentTypeBadge(t string) string {
+	switch t {
+	case "explore":
+		return "[E]"
+	case "plan":
+		return "[P]"
+	case "verify":
+		return "[V]"
+	case "guide":
+		return "[G]"
+	case "worker":
+		return "[W]"
+	default:
+		if t != "" {
+			// Custom agent type — show first letter uppercase.
+			r := []rune(t)
+			if len(r) > 0 {
+				return "[" + string(r[0]) + "]"
+			}
+		}
+		return "[W]"
 	}
 }
 

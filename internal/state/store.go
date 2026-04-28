@@ -112,6 +112,7 @@ type TaskState struct {
 	AgentId   types.AgentId   `json:"agentId"`
 	Status    string          `json:"status"` // running | done | error
 	SessionId types.SessionId `json:"sessionId,omitempty"`
+	TaskType  string          `json:"taskType,omitempty"` // local_agent | local_bash | remote
 }
 
 // AppState is the global application state.  All fields are accessed through

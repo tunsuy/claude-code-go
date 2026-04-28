@@ -4,7 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 
+	"github.com/tunsuy/claude-code-go/internal/agentctx"
+	"github.com/tunsuy/claude-code-go/internal/agenttype"
 	"github.com/tunsuy/claude-code-go/internal/api"
 	"github.com/tunsuy/claude-code-go/internal/config"
 	"github.com/tunsuy/claude-code-go/internal/coordinator"
@@ -73,6 +76,8 @@ type AppContainer struct {
 	MsgQueue *msgqueue.MessageQueue
 	// QueryGuard is the query dispatch guard (three-state machine).
 	QueryGuard *msgqueue.QueryGuard
+	// AgentProfiles holds all registered agent type profiles (built-in + custom).
+	AgentProfiles *agenttype.Registry
 }
 
 // defaultModel is used when no model override is provided.
@@ -110,6 +115,18 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	// ── Phase 4: Tool registry ───────────────────────────────────────────────
 	reg := tools.NewRegistry()
 	RegisterBuiltinTools(reg)
+
+	// ── Phase 4.5: Agent type registry ──────────────────────────────────
+	agentProfiles := agenttype.NewRegistry()
+	agenttype.RegisterBuiltins(agentProfiles)
+
+	// Load custom agent definitions from .claude/agents/ (if exists).
+	customAgentsDir := filepath.Join(opts.WorkingDir, ".claude", "agents")
+	if customs, loadErr := agenttype.LoadCustomAgents(customAgentsDir); loadErr == nil {
+		for _, p := range customs {
+			_ = agentProfiles.Register(p)
+		}
+	}
 
 	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────
 	pool := mcp.NewPool()
@@ -166,28 +183,30 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	onStatusChange := buildOnStatusChangeFn(agentEventCh)
 
 	coord := coordinator.New(coordinator.Config{
-		CoordinatorMode: true,
-		RunAgent:        buildRunAgentFn(eng, reg, appState, onProgress),
-		OnProgress:      onProgress,
-		OnStatusChange:  onStatusChange,
-	})
-	agentCoord := coordinator.NewAgentCoordinator(coord)
+			CoordinatorMode:  true,
+			RunAgent:         buildRunAgentFn(eng, reg, appState, onProgress, agentProfiles),
+			OnProgress:       onProgress,
+			OnStatusChange:   onStatusChange,
+			SummaryGenerator: coordinator.DefaultSummaryGenerator,
+		})
+		agentCoord := coordinator.NewAgentCoordinator(coord)
 
-	return &AppContainer{
-		QueryEngine:      eng,
-		AppStateStore:    store,
-		ToolRegistry:     reg,
-		MCPPool:          pool,
-		Settings:         settings,
-		PermAskCh:        askCh,
-		PermRespCh:       respCh,
-		Coordinator:      coord,
-		AgentCoordinator: agentCoord,
-		AgentEventCh:     agentEventCh,
-		MsgQueue:         mq,
-		QueryGuard:       qg,
-	}, nil
-}
+		return &AppContainer{
+			QueryEngine:      eng,
+			AppStateStore:    store,
+			ToolRegistry:     reg,
+			MCPPool:          pool,
+			Settings:         settings,
+			PermAskCh:        askCh,
+			PermRespCh:       respCh,
+			Coordinator:      coord,
+			AgentCoordinator: agentCoord,
+			AgentEventCh:     agentEventCh,
+			MsgQueue:         mq,
+			QueryGuard:       qg,
+			AgentProfiles:    agentProfiles,
+		}, nil
+	}
 
 // BuildHeadlessContainer wires up a minimal container for non-interactive (-p) mode.
 // No MCP connections are pre-established; OAuth pre-warm is still performed.
@@ -210,6 +229,10 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 	// ── Phase 4: Tool registry ───────────────────────────────────────────────
 	reg := tools.NewRegistry()
 	RegisterBuiltinTools(reg)
+
+	// ── Phase 4.5: Agent type registry (test path) ──────────────────────
+	agentProfilesTest := agenttype.NewRegistry()
+	agenttype.RegisterBuiltins(agentProfilesTest)
 
 	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────
 	pool := mcp.NewPool()
@@ -261,10 +284,11 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 	onStatusChange := buildOnStatusChangeFn(agentEventCh)
 
 	coord := coordinator.New(coordinator.Config{
-		CoordinatorMode: true,
-		RunAgent:        buildRunAgentFn(eng, reg, appState, onProgress),
-		OnProgress:      onProgress,
-		OnStatusChange:  onStatusChange,
+		CoordinatorMode:  true,
+		RunAgent:         buildRunAgentFn(eng, reg, appState, onProgress, agentProfilesTest),
+		OnProgress:       onProgress,
+		OnStatusChange:   onStatusChange,
+		SummaryGenerator: coordinator.DefaultSummaryGenerator,
 	})
 	agentCoord := coordinator.NewAgentCoordinator(coord)
 
@@ -281,44 +305,48 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		AgentEventCh:     agentEventCh,
 		MsgQueue:         mqTest,
 		QueryGuard:       qgTest,
+		AgentProfiles:    agentProfilesTest,
 	}, nil
 }
 
 // coordinatorToolNames is the set of tool names that should NOT be available to
-// sub-agents. These are coordinator-only tools that, if visible to the LLM,
-// would cause sub-agents to attempt spawning their own sub-agents, leading to
-// infinite recursion.
+// sub-agents by default. These are coordinator-only tools.
 var coordinatorToolNames = map[string]bool{
-	"TaskCreate": true,
-	"TaskGet":    true,
-	"TaskList":   true,
-	"TaskUpdate": true,
-	"TaskStop":   true,
-	"TaskOutput": true,
-	"Agent":      true,
-	"SendMessage": true,
+	"TaskCreate":     true,
+	"TaskGet":        true,
+	"TaskList":       true,
+	"TaskUpdate":     true,
+	"TaskStop":       true,
+	"TaskOutput":     true,
+	"Agent":          true,
+	"SendMessage":    true,
+	"GetAgentStatus": true,
+	"EnterPlanMode":  true,
+	"ExitPlanMode":   true,
 }
 
 // buildRunAgentFn creates a RunAgentFn that uses the given QueryEngine to
 // execute sub-agent conversations. Each sub-agent gets its own query loop
 // with the prompt as the initial user message.
 //
-// Sub-agents do NOT have access to coordinator tools (TaskCreate, Agent, etc.)
-// to prevent infinite recursion. The ExcludeTools field in QueryParams filters
-// these tools from the LLM's tool schema, and the UseContext.Coordinator is
-// left nil so that even if a tool call somehow slips through, the Call method
-// will return an error.
+// The function uses agent profiles from the agenttype.Registry to determine:
+//   - System prompt (from profile or request override)
+//   - Tool filtering (allowlist/denylist from profile)
+//   - Model selection (from profile or request override)
 //
-// onProgress is called for each meaningful event so the TUI coordinator panel
-// can display real-time progress. It may be nil.
+// Sub-agents do NOT have access to coordinator tools (TaskCreate, Agent, etc.)
+// to prevent infinite recursion.
 func buildRunAgentFn(
 	eng engine.QueryEngine,
-	_ *tools.Registry,
+	reg *tools.Registry,
 	_ state.AppState,
 	onProgress coordinator.OnProgressFn,
+	agentProfiles *agenttype.Registry,
 ) coordinator.RunAgentFn {
 	return func(ctx context.Context, agentID coordinator.AgentID, req coordinator.SpawnRequest, _ <-chan string) (string, error) {
 		desc := req.Description
+		agentName := req.Name
+		agentTypeName := req.SubagentType
 
 		// emitProgress is a local helper to safely call onProgress.
 		emitProgress := func(activity, detail string) {
@@ -326,19 +354,44 @@ func buildRunAgentFn(
 				onProgress(coordinator.ProgressEvent{
 					AgentID:     agentID,
 					Description: desc,
+					AgentName:   agentName,
+					AgentType:   agentTypeName,
 					Activity:    activity,
 					Detail:      detail,
 				})
 			}
 		}
 
-		// Build a system prompt for the worker.
+		// Look up the agent profile.
+		profile, ok := agentProfiles.Get(agenttype.AgentType(agentTypeName))
+		if !ok {
+			// Fallback to worker profile.
+			profile, _ = agentProfiles.Get(agenttype.AgentTypeWorker)
+		}
+
+		// Build system prompt: request override > profile > default.
+		promptText := ""
+		if req.SystemPromptOverride != "" {
+			promptText = req.SystemPromptOverride
+		} else if profile != nil && profile.SystemPrompt != "" {
+			promptText = profile.SystemPrompt
+		} else {
+			promptText = "You are a worker agent. Complete the task described below. Be concise and thorough."
+		}
+
 		systemPrompt := engine.SystemPrompt{
 			Parts: []engine.SystemPromptPart{
-				{Text: "You are a worker agent. Complete the task described below. Be concise and thorough. " +
-					"You do NOT have access to task management or agent spawning tools. " +
-					"Focus on completing your assigned task using the available file, shell, and search tools."},
+				{Text: promptText},
 			},
+		}
+
+		// Build ExcludeTools from profile.
+		excludeTools := buildExcludeToolsFromProfile(profile, reg, req.AllowedTools, req.DenyTools)
+
+		// Resolve model: request > profile > inherit.
+		queryModel := req.Model
+		if queryModel == "" && profile != nil {
+			queryModel = profile.EffectiveModel()
 		}
 
 		// Build the initial user message.
@@ -349,25 +402,30 @@ func buildRunAgentFn(
 			},
 		}
 
+		// Inject AgentID into context for downstream use.
+		agentCtx := agentctx.WithAgentID(ctx, string(agentID))
+
 		// Create a UseContext for the sub-agent.
 		// NOTE: Coordinator is intentionally nil — sub-agents must NOT spawn
 		// further sub-agents.
 		uctx := &tools.UseContext{
-			Ctx:     ctx,
+			Ctx:     agentCtx,
 			AbortCh: make(chan struct{}),
+			AgentID: string(agentID),
 		}
 
 		params := engine.QueryParams{
-			Messages:       []types.Message{userMsg},
-			SystemPrompt:   systemPrompt,
+			Messages:     []types.Message{userMsg},
+			SystemPrompt: systemPrompt,
 			ToolUseContext: uctx,
-			QuerySource:    "sub-agent",
-			MaxTurns:       req.MaxTurns,
-			ExcludeTools:   coordinatorToolNames,
+			QuerySource:  "sub-agent",
+			MaxTurns:     req.MaxTurns,
+			ExcludeTools: excludeTools,
+			Model:        queryModel,
 		}
 
 		// Run the query loop.
-		msgCh, err := eng.Query(ctx, params)
+		msgCh, err := eng.Query(agentCtx, params)
 		if err != nil {
 			return "", fmt.Errorf("sub-agent query failed: %w", err)
 		}
@@ -391,7 +449,6 @@ func buildRunAgentFn(
 				emitProgress("Running "+msg.ToolName, "")
 
 			case engine.MsgTypeToolUseInputDelta:
-				// Show partial tool input as it arrives.
 				emitProgress("Running "+msg.ToolName, truncateDetail(msg.InputDelta))
 
 			case engine.MsgTypeToolResult:
@@ -419,6 +476,74 @@ func buildRunAgentFn(
 	}
 }
 
+// buildExcludeToolsFromProfile computes the ExcludeTools map from an agent profile,
+// request-level AllowedTools, and request-level DenyTools.
+func buildExcludeToolsFromProfile(
+	profile *agenttype.AgentProfile,
+	reg *tools.Registry,
+	reqAllowed, reqDeny []string,
+) map[string]bool {
+	exclude := make(map[string]bool)
+
+	// Start with profile's filter.
+	if profile != nil {
+		switch profile.ToolFilter.Mode {
+		case agenttype.ToolFilterAllowlist:
+			allowed := toSet(profile.ToolFilter.Tools)
+			for _, t := range reg.All() {
+				if !allowed[t.Name()] {
+					exclude[t.Name()] = true
+				}
+			}
+		case agenttype.ToolFilterDenylist:
+			for _, name := range profile.ToolFilter.Tools {
+				exclude[name] = true
+			}
+		}
+
+		// If profile disallows sub-agent spawning, force-exclude Agent/SendMessage.
+		if !profile.CanSpawnSubAgents {
+			exclude["Agent"] = true
+			exclude["SendMessage"] = true
+			exclude["GetAgentStatus"] = true
+		}
+	} else {
+		// No profile: fallback to coordinator-only deny list.
+		for name := range coordinatorToolNames {
+			exclude[name] = true
+		}
+	}
+
+	// Apply per-request DenyTools.
+	for _, name := range reqDeny {
+		exclude[name] = true
+	}
+
+	// If per-request AllowedTools is specified, it narrows the set further.
+	if len(reqAllowed) > 0 {
+		allowed := toSet(reqAllowed)
+		for _, t := range reg.All() {
+			if !allowed[t.Name()] {
+				exclude[t.Name()] = true
+			}
+		}
+	}
+
+	if len(exclude) == 0 {
+		return nil
+	}
+	return exclude
+}
+
+// toSet converts a string slice to a set map.
+func toSet(ss []string) map[string]bool {
+	m := make(map[string]bool, len(ss))
+	for _, s := range ss {
+		m[s] = true
+	}
+	return m
+}
+
 // truncateDetail truncates a string to a short summary suitable for the
 // coordinator panel detail line.
 func truncateDetail(s string) string {
@@ -439,6 +564,8 @@ func buildOnProgressFn(ch chan<- coordinator.Event) coordinator.OnProgressFn {
 			Kind:        coordinator.EventProgress,
 			AgentID:     string(evt.AgentID),
 			Description: evt.Description,
+			AgentName:   evt.AgentName,
+			AgentType:   evt.AgentType,
 			Activity:    evt.Activity,
 			Detail:      evt.Detail,
 		}:
@@ -450,12 +577,14 @@ func buildOnProgressFn(ch chan<- coordinator.Event) coordinator.OnProgressFn {
 
 // buildOnStatusChangeFn creates an OnStatusChangeFn that pushes events to the channel.
 func buildOnStatusChangeFn(ch chan<- coordinator.Event) coordinator.OnStatusChangeFn {
-	return func(agentID coordinator.AgentID, description string, status coordinator.AgentStatus) {
+	return func(agentID coordinator.AgentID, description, name, agentType string, status coordinator.AgentStatus) {
 		select {
 		case ch <- coordinator.Event{
 			Kind:        coordinator.EventStatusChange,
 			AgentID:     string(agentID),
 			Description: description,
+			AgentName:   name,
+			AgentType:   agentType,
 			Status:      string(status),
 		}:
 		default:

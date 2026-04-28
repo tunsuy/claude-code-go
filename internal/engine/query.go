@@ -131,7 +131,12 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 		// ────────────────────────────────────────────────────────────────────
 
 		// Build the API request using the primary model.
-		req, err := e.buildRequestWithModel(params, messages, e.model)
+		// params.Model overrides the engine default for per-agent model selection.
+		activeModel := e.model
+		if params.Model != "" {
+			activeModel = params.Model
+		}
+		req, err := e.buildRequestWithModel(params, messages, activeModel)
 		if err != nil {
 			sendError(ctx, msgCh, fmt.Errorf("engine: build request: %w", err))
 			return

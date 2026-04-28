@@ -38,6 +38,8 @@ const (
 type ProgressEvent struct {
 	AgentID     AgentID
 	Description string // human-readable task description
+	AgentName   string // human-readable agent name
+	AgentType   string // agent type key (e.g. "worker", "explore")
 	Activity    string // short label: "Streaming", "Running Bash", "Reading file"
 	Detail      string // one-line detail, e.g. partial text or tool input
 }
@@ -48,7 +50,7 @@ type OnProgressFn func(evt ProgressEvent)
 
 // OnStatusChangeFn is called when a sub-agent's lifecycle status changes.
 // Implementations must be safe for concurrent use.
-type OnStatusChangeFn func(agentID AgentID, description string, status AgentStatus)
+type OnStatusChangeFn func(agentID AgentID, description, name, agentType string, status AgentStatus)
 
 // EventKind discriminates Event types.
 type EventKind int
@@ -66,6 +68,8 @@ type Event struct {
 	Kind        EventKind
 	AgentID     string
 	Description string
+	AgentName   string // human-readable agent name
+	AgentType   string // agent type key (e.g. "worker", "explore")
 	// Progress fields (Kind == EventProgress)
 	Activity string
 	Detail   string
@@ -77,7 +81,7 @@ type Event struct {
 type SpawnRequest struct {
 	// Description is a human-readable summary of the sub-agent's task.
 	Description string
-	// SubagentType is the agent kind, e.g. "worker".
+	// SubagentType is the agent kind, e.g. "worker", "explore".
 	SubagentType string
 	// Prompt is the full initial prompt delivered to the sub-agent.
 	Prompt string
@@ -85,10 +89,20 @@ type SpawnRequest struct {
 	Model string
 	// AllowedTools restricts the tools available to the sub-agent.
 	AllowedTools []string
+	// DenyTools explicitly excludes tools from the sub-agent.
+	DenyTools []string
 	// MaxTurns limits the sub-agent's query loops (0 = unlimited).
 	MaxTurns int
 	// ParentAgentID is set when this is a nested sub-agent spawn.
 	ParentAgentID AgentID
+	// Name is a human-readable name for routing (e.g. "researcher").
+	Name string
+	// Background indicates fire-and-forget mode (do not block caller).
+	Background bool
+	// CacheParams is opaque cache-safe params from the parent agent.
+	CacheParams any
+	// SystemPromptOverride replaces the profile's system prompt if non-empty.
+	SystemPromptOverride string
 }
 
 // AgentUsage records the resource consumption of a completed sub-agent.
@@ -139,6 +153,15 @@ type Coordinator interface {
 
 	// IsCoordinatorMode reports whether coordinator mode is active.
 	IsCoordinatorMode() bool
+
+	// ResolveAgent resolves a name-or-ID to an AgentID.
+	// If target matches an existing AgentID directly, it is returned.
+	// Otherwise it is looked up in the name index.
+	ResolveAgent(target string) (AgentID, error)
+
+	// BroadcastMessage sends a message to all running agents.
+	// Returns the number of agents that received the message.
+	BroadcastMessage(ctx context.Context, message string) (int, error)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -150,6 +173,7 @@ const inboxBufferSize = 16
 // agentEntry holds the mutable runtime state of a single sub-agent.
 type agentEntry struct {
 	id          AgentID
+	name        string                 // human-readable name (may be empty)
 	req         SpawnRequest
 	status      AgentStatus
 	startedAt   time.Time
@@ -170,13 +194,15 @@ type agentEntry struct {
 // Sub-agents are simulated via goroutines; real engine integration is performed
 // by injecting a RunAgent function via Config.
 type coordinatorImpl struct {
-	coordinatorMode bool
-	runAgent        RunAgentFn
-	onProgress      OnProgressFn
-	onStatusChange  OnStatusChangeFn
+	coordinatorMode  bool
+	runAgent         RunAgentFn
+	onProgress       OnProgressFn
+	onStatusChange   OnStatusChangeFn
+	summaryGenerator SummaryGeneratorFn
 
-	mu     sync.RWMutex
-	agents map[AgentID]*agentEntry
+	mu        sync.RWMutex
+	agents    map[AgentID]*agentEntry
+	nameIndex map[string]AgentID // name → agent ID for name-based routing
 }
 
 // RunAgentFn is the function signature used to actually run a sub-agent.
@@ -201,6 +227,9 @@ type Config struct {
 	// OnStatusChange is called when a sub-agent's lifecycle status changes.
 	// May be nil; the coordinator tolerates a nil callback.
 	OnStatusChange OnStatusChangeFn
+	// SummaryGenerator generates summaries for completed agents.
+	// If nil, a default truncation-based summary is used.
+	SummaryGenerator SummaryGeneratorFn
 }
 
 // New creates and returns a new Coordinator.
@@ -210,11 +239,13 @@ func New(cfg Config) Coordinator {
 		fn = noopRunAgent
 	}
 	return &coordinatorImpl{
-		coordinatorMode: cfg.CoordinatorMode,
-		runAgent:        fn,
-		onProgress:      cfg.OnProgress,
-		onStatusChange:  cfg.OnStatusChange,
-		agents:          make(map[AgentID]*agentEntry),
+		coordinatorMode:  cfg.CoordinatorMode,
+		runAgent:         fn,
+		onProgress:       cfg.OnProgress,
+		onStatusChange:   cfg.OnStatusChange,
+		summaryGenerator: cfg.SummaryGenerator,
+		agents:           make(map[AgentID]*agentEntry),
+		nameIndex:        make(map[string]AgentID),
 	}
 }
 
@@ -270,6 +301,7 @@ func (c *coordinatorImpl) SpawnAgent(ctx context.Context, req SpawnRequest) (Age
 
 	entry := &agentEntry{
 		id:        agentID,
+		name:      req.Name,
 		req:       req,
 		status:    AgentStatusRunning,
 		startedAt: time.Now(),
@@ -278,11 +310,14 @@ func (c *coordinatorImpl) SpawnAgent(ctx context.Context, req SpawnRequest) (Age
 	}
 
 	c.agents[agentID] = entry
+	if req.Name != "" {
+		c.nameIndex[req.Name] = agentID
+	}
 	c.mu.Unlock()
 
 	// Notify TUI of the new agent.
 	if c.onStatusChange != nil {
-		c.onStatusChange(agentID, req.Description, AgentStatusRunning)
+		c.onStatusChange(agentID, req.Description, req.Name, req.SubagentType, AgentStatusRunning)
 	}
 
 	// Run the agent asynchronously.
@@ -307,11 +342,17 @@ func (c *coordinatorImpl) runAgentLoop(ctx context.Context, entry *agentEntry) {
 	finalStatus := entry.status
 	durationMs := entry.finishedAt.Sub(entry.startedAt).Milliseconds()
 
+	// Build summary.
+	summary := summaryFor(entry)
+	if c.summaryGenerator != nil {
+		summary = c.summaryGenerator(entry.id, result)
+	}
+
 	// Build notification.
 	notif := TaskNotification{
 		TaskID:  entry.id,
 		Status:  entry.status,
-		Summary: summaryFor(entry),
+		Summary: summary,
 		Result:  result,
 		Usage: &AgentUsage{
 			DurationMs: durationMs,
@@ -322,11 +363,13 @@ func (c *coordinatorImpl) runAgentLoop(ctx context.Context, entry *agentEntry) {
 	subs := entry.subscribers
 	entry.subscribers = nil
 	desc := entry.req.Description
+	name := entry.name
+	agentType := entry.req.SubagentType
 	entry.mu.Unlock()
 
 	// Notify TUI of status change.
 	if c.onStatusChange != nil {
-		c.onStatusChange(entry.id, desc, finalStatus)
+		c.onStatusChange(entry.id, desc, name, agentType, finalStatus)
 	}
 
 	for _, ch := range subs {
@@ -487,4 +530,83 @@ func (c *coordinatorImpl) ListAgents() map[AgentID]AgentStatus {
 		entry.mu.Unlock()
 	}
 	return out
+}
+
+// ResolveAgent resolves a name-or-ID to an AgentID.
+// If target matches an existing AgentID directly, it is returned.
+// Otherwise it is looked up in the name index.
+func (c *coordinatorImpl) ResolveAgent(target string) (AgentID, error) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	// Direct ID lookup.
+	if _, ok := c.agents[AgentID(target)]; ok {
+		return AgentID(target), nil
+	}
+	// Name lookup.
+	if id, ok := c.nameIndex[target]; ok {
+		return id, nil
+	}
+
+	// Build a list of available agents for a helpful error message.
+	var available []string
+	for id, entry := range c.agents {
+		entry.mu.Lock()
+		status := entry.status
+		name := entry.name
+		entry.mu.Unlock()
+		if status == AgentStatusRunning {
+			if name != "" {
+				available = append(available, fmt.Sprintf("%s (name=%s)", id, name))
+			} else {
+				available = append(available, string(id))
+			}
+		}
+	}
+	if len(available) > 0 {
+		return "", fmt.Errorf("coordinator: unknown agent %q; available: %v", target, available)
+	}
+	return "", fmt.Errorf("coordinator: unknown agent %q; no agents are currently running", target)
+}
+
+// BroadcastMessage sends a message to all running agents.
+// Returns the number of agents that received the message.
+func (c *coordinatorImpl) BroadcastMessage(_ context.Context, message string) (int, error) {
+	c.mu.RLock()
+	var running []*agentEntry
+	for _, entry := range c.agents {
+		entry.mu.Lock()
+		if entry.status == AgentStatusRunning {
+			running = append(running, entry)
+		}
+		entry.mu.Unlock()
+	}
+	c.mu.RUnlock()
+
+	sent := 0
+	for _, entry := range running {
+		select {
+		case entry.inboxCh <- message:
+			sent++
+		default:
+			// inbox full, skip
+		}
+	}
+	return sent, nil
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Summary generation
+// ─────────────────────────────────────────────────────────────────────────────
+
+// SummaryGeneratorFn generates a human-readable summary of an agent's work.
+// It is called when an agent completes.
+type SummaryGeneratorFn func(agentID AgentID, result string) string
+
+// DefaultSummaryGenerator returns a truncation-based summary (max 200 chars).
+func DefaultSummaryGenerator(_ AgentID, result string) string {
+	if len(result) <= 200 {
+		return result
+	}
+	return result[:200] + "…"
 }

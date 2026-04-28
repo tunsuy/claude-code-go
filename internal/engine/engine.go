@@ -65,6 +65,9 @@ type QueryParams struct {
 	// NoWriteBack prevents the query loop from writing messages back to the engine.
 	// Used by forked agents to avoid polluting the parent conversation.
 	NoWriteBack bool
+	// Model overrides the engine's default model for this query.
+	// If empty, the engine's configured model is used.
+	Model string
 }
 
 // TaskBudget defines an optional task-level output token budget.

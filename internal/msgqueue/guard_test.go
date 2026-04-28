@@ -92,7 +92,9 @@ func TestGuard_End_StaleGen(t *testing.T) {
 	g := NewQueryGuard()
 
 	gen, _ := g.Reserve()
-	g.TryStart(gen)
+	if err := g.TryStart(gen); err != nil {
+		t.Fatalf("TryStart: %v", err)
+	}
 	g.ForceEnd() // bumps generation
 
 	err := g.End(gen)
@@ -115,14 +117,14 @@ func TestGuard_ForceEnd_FromAnyState(t *testing.T) {
 		{
 			name: "from dispatching",
 			setup: func(g *QueryGuard) {
-				g.Reserve()
+				_, _ = g.Reserve()
 			},
 		},
 		{
 			name: "from running",
 			setup: func(g *QueryGuard) {
 				gen, _ := g.Reserve()
-				g.TryStart(gen)
+				_ = g.TryStart(gen)
 			},
 		},
 	}
@@ -145,7 +147,9 @@ func TestGuard_ForceEnd_InvalidatesOldGen(t *testing.T) {
 	g := NewQueryGuard()
 
 	gen, _ := g.Reserve()
-	g.TryStart(gen)
+	if err := g.TryStart(gen); err != nil {
+		t.Fatalf("TryStart: %v", err)
+	}
 
 	// Simulate abort — ForceEnd bumps generation.
 	g.ForceEnd()
@@ -170,12 +174,16 @@ func TestGuard_IsActive(t *testing.T) {
 		t.Fatal("expected active in Dispatching")
 	}
 
-	g.TryStart(gen)
+	if err := g.TryStart(gen); err != nil {
+		t.Fatalf("TryStart: %v", err)
+	}
 	if !g.IsActive() {
 		t.Fatal("expected active in Running")
 	}
 
-	g.End(gen)
+	if err := g.End(gen); err != nil {
+		t.Fatalf("End: %v", err)
+	}
 	if g.IsActive() {
 		t.Fatal("expected not active after End")
 	}
@@ -187,7 +195,7 @@ func TestGuard_Subscribe(t *testing.T) {
 	ch, id := g.Subscribe()
 	defer g.Unsubscribe(id)
 
-	g.Reserve()
+	_, _ = g.Reserve()
 
 	select {
 	case <-ch:
@@ -238,8 +246,8 @@ func TestGuard_GenerationIncrementsOnEnd(t *testing.T) {
 	_, gen0 := g.State()
 
 	gen, _ := g.Reserve()
-	g.TryStart(gen)
-	g.End(gen)
+	_ = g.TryStart(gen)
+	_ = g.End(gen)
 
 	_, gen1 := g.State()
 	if gen1 != gen0+1 {

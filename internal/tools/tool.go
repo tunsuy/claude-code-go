@@ -79,6 +79,14 @@ type AgentCoordinator interface {
 	// WaitForAgent blocks until the specified agent finishes (or ctx is cancelled).
 	// Returns the agent's final result and error.
 	WaitForAgent(ctx context.Context, agentID string) (string, error)
+
+	// ResolveAgent resolves a name or ID to an agent ID string.
+	// Returns the resolved agent ID, or an error if not found.
+	ResolveAgent(ctx context.Context, target string) (string, error)
+
+	// BroadcastMessage sends a message to all running agents.
+	// Returns the number of agents that received the message.
+	BroadcastMessage(ctx context.Context, message string) (int, error)
 }
 
 // AgentSpawnRequest is the parameter bundle for AgentCoordinator.SpawnAgent.
@@ -87,7 +95,13 @@ type AgentSpawnRequest struct {
 	Description  string
 	Prompt       string
 	AllowedTools []string
+	DenyTools    []string // tools to explicitly exclude
 	MaxTurns     int
+	AgentType    string // agent type key (e.g. "worker", "explore")
+	Model        string // model override (empty = inherit)
+	Background   bool   // if true, don't block for completion
+	AgentName    string // human-readable name for routing
+	CacheParams  any    // opaque; cast to *engine.CacheSafeParams at wire time
 }
 
 // UseContext is the per-call context passed into Tool methods.
@@ -106,6 +120,8 @@ type UseContext struct {
 	// Coordinator provides access to the multi-agent coordinator.
 	// May be nil if coordinator mode is not enabled.
 	Coordinator AgentCoordinator
+	// AgentID is the ID of the current agent ("" for main session).
+	AgentID string
 }
 
 // ValidationResult is the output of ValidateInput.

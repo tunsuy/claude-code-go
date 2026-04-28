@@ -71,6 +71,14 @@ func (m *mockCoordinator) WaitForAgent(ctx context.Context, agentID string) (str
 	return "done", nil
 }
 
+func (m *mockCoordinator) ResolveAgent(_ context.Context, target string) (string, error) {
+	return target, nil
+}
+
+func (m *mockCoordinator) BroadcastMessage(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
+
 // ── AgentTool ─────────────────────────────────────────────────────────────────
 
 func TestAgentTool_Name(t *testing.T) {
@@ -227,9 +235,7 @@ func TestSendMessageTool_InputSchema_Required(t *testing.T) {
 	for _, r := range schema.Required {
 		reqMap[r] = true
 	}
-	if !reqMap["agent_id"] {
-		t.Error("SendMessageTool schema must require 'agent_id'")
-	}
+	// "content" is required; "to" and "agent_id" are both optional.
 	if !reqMap["content"] {
 		t.Error("SendMessageTool schema must require 'content'")
 	}
@@ -545,7 +551,7 @@ func TestSendMessageTool_Call_EmptyAgentID(t *testing.T) {
 	if !result.IsError {
 		t.Error("expected IsError=true for empty agent_id")
 	}
-	if !strings.Contains(result.Content.(string), "agent_id is required") {
+	if !strings.Contains(result.Content.(string), "either 'to' or 'agent_id' is required") {
 		t.Errorf("unexpected error message: %v", result.Content)
 	}
 }

@@ -71,6 +71,14 @@ func (m *mockCoordinator) WaitForAgent(ctx context.Context, agentID string) (str
 	return "done", nil
 }
 
+func (m *mockCoordinator) ResolveAgent(_ context.Context, target string) (string, error) {
+	return target, nil
+}
+
+func (m *mockCoordinator) BroadcastMessage(_ context.Context, _ string) (int, error) {
+	return 0, nil
+}
+
 // newTestContext creates a UseContext with the given mock coordinator.
 func newTestContext(mock *mockCoordinator) *tools.UseContext {
 	return &tools.UseContext{

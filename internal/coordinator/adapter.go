@@ -30,11 +30,17 @@ func NewAgentCoordinator(c Coordinator) tools.AgentCoordinator {
 // SpawnAgent launches a new sub-agent and returns its ID as a string.
 func (a *coordinatorAdapter) SpawnAgent(ctx context.Context, req tools.AgentSpawnRequest) (string, error) {
 	agentID, err := a.impl.SpawnAgent(ctx, SpawnRequest{
-		Description:  req.Description,
-		Prompt:       req.Prompt,
-		AllowedTools: req.AllowedTools,
-		MaxTurns:     req.MaxTurns,
-		SubagentType: "worker",
+		Description:          req.Description,
+		Prompt:               req.Prompt,
+		AllowedTools:         req.AllowedTools,
+		DenyTools:            req.DenyTools,
+		MaxTurns:             req.MaxTurns,
+		SubagentType:         req.AgentType,
+		Model:                req.Model,
+		Name:                 req.AgentName,
+		Background:           req.Background,
+		CacheParams:          req.CacheParams,
+		SystemPromptOverride: "", // uses profile prompt
 	})
 	if err != nil {
 		return "", err
@@ -123,4 +129,18 @@ func (a *coordinatorAdapter) WaitForAgent(ctx context.Context, agentID string) (
 	case <-ctx.Done():
 		return "", ctx.Err()
 	}
+}
+
+// ResolveAgent resolves a name or ID to an agent ID string.
+func (a *coordinatorAdapter) ResolveAgent(_ context.Context, target string) (string, error) {
+	id, err := a.impl.ResolveAgent(target)
+	if err != nil {
+		return "", err
+	}
+	return string(id), nil
+}
+
+// BroadcastMessage sends a message to all running agents.
+func (a *coordinatorAdapter) BroadcastMessage(ctx context.Context, message string) (int, error) {
+	return a.impl.BroadcastMessage(ctx, message)
 }

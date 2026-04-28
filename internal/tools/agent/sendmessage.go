@@ -11,22 +11,23 @@ import (
 
 // SendMessageInput is the input schema for the SendMessage tools.
 type SendMessageInput struct {
-	// AgentID is the target sub-agent identifier (required).
-	AgentID string `json:"agent_id"`
+	// To is the target: agent name, agent ID, or "*" for broadcast (preferred).
+	To string `json:"to,omitempty"`
+	// AgentID is the target sub-agent identifier (deprecated, use "to" instead).
+	AgentID string `json:"agent_id,omitempty"`
 	// Content is the message content to send (required).
 	Content string `json:"content"`
 }
 
 // SendMessageOutput is the structured output of SendMessage.
 type SendMessageOutput struct {
-	// Response is the sub-agent's reply.
+	// Response is confirmation of delivery.
 	Response string `json:"response"`
 }
 
 // ── Tool implementation ───────────────────────────────────────────────────────
 
 // SendMessageTool is the exported singleton instance.
-// TODO(dep): Full implementation requires Agent-Core's session/message-routing layer.
 var SendMessageTool tools.Tool = &sendMessageTool{}
 
 type sendMessageTool struct{ tools.BaseTool }
@@ -34,26 +35,35 @@ type sendMessageTool struct{ tools.BaseTool }
 func (t *sendMessageTool) Name() string { return "SendMessage" }
 
 func (t *sendMessageTool) Description(_ tools.Input, _ tools.PermissionContext) string {
-	return `Sends a message to a running sub-agent and returns its response.
+	return `Sends a message to a running sub-agent and returns a delivery confirmation.
+
+The "to" field supports:
+- Agent name (e.g. "researcher") — routes by human-readable name
+- Agent ID (UUID) — routes by exact ID
+- "*" — broadcasts to ALL running agents
 
 Usage notes:
-- The agent_id must refer to a currently active sub-agent session
-- Returns the sub-agent's reply to the message`
+- The target must refer to a currently active sub-agent
+- Use agent names for readability when you set agent_name in Agent tool`
 }
 
 func (t *sendMessageTool) InputSchema() tools.InputSchema {
 	return tools.NewInputSchema(
 		map[string]json.RawMessage{
+			"to": tools.PropSchema(map[string]any{
+				"type":        "string",
+				"description": "Target agent: name, ID, or \"*\" for broadcast",
+			}),
 			"agent_id": tools.PropSchema(map[string]any{
 				"type":        "string",
-				"description": "The identifier of the target sub-agent",
+				"description": "Deprecated: use 'to' instead. The identifier of the target sub-agent.",
 			}),
 			"content": tools.PropSchema(map[string]any{
 				"type":        "string",
 				"description": "The message content to send to the sub-agent",
 			}),
 		},
-		[]string{"agent_id", "content"},
+		[]string{"content"},
 	)
 }
 
@@ -62,12 +72,18 @@ func (t *sendMessageTool) IsReadOnly(_ tools.Input) bool        { return false }
 
 func (t *sendMessageTool) UserFacingName(input tools.Input) string {
 	var in SendMessageInput
-	if json.Unmarshal(input, &in) == nil && in.AgentID != "" {
+	if json.Unmarshal(input, &in) == nil {
+		target := in.To
+		if target == "" {
+			target = in.AgentID
+		}
 		msg := in.Content
 		if len(msg) > 40 {
 			msg = msg[:40] + "…"
 		}
-		return fmt.Sprintf("SendMessage(→%s: %s)", in.AgentID, msg)
+		if target != "" {
+			return fmt.Sprintf("SendMessage(→%s: %s)", target, msg)
+		}
 	}
 	return "SendMessage"
 }
@@ -87,10 +103,16 @@ func (t *sendMessageTool) Call(input tools.Input, ctx *tools.UseContext, _ tools
 			Content: fmt.Sprintf("invalid input: %v", err),
 		}, nil
 	}
-	if in.AgentID == "" {
+
+	// Resolve target: prefer "to", fallback to "agent_id".
+	target := in.To
+	if target == "" {
+		target = in.AgentID
+	}
+	if target == "" {
 		return &tools.Result{
 			IsError: true,
-			Content: "agent_id is required",
+			Content: "either 'to' or 'agent_id' is required",
 		}, nil
 	}
 	if in.Content == "" {
@@ -100,16 +122,41 @@ func (t *sendMessageTool) Call(input tools.Input, ctx *tools.UseContext, _ tools
 		}, nil
 	}
 
-	// Deliver the message via the coordinator.
-	if err := ctx.Coordinator.SendMessage(ctx.Ctx, in.AgentID, in.Content); err != nil {
+	// Handle broadcast.
+	if target == "*" {
+		sent, err := ctx.Coordinator.BroadcastMessage(ctx.Ctx, in.Content)
+		if err != nil {
+			return &tools.Result{
+				IsError: true,
+				Content: fmt.Sprintf("broadcast failed: %v", err),
+			}, nil
+		}
+		out := SendMessageOutput{
+			Response: fmt.Sprintf("Message broadcast to %d running agent(s)", sent),
+		}
+		outBytes, _ := json.Marshal(out)
+		return &tools.Result{Content: string(outBytes)}, nil
+	}
+
+	// Resolve name → ID.
+	resolvedID, err := ctx.Coordinator.ResolveAgent(ctx.Ctx, target)
+	if err != nil {
 		return &tools.Result{
 			IsError: true,
-			Content: fmt.Sprintf("failed to send message to agent %s: %v", in.AgentID, err),
+			Content: fmt.Sprintf("failed to resolve agent %q: %v", target, err),
+		}, nil
+	}
+
+	// Deliver the message via the coordinator.
+	if err := ctx.Coordinator.SendMessage(ctx.Ctx, resolvedID, in.Content); err != nil {
+		return &tools.Result{
+			IsError: true,
+			Content: fmt.Sprintf("failed to send message to agent %s: %v", target, err),
 		}, nil
 	}
 
 	out := SendMessageOutput{
-		Response: fmt.Sprintf("Message delivered to agent %s", in.AgentID),
+		Response: fmt.Sprintf("Message delivered to agent %s", target),
 	}
 	outBytes, _ := json.Marshal(out)
 

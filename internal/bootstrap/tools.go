@@ -42,6 +42,7 @@ func RegisterBuiltinTools(reg *tools.Registry) {
 	// ── Agent ────────────────────────────────────────────────────────────────
 	reg.Register(agent.AgentTool)
 	reg.Register(agent.SendMessageTool)
+	reg.Register(agent.GetAgentStatusTool)
 
 	// ── Interaction / plan mode ──────────────────────────────────────────────
 	reg.Register(interact.TodoWriteTool)

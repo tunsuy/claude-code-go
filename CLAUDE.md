@@ -52,7 +52,19 @@ make test-cover   # generates coverage.html
 make vet          # go vet ./...
 make lint         # golangci-lint (requires install)
 make all          # vet + test + build
+make docs         # generate API context docs (cmd/docgen)
+make docs-check   # verify generated docs are up-to-date
 ```
+
+## Auto-Generated Context (开发前按需读取)
+
+以下文档由 `make docs`（cmd/docgen）从代码 AST 自动生成，永远与代码同步：
+
+- **全局索引**: [`docs/generated/INDEX.md`](docs/generated/INDEX.md) — 所有包一览（层级、核心导出、CONTEXT 链接）
+- **包级详情**: 每个包目录下的 `CONTEXT.md`（如 `internal/coordinator/CONTEXT.md`）— 导出类型签名、接口定义、变更影响链、依赖关系、Mock 位置
+- **变更链路**: [`docs/generated/change-impact.md`](docs/generated/change-impact.md) — interface → adapter → test mock 传播路径
+
+**使用方式**: 修改某个包之前，先 Read 该包目录下的 CONTEXT.md 了解导出类型和变更影响链，避免遗漏关联修改。
 
 ## Coding Conventions
 

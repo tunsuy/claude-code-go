@@ -29,12 +29,18 @@ You have access to the MemoryRead, MemoryWrite, and MemoryDelete tools.
 If there is nothing worth remembering from this conversation, do nothing.`
 
 // BuildExtractionPrompt constructs the user message for the extraction agent.
-// It includes a summary of the conversation for context.
+// It includes the extraction system prompt as a role preamble and a summary of
+// the conversation for context. The system prompt is embedded in the user message
+// because the forked agent reuses the parent's system prompt for Prompt Cache hits.
 func BuildExtractionPrompt(conversationSummary string) string {
-	return fmt.Sprintf(`Please analyze the following conversation and extract any information worth remembering for future sessions.
+	return fmt.Sprintf(`%s
+
+---
+
+Please analyze the following conversation and extract any information worth remembering for future sessions.
 
 ## Conversation
 %s
 
-Remember: only extract genuinely useful information. If there's nothing worth remembering, do nothing.`, conversationSummary)
+Remember: only extract genuinely useful information. If there's nothing worth remembering, do nothing.`, extractionSystemPrompt, conversationSummary)
 }

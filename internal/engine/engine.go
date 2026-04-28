@@ -6,6 +6,7 @@ import (
 
 	"github.com/tunsuy/claude-code-go/internal/api"
 	"github.com/tunsuy/claude-code-go/internal/compact"
+	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
@@ -115,6 +116,10 @@ type engineImpl struct {
 	// stopHooks fires registered callbacks after each turn completes.
 	// If nil, no stop hooks are executed.
 	stopHooks *StopHookRegistry
+
+	// msgQueue is the optional unified command queue for mid-session message
+	// processing (mid-turn drain). If nil, mid-turn drain is disabled.
+	msgQueue *msgqueue.MessageQueue
 }
 
 // Config is the constructor parameter bundle for New.
@@ -133,6 +138,9 @@ type Config struct {
 	// StopHooks is the optional registry of stop hooks fired after each turn.
 	// If nil, no stop hooks are executed.
 	StopHooks *StopHookRegistry
+	// MsgQueue is the optional unified command queue for mid-session message
+	// processing. If nil, mid-turn drain is disabled (backward compatible).
+	MsgQueue *msgqueue.MessageQueue
 }
 
 // Compile-time interface assertion: engineImpl must satisfy QueryEngine.
@@ -154,6 +162,7 @@ func New(cfg Config) QueryEngine {
 		autoCompactor:  compact.NewAutoCompactor(cfg.Client, cfg.Model, maxTokens),
 		permChecker:    cfg.PermissionChecker,
 		stopHooks:      cfg.StopHooks,
+		msgQueue:       cfg.MsgQueue,
 	}
 }
 

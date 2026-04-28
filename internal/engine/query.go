@@ -8,9 +8,11 @@ import (
 	"io"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/tunsuy/claude-code-go/internal/api"
 	"github.com/tunsuy/claude-code-go/internal/compact"
+	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/tools"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
@@ -235,6 +237,10 @@ func (e *engineImpl) runQueryLoop(ctx context.Context, params QueryParams, msgCh
 			case <-ctx.Done():
 				return
 			}
+
+			// P1: Mid-turn drain checkpoint — inject queued user messages
+			// between tool execution and the next LLM call.
+			e.drainMidTurn(ctx, &messages, msgCh)
 
 			// Continue the loop so the LLM can process tool results.
 			continue
@@ -532,4 +538,65 @@ func systemPromptParts(params QueryParams) []string {
 		}
 	}
 	return parts
+}
+
+// drainMidTurn checks the message queue for pending user messages and injects
+// them into the conversation before the next LLM call. This lets the LLM see
+// user corrections/additions between tool calls within the same turn.
+//
+// Only ModePrompt commands are consumed mid-turn; slash commands require TUI
+// routing and are left in the queue for between-turn processing.
+func (e *engineImpl) drainMidTurn(
+	ctx context.Context,
+	messages *[]types.Message,
+	msgCh chan<- Msg,
+) {
+	if e.msgQueue == nil {
+		return
+	}
+
+	agentID := "" // main session; sub-agent support deferred to P2
+	pending := e.msgQueue.GetByMaxPriority(msgqueue.PriorityNext, agentID)
+	if len(pending) == 0 {
+		return
+	}
+
+	// Only drain ModePrompt commands mid-turn.
+	var toInject []msgqueue.QueuedCommand
+	for _, cmd := range pending {
+		if cmd.Mode == msgqueue.ModePrompt {
+			toInject = append(toInject, cmd)
+		}
+	}
+	if len(toInject) == 0 {
+		return
+	}
+
+	// Remove from queue before injecting.
+	ids := make([]string, len(toInject))
+	for i, cmd := range toInject {
+		ids[i] = cmd.ID
+	}
+	e.msgQueue.RemoveByIDs(ids)
+
+	// Combine into one user message.
+	var parts []string
+	for _, cmd := range toInject {
+		parts = append(parts, cmd.Value)
+	}
+	combined := strings.Join(parts, "\n\n")
+
+	userMsg := types.Message{
+		Role: types.RoleUser,
+		Content: []types.ContentBlock{
+			{Type: types.ContentTypeText, Text: strPtr(combined)},
+		},
+	}
+	*messages = append(*messages, userMsg)
+
+	// Notify TUI that a user message was injected.
+	select {
+	case msgCh <- Msg{Type: MsgTypeUserMessage, UserMsg: &userMsg}:
+	case <-ctx.Done():
+	}
 }

@@ -135,3 +135,12 @@ type MemdirLoadedMsg struct {
 
 // SystemTextMsg surfaces informational text from the engine (e.g. max turns).
 type SystemTextMsg struct{ Text string }
+
+// --- Mid-session message queue events ---
+
+// queueChangedMsg is sent when the MessageQueue has new commands.
+// The Update loop checks this to trigger between-turn drain when idle.
+type queueChangedMsg struct{}
+
+// queuedSlashMsg is sent when a queued slash command is ready for dispatch.
+type queuedSlashMsg struct{ Text string }

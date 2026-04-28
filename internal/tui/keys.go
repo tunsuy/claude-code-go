@@ -2,6 +2,8 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
+
+	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 )
 
 // handleKey dispatches keyboard events based on the active dialog and loading state.
@@ -272,9 +274,26 @@ func (m AppModel) handleSubmit() (tea.Model, tea.Cmd) {
 
 	// Check for slash commands.
 	if IsSlashCommand(text) {
+		// P1: Queue slash commands when a query is running.
+		if m.isLoading && m.msgQueue != nil {
+			cmd := msgqueue.NewCommand(text, msgqueue.ModeSlashCommand, msgqueue.PriorityNext)
+			m.msgQueue.Enqueue(cmd)
+			return m, nil
+		}
 		return m.handleSlashCommand(text)
 	}
 
+	// P1: If a query is active, enqueue instead of cancelling the current query.
+	if m.isLoading && m.msgQueue != nil {
+		cmd := msgqueue.NewCommand(text, msgqueue.ModePrompt, msgqueue.PriorityNext)
+		m.msgQueue.Enqueue(cmd)
+		// Show queued message in UI so the user sees their input was accepted.
+		m.messages = append(m.messages, newUserMessage(text))
+		m.syncViewportContent()
+		return m, nil // No startQueryCmd — will drain later.
+	}
+
+	// Default: direct dispatch (existing behavior, backward compat if msgQueue==nil).
 	// Append user message to local display.
 	m.messages = append(m.messages, newUserMessage(text))
 	m.syncViewportContent()
@@ -314,6 +333,10 @@ func (m AppModel) doAbort() (tea.Model, tea.Cmd) {
 	// P1-D fix: clear abort handle and stream channel so stale events are ignored.
 	m.abortFn = nil
 	m.streamCh = nil
+	// P1: Force-end the query guard to invalidate stale goroutines.
+	if m.queryGuard != nil {
+		m.queryGuard.ForceEnd()
+	}
 	return m, abortCmd
 }
 

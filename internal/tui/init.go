@@ -10,6 +10,7 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/coordinator"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
+	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
 	"github.com/tunsuy/claude-code-go/internal/tools"
@@ -22,6 +23,8 @@ import (
 // permRespCh is used to send permission responses back to the engine.
 // agentCoord is the multi-agent coordinator adapter; if nil, agent tools are disabled.
 // agentEventCh receives sub-agent progress/status events; if nil, coordinator panel is disabled.
+// mq is the unified command queue for mid-session message processing; may be nil.
+// qg is the query dispatch guard; may be nil.
 func New(
 	qe engine.QueryEngine,
 	appStore *state.AppStateStore,
@@ -31,6 +34,8 @@ func New(
 	permRespCh chan<- permissions.AskResponse,
 	agentCoord tools.AgentCoordinator,
 	agentEventCh <-chan coordinator.Event,
+	mq *msgqueue.MessageQueue,
+	qg *msgqueue.QueryGuard,
 ) tea.Model {
 	// DEBUG log
 	if f, err := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
@@ -42,7 +47,7 @@ func New(
 	reg := commands.NewRegistry()
 	commands.RegisterBuiltins(reg)
 
-	m := newAppModel(qe, appStore, vimEnabled, dark, reg, permAskCh, permRespCh, agentCoord, agentEventCh)
+	m := newAppModel(qe, appStore, vimEnabled, dark, reg, permAskCh, permRespCh, agentCoord, agentEventCh, mq, qg)
 	return m
 }
 
@@ -64,6 +69,10 @@ func (m AppModel) Init() tea.Cmd {
 	// Start listening for agent events if coordinator is enabled.
 	if m.agentEventCh != nil {
 		cmds = append(cmds, listenForAgentEvent(m.agentEventCh))
+	}
+	// Start listening for message queue changes if mid-session messaging is enabled.
+	if m.msgQueue != nil {
+		cmds = append(cmds, listenForQueueChange(m.msgQueue))
 	}
 	return tea.Batch(cmds...)
 }
@@ -171,3 +180,23 @@ func mapCoordinatorStatus(s string) AgentStatus {
 // agentEvictDelay is the duration a completed/failed task remains visible
 // before being evicted from the coordinator panel.
 const agentEvictDelay = 30 * time.Second
+
+// listenForQueueChange subscribes to the message queue and blocks until a
+// mutation occurs, then returns queueChangedMsg to the BubbleTea Update loop.
+// The Update handler must re-invoke this function after each receive to
+// continue listening (same pattern as listenForPermissionRequest).
+func listenForQueueChange(q *msgqueue.MessageQueue) tea.Cmd {
+	if q == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		ch, id := q.Subscribe()
+		defer q.Unsubscribe(id)
+		_, ok := <-ch
+		if !ok {
+			// Channel closed (signal teardown) — stop listening.
+			return nil
+		}
+		return queueChangedMsg{}
+	}
+}

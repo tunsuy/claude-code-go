@@ -20,9 +20,22 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 		m.abortFn = nil
 	}
 
+	// P1: QueryGuard — reserve before dispatching.
+	var gen uint64
+	if m.queryGuard != nil {
+		m.queryGuard.ForceEnd() // clear any stale state
+		var err error
+		gen, err = m.queryGuard.Reserve()
+		if err != nil {
+			// Should not happen after ForceEnd, but be safe.
+			return nil
+		}
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	m.abortCtx = ctx
 	m.abortFn = cancel
+	m.queryGen = gen
 
 	// Build user message for the engine.
 	userMsg := types.Message{
@@ -81,20 +94,29 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 	}
 
 	qe := m.queryEngine
+	guard := m.queryGuard
 
 	return func() tea.Msg {
+		// P1: Transition guard to Running.
+		if guard != nil {
+			if err := guard.TryStart(gen); err != nil {
+				cancel()
+				return StreamErrorMsg{Err: err}
+			}
+		}
 		ch, err := qe.Query(ctx, params)
 		if err != nil {
 			return StreamErrorMsg{Err: err}
 		}
-		return streamChanReady{ch: ch}
+		return streamChanReady{ch: ch, gen: gen}
 	}
 }
 
 // streamChanReady is an internal Msg that carries the newly-opened stream
 // channel back into the Update loop so it can be stored and polled.
 type streamChanReady struct {
-	ch <-chan engine.Msg
+	ch  <-chan engine.Msg
+	gen uint64 // query guard generation for End() matching
 }
 
 // waitForStreamEvent returns a Cmd that blocks until the next engine.Msg

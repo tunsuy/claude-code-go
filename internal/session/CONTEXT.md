@@ -2,7 +2,7 @@
 package: session
 import_path: internal/session
 layer: infra
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [store.go]
 ---
 
@@ -36,7 +36,8 @@ type SessionStorer interface {
 
 ## Change Impact
 
-**SessionStorer** interface:
+**Exported type references (files that use types from this package):**
+- `SessionManager` → `internal/bootstrap/session.go`
 
 ## Dependencies
 

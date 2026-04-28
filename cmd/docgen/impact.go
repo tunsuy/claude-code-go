@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -12,74 +13,168 @@ import (
 
 // MockInfo describes a mock type found in a test file.
 type MockInfo struct {
-	// File is the path relative to module root (e.g. "internal/tools/agent/agent_test.go").
+	// File is the path relative to module root.
 	File string
-	// TypeName is the mock struct name (e.g. "mockCoordinator").
+	// TypeName is the mock struct name.
 	TypeName string
-	// Implements is the interface it mocks (best-effort guess from field patterns).
-	Implements string
 }
 
-// InterfaceImpact describes the change impact of modifying an interface.
-type InterfaceImpact struct {
-	// InterfaceName is the full name (e.g. "tools.AgentCoordinator").
-	InterfaceName string
-	// Package is where the interface is defined.
+// TypeReference records where an exported type is referenced outside its package.
+type TypeReference struct {
+	// File is relative to module root (e.g. "internal/bootstrap/wire.go").
+	File string
+	// Package is the import path of the file's package.
 	Package string
-	// Implementors are packages that contain concrete implementations.
-	Implementors []string
-	// Mocks are test mock locations.
-	Mocks []MockInfo
-	// Adapters are adapter/bridge files.
-	Adapters []string
+	// IsTest indicates the reference is in a test file.
+	IsTest bool
 }
 
-// analyzeChangeImpact builds change impact data for all interfaces.
-func analyzeChangeImpact(packages []*PackageInfo, moduleRoot string) []InterfaceImpact {
-	// Collect all interfaces.
-	type ifaceRef struct {
-		pkg  string
-		name string
+// PackageImpact holds all change-impact data for a single package.
+type PackageImpact struct {
+	// AdapterFiles are files named adapter.go / adapter_*.go in the package.
+	AdapterFiles []string
+	// Mocks found in test files that likely implement interfaces from this package.
+	Mocks []MockInfo
+	// TypeRefs maps exported type name → list of files that reference it.
+	TypeRefs map[string][]TypeReference
+}
+
+// analyzePackageImpact builds change impact data for a single package.
+func analyzePackageImpact(pkg *PackageInfo, allPackages []*PackageInfo, moduleRoot string) *PackageImpact {
+	impact := &PackageImpact{
+		TypeRefs: make(map[string][]TypeReference),
 	}
-	var allIfaces []ifaceRef
-	for _, pkg := range packages {
-		for _, iface := range pkg.Interfaces {
-			allIfaces = append(allIfaces, ifaceRef{pkg: pkg.ImportPath, name: iface.Name})
+
+	// Find adapter files in this package.
+	pkgDir := filepath.Join(moduleRoot, filepath.FromSlash(pkg.ImportPath))
+	entries, _ := os.ReadDir(pkgDir)
+	for _, e := range entries {
+		name := e.Name()
+		if strings.HasPrefix(name, "adapter") && strings.HasSuffix(name, ".go") && !strings.HasSuffix(name, "_test.go") {
+			impact.AdapterFiles = append(impact.AdapterFiles, name)
 		}
 	}
 
-	// Find mocks in test files.
+	// Collect all exported type names from this package.
+	exportedNames := make(map[string]bool)
+	for _, iface := range pkg.Interfaces {
+		exportedNames[iface.Name] = true
+	}
+	for _, st := range pkg.Structs {
+		exportedNames[st.Name] = true
+	}
+	for _, ft := range pkg.FuncTypes {
+		exportedNames[ft.Name] = true
+	}
+
+	if len(exportedNames) == 0 {
+		return impact
+	}
+
+	// Find mocks in test files across the project.
 	mocks := findMocks(moduleRoot)
-
-	// Build impact for each interface.
-	var impacts []InterfaceImpact
-	for _, ref := range allIfaces {
-		impact := InterfaceImpact{
-			InterfaceName: ref.name,
-			Package:       ref.pkg,
-		}
-
-		// Find adapters — files named "adapter.go" in the same package.
-		adapterPath := filepath.Join(moduleRoot, filepath.FromSlash(ref.pkg), "adapter.go")
-		if _, err := os.Stat(adapterPath); err == nil {
-			impact.Adapters = append(impact.Adapters, ref.pkg+"/adapter.go")
-		}
-
-		// Find mocks that likely implement this interface.
-		for _, mock := range mocks {
-			if matchesMock(mock, ref.name) {
+	for _, mock := range mocks {
+		for name := range exportedNames {
+			if matchesMock(mock, name) {
 				impact.Mocks = append(impact.Mocks, mock)
 			}
 		}
-
-		impacts = append(impacts, impact)
 	}
 
-	sort.Slice(impacts, func(i, j int) bool {
-		return impacts[i].Package+"."+impacts[i].InterfaceName < impacts[j].Package+"."+impacts[j].InterfaceName
-	})
+	// Scan other packages for references to this package's exported types.
+	// We do a simple text search: look for "<pkgname>.<TypeName>" patterns.
+	pkgShortName := pkg.Name // e.g. "coordinator", "tools"
+	for _, other := range allPackages {
+		if other.ImportPath == pkg.ImportPath {
+			continue
+		}
+		// Check if this package imports our package.
+		imports := false
+		for _, imp := range other.Imports {
+			if imp == pkg.ImportPath {
+				imports = true
+				break
+			}
+		}
+		if !imports {
+			continue
+		}
 
-	return impacts
+		// Scan source files for type references.
+		otherDir := filepath.Join(moduleRoot, filepath.FromSlash(other.ImportPath))
+		scanDirForRefs(otherDir, moduleRoot, other.ImportPath, pkgShortName, exportedNames, impact.TypeRefs, false)
+		// Also scan test files.
+		scanDirForRefs(otherDir, moduleRoot, other.ImportPath, pkgShortName, exportedNames, impact.TypeRefs, true)
+	}
+
+	// Sort references for stable output.
+	for name := range impact.TypeRefs {
+		sort.Slice(impact.TypeRefs[name], func(i, j int) bool {
+			return impact.TypeRefs[name][i].File < impact.TypeRefs[name][j].File
+		})
+	}
+
+	return impact
+}
+
+// scanDirForRefs scans .go files in dir for references to exported types.
+func scanDirForRefs(
+	dir, moduleRoot, dirPkg, pkgShortName string,
+	exportedNames map[string]bool,
+	refs map[string][]TypeReference,
+	testFiles bool,
+) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		name := e.Name()
+		if !strings.HasSuffix(name, ".go") {
+			continue
+		}
+		isTest := strings.HasSuffix(name, "_test.go")
+		if testFiles != isTest {
+			continue
+		}
+
+		path := filepath.Join(dir, name)
+		relPath, _ := filepath.Rel(moduleRoot, path)
+		relPath = filepath.ToSlash(relPath)
+
+		// Read file and search for "<pkg>.<Type>" patterns.
+		found := searchFileForRefs(path, pkgShortName, exportedNames)
+		for typeName := range found {
+			refs[typeName] = append(refs[typeName], TypeReference{
+				File:    relPath,
+				Package: dirPkg,
+				IsTest:  isTest,
+			})
+		}
+	}
+}
+
+// searchFileForRefs does a line-by-line scan for "<pkg>.<TypeName>" in a file.
+func searchFileForRefs(path, pkgShortName string, exportedNames map[string]bool) map[string]bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	found := make(map[string]bool)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		for name := range exportedNames {
+			// Look for "pkg.Type" pattern (e.g. "coordinator.SpawnRequest").
+			pattern := pkgShortName + "." + name
+			if strings.Contains(line, pattern) {
+				found[name] = true
+			}
+		}
+	}
+	return found
 }
 
 // findMocks scans test files for mock struct types.
@@ -93,7 +188,6 @@ func findMocks(moduleRoot string) []MockInfo {
 		if !strings.HasSuffix(path, "_test.go") {
 			return nil
 		}
-		// Skip vendor, testdata, etc.
 		if strings.Contains(path, "vendor/") || strings.Contains(path, "testdata/") {
 			return nil
 		}
@@ -135,12 +229,10 @@ func findMocks(moduleRoot string) []MockInfo {
 }
 
 // matchesMock guesses if a mock type implements a given interface.
-// Uses naming convention: mockCoordinator → Coordinator, mockClient → Client.
 func matchesMock(mock MockInfo, ifaceName string) bool {
 	lower := strings.ToLower(mock.TypeName)
 	target := strings.ToLower(ifaceName)
 
-	// "mockCoordinator" → "coordinator" matches "Coordinator"
 	for _, prefix := range []string{"mock", "fake", "stub"} {
 		if strings.HasPrefix(lower, prefix) {
 			stripped := lower[len(prefix):]

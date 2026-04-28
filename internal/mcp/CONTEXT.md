@@ -2,7 +2,7 @@
 package: mcp
 import_path: internal/mcp
 layer: services
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [adapter.go, client.go, jsonrpc.go, pool.go, transport.go]
 ---
 
@@ -81,12 +81,17 @@ type Transport interface {
 
 ## Change Impact
 
-**MCPClient** interface:
-- Adapters: internal/mcp/adapter.go
-- Mock: `mockMCPClient` in `internal/mcp/mcp_test.go`
-**Transport** interface:
-- Adapters: internal/mcp/adapter.go
-- Mock: `mockTransport` in `internal/mcp/mcp_test.go`
+**Adapters (update when interfaces change):**
+- `adapter.go`
+
+**Test Mocks (must add new methods when interfaces change):**
+- `mockTransport` in `internal/mcp/mcp_test.go`
+- `mockMCPClient` in `internal/mcp/mcp_test.go`
+
+**Exported type references (files that use types from this package):**
+- `JSONRPCError` → `internal/bootstrap/mcp.go`
+- `JSONRPCMessage` → `internal/bootstrap/mcp.go`
+- `Pool` → `internal/bootstrap/wire.go`
 
 ## Dependencies
 

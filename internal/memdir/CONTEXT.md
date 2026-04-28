@@ -2,7 +2,7 @@
 package: memdir
 import_path: internal/memdir
 layer: services
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [discover.go, extract.go, extract_prompt.go, freshness.go, include.go, loader.go, relevance.go, scope.go, store.go, types.go]
 ---
 
@@ -58,6 +58,14 @@ source_files: [discover.go, extract.go, extract_prompt.go, freshness.go, include
 - `ScopeManaged`
 - `ScopeProject`
 - `ScopeUser`
+
+## Change Impact
+
+**Exported type references (files that use types from this package):**
+- `DiscoveredFile` → `internal/tui/messages.go`
+- `MemoryFile` → `internal/tools/memory/memory.go`
+- `MemoryHeader` → `internal/tools/memory/memory.go`
+- `MemoryStore` → `internal/tools/memory/memory.go`, `internal/tui/model.go`
 
 ## Dependencies
 

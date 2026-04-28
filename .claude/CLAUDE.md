@@ -32,7 +32,6 @@ make docs     # regenerate API context docs
 修改某个包之前，先 Read 该包目录下的 CONTEXT.md：
 - **索引**: `docs/generated/INDEX.md`
 - **包详情**: `<package>/CONTEXT.md`（如 `internal/coordinator/CONTEXT.md`）
-- **变更链路**: `docs/generated/change-impact.md`
 
 ### Frequently Modified Paths
 

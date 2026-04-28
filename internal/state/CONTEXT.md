@@ -2,7 +2,7 @@
 package: state
 import_path: internal/state
 layer: infra
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [store.go]
 ---
 
@@ -30,6 +30,12 @@ source_files: [store.go]
 - `NewAppStateStore(initial AppState) *AppStateStore`
 - `NewStore(initialState T, onChange func(newState T, oldState T)) *any`
 - `Snapshot(store *AppStateStore) types.AppStateReader`
+
+## Change Impact
+
+**Exported type references (files that use types from this package):**
+- `AppState` → `internal/bootstrap/wire.go`, `internal/tui/init.go`, `internal/tui/model.go`, `internal/tui/tui_test.go` (test), `internal/tui/update.go`
+- `ModelSetting` → `internal/bootstrap/wire.go`, `internal/tui/tui_test.go` (test)
 
 ## Dependencies
 

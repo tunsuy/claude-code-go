@@ -2,7 +2,7 @@
 package: engine
 import_path: internal/engine
 layer: core
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [budget.go, cache_params.go, engine.go, forked_agent.go, msg.go, orchestration.go, query.go, stop_hooks.go]
 ---
 
@@ -86,7 +86,16 @@ type QueryEngine interface {
 
 ## Change Impact
 
-**QueryEngine** interface:
+**Exported type references (files that use types from this package):**
+- `Config` → `internal/bootstrap/wire.go`
+- `ForkedAgentConfig` → `internal/memdir/extract.go`
+- `Msg` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`, `internal/tui/model.go`, `internal/tui/tui_test.go` (test)
+- `QueryEngine` → `internal/bootstrap/wire.go`, `internal/tui/cmds.go`, `internal/tui/init.go`, `internal/tui/model.go`
+- `QueryParams` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`, `internal/tui/tui_test.go` (test)
+- `StopHookContext` → `internal/bootstrap/wire.go`, `internal/memdir/extract.go`, `internal/memdir/extract_test.go` (test)
+- `SystemPrompt` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`
+- `SystemPromptPart` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`
+- `ToolResultMsg` → `internal/tui/tui_test.go` (test)
 
 ## Dependencies
 

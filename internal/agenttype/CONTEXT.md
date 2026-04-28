@@ -2,7 +2,7 @@
 package: agenttype
 import_path: internal/agenttype
 layer: infra
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [agenttype.go, builtins.go, loader.go, prompts.go, registry.go, tasktype.go]
 ---
 
@@ -36,6 +36,16 @@ source_files: [agenttype.go, builtins.go, loader.go, prompts.go, registry.go, ta
 - `TaskTypeRemote`
 - `ToolFilterAllowlist`
 - `ToolFilterDenylist`
+
+## Change Impact
+
+**Test Mocks (must add new methods when interfaces change):**
+- `stubRegistry` in `internal/permissions/checker_test.go`
+
+**Exported type references (files that use types from this package):**
+- `AgentProfile` → `internal/bootstrap/wire.go`
+- `Registry` → `internal/bootstrap/wire.go`
+- `ToolFilter` → `internal/bootstrap/wire.go`
 
 ## Dependencies
 

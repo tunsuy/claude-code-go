@@ -2,7 +2,7 @@
 package: coordinator
 import_path: internal/coordinator
 layer: core
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [adapter.go, coordinator.go, prompt.go]
 ---
 
@@ -65,10 +65,22 @@ type Coordinator interface {
 
 ## Change Impact
 
-**Coordinator** interface:
-- Adapters: internal/coordinator/adapter.go
-- Mock: `mockCoordinator` in `internal/tools/agent/agent_test.go`
-- Mock: `mockCoordinator` in `internal/tools/tasks/tasks_test.go`
+**Adapters (update when interfaces change):**
+- `adapter.go`
+
+**Test Mocks (must add new methods when interfaces change):**
+- `mockCoordinator` in `internal/tools/agent/agent_test.go`
+- `mockCoordinator` in `internal/tools/tasks/tasks_test.go`
+
+**Exported type references (files that use types from this package):**
+- `Config` → `internal/bootstrap/wire.go`
+- `Coordinator` → `internal/bootstrap/wire.go`
+- `Event` → `internal/bootstrap/wire.go`, `internal/tui/init.go`, `internal/tui/model.go`
+- `OnProgressFn` → `internal/bootstrap/wire.go`
+- `OnStatusChangeFn` → `internal/bootstrap/wire.go`
+- `ProgressEvent` → `internal/bootstrap/wire.go`
+- `RunAgentFn` → `internal/bootstrap/wire.go`
+- `SpawnRequest` → `internal/bootstrap/wire.go`
 
 ## Dependencies
 

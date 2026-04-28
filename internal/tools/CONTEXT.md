@@ -2,7 +2,7 @@
 package: tools
 import_path: internal/tools
 layer: tools
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [base.go, registry.go, tool.go]
 ---
 
@@ -126,15 +126,28 @@ type Tool interface {
 
 ## Change Impact
 
-**AgentCoordinator** interface:
-**MCPToolInfo** interface:
-**PathTool** interface:
-**PermissionContext** interface:
-**SearchOrReadTool** interface:
-**Tool** interface:
-- Mock: `stubTool` in `internal/engine/orchestration_test.go`
-- Mock: `mockTool` in `internal/tools/registry_test.go`
-- Mock: `stubTool` in `test/integration/engine_e2e_test.go`
+**Test Mocks (must add new methods when interfaces change):**
+- `stubTool` in `internal/engine/orchestration_test.go`
+- `stubRegistry` in `internal/permissions/checker_test.go`
+- `mockTool` in `internal/tools/registry_test.go`
+- `stubTool` in `test/integration/engine_e2e_test.go`
+
+**Exported type references (files that use types from this package):**
+- `AgentCoordinator` → `internal/bootstrap/wire.go`, `internal/coordinator/adapter.go`, `internal/tools/agent/agent_test.go` (test), `internal/tools/tasks/tasks_test.go` (test), `internal/tui/init.go` + 1 more
+- `AgentSpawnRequest` → `internal/coordinator/adapter.go`, `internal/coordinator/adapter_test.go` (test), `internal/tools/agent/agent.go`, `internal/tools/agent/agent_test.go` (test), `internal/tools/tasks/tasks.go` + 1 more
+- `BaseTool` → `internal/engine/engine_test.go` (test), `internal/mcp/adapter.go`, `internal/tools/agent/agent.go`, `internal/tools/agent/getagentstatus.go`, `internal/tools/agent/sendmessage.go` + 15 more
+- `InputSchema` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go`, `internal/tools/agent/getagentstatus.go` + 16 more
+- `MCPInfo` → `internal/mcp/adapter.go`, `internal/tools/mcp/mcp.go`
+- `MCPToolInfo` → `internal/mcp/adapter.go`, `internal/tools/mcp/mcp.go`
+- `OnProgressFn` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go`, `internal/tools/agent/getagentstatus.go` + 16 more
+- `PathTool` → `internal/tools/fileops/fileedit.go`, `internal/tools/fileops/fileread.go`, `internal/tools/fileops/filewrite.go`, `internal/tools/fileops/notebookedit.go`
+- `PermissionContext` → `internal/engine/orchestration_test.go` (test), `internal/engine/query.go`, `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go` + 17 more
+- `PermissionResult` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/ask.go`, `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test) + 1 more
+- `Registry` → `internal/bootstrap/mcp.go`, `internal/bootstrap/tools.go`, `internal/bootstrap/wire.go`, `internal/engine/engine.go`, `internal/engine/orchestration.go` + 1 more
+- `Result` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go`, `internal/tools/agent/getagentstatus.go` + 16 more
+- `Tool` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go` + 31 more
+- `UseContext` → `internal/bootstrap/mcp.go`, `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/engine/cache_params.go`, `internal/engine/cache_params_test.go` (test) + 34 more
+- `ValidationResult` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/fileops/fileread.go`, `internal/tools/fileops/glob.go` + 5 more
 
 ## Dependencies
 

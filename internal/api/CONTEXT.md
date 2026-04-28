@@ -2,7 +2,7 @@
 package: api
 import_path: internal/api
 layer: services
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [accumulate.go, client.go, debug_logger.go, errors.go, factory.go, json.go, openai_client.go, openai_stream.go, openai_types.go, retry.go, stream.go, usage.go]
 ---
 
@@ -108,10 +108,27 @@ type StreamReader interface {
 
 ## Change Impact
 
-**Client** interface:
-- Mock: `mockClient` in `internal/engine/engine_test.go`
-- Mock: `mockClient` in `test/integration/engine_e2e_test.go`
-**StreamReader** interface:
+**Test Mocks (must add new methods when interfaces change):**
+- `mockClient` in `internal/engine/engine_test.go`
+- `mockClient` in `test/integration/engine_e2e_test.go`
+
+**Exported type references (files that use types from this package):**
+- `APIError` → `internal/engine/engine_test.go` (test), `internal/engine/query.go`
+- `Accumulator` → `internal/engine/query.go`
+- `Client` → `internal/bootstrap/wire.go`, `internal/compact/auto.go`, `internal/engine/engine.go`, `internal/engine/engine_test.go` (test)
+- `ClientConfig` → `internal/bootstrap/wire.go`
+- `ContentBlock` → `internal/engine/engine_test.go` (test), `internal/engine/query.go`
+- `ContentBlockDeltaData` → `internal/engine/engine_test.go` (test)
+- `Delta` → `internal/engine/engine_test.go` (test)
+- `MessageDeltaData` → `internal/engine/engine_test.go` (test)
+- `MessageParam` → `internal/compact/auto.go`, `internal/engine/query.go`
+- `MessageRequest` → `internal/compact/auto.go`, `internal/engine/engine_test.go` (test), `internal/engine/forked_agent_test.go` (test), `internal/engine/query.go`, `internal/engine/stop_hooks_test.go` (test)
+- `MessageResponse` → `internal/compact/auto.go`, `internal/engine/engine_test.go` (test), `internal/engine/query.go`
+- `MessageStartData` → `internal/engine/engine_test.go` (test)
+- `StreamEvent` → `internal/engine/engine_test.go` (test)
+- `StreamReader` → `internal/engine/engine_test.go` (test), `internal/engine/forked_agent_test.go` (test), `internal/engine/stop_hooks_test.go` (test)
+- `ToolSchema` → `internal/engine/query.go`
+- `Usage` → `internal/engine/engine_test.go` (test), `internal/engine/query.go`
 
 ## Dependencies
 

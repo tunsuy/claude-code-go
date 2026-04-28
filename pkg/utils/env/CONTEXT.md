@@ -2,7 +2,7 @@
 package: env
 import_path: pkg/utils/env
 layer: types
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [env.go]
 ---
 

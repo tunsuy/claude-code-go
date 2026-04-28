@@ -2,7 +2,7 @@
 package: compact
 import_path: internal/compact
 layer: services
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [auto.go, compact.go, micro.go, snip.go]
 ---
 
@@ -51,7 +51,11 @@ type Compressor interface {
 
 ## Change Impact
 
-**Compressor** interface:
+**Exported type references (files that use types from this package):**
+- `AutoCompactor` → `internal/engine/engine.go`
+- `CompactionExtra` → `internal/engine/query.go`
+- `CompactionParams` → `internal/engine/query.go`
+- `MicroCompactor` → `internal/engine/engine.go`
 
 ## Dependencies
 

@@ -2,7 +2,7 @@
 package: types
 import_path: pkg/types
 layer: types
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [command.go, hooks.go, ids.go, logs.go, message.go, permissions.go, plugin.go, types.go]
 ---
 
@@ -151,8 +151,21 @@ type MCPConnection interface {
 
 ## Change Impact
 
-**AppStateReader** interface:
-**MCPConnection** interface:
+**Exported type references (files that use types from this package):**
+- `AdditionalWorkingDirectory` → `internal/bootstrap/wire.go`, `internal/state/store.go`
+- `AggregatedHookResult` → `internal/hooks/hooks.go`
+- `AppStateReader` → `internal/state/store.go`
+- `ContentBlock` → `internal/bootstrap/run.go`, `internal/bootstrap/session_test.go` (test), `internal/bootstrap/wire.go`, `internal/compact/auto.go`, `internal/compact/compact_test.go` (test) + 14 more
+- `EntryEnvelope` → `internal/session/store.go`, `internal/session/store_test.go` (test)
+- `HookDefinition` → `internal/config/loader.go`, `internal/config/loader_test.go` (test), `internal/hooks/hooks.go`
+- `HookResult` → `internal/hooks/hooks.go`
+- `LoadedPlugin` → `internal/plugin/plugin.go`, `internal/state/store.go`
+- `MCPConnection` → `internal/state/store.go`
+- `Message` → `internal/bootstrap/run.go`, `internal/bootstrap/session.go`, `internal/bootstrap/session_test.go` (test), `internal/bootstrap/wire.go`, `internal/compact/auto.go` + 21 more
+- `PluginConfig` → `internal/plugin/plugin.go`
+- `PluginError` → `internal/plugin/plugin.go`
+- `SerializedMessage` → `internal/bootstrap/session.go`, `internal/bootstrap/session_test.go` (test)
+- `ToolPermissionContext` → `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test), `internal/state/store.go`
 
 ## Dependencies
 

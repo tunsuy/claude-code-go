@@ -2,7 +2,7 @@
 package: commands
 import_path: internal/commands
 layer: cli
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [builtins.go, registry.go]
 ---
 
@@ -28,6 +28,17 @@ source_files: [builtins.go, registry.go]
 - `DisplayError`
 - `DisplayMessage`
 - `DisplayNone`
+
+## Change Impact
+
+**Test Mocks (must add new methods when interfaces change):**
+- `stubRegistry` in `internal/permissions/checker_test.go`
+
+**Exported type references (files that use types from this package):**
+- `Command` → `internal/tui/tui_test.go` (test), `internal/tui/update.go`
+- `CommandContext` → `internal/tui/tui_test.go` (test), `internal/tui/update.go`
+- `Registry` → `internal/tui/model.go`
+- `Result` → `internal/tui/tui_test.go` (test), `internal/tui/update.go`
 
 ## Dependencies
 

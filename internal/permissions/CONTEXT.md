@@ -2,7 +2,7 @@
 package: permissions
 import_path: internal/permissions
 layer: services
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [ask.go, checker.go, denial.go]
 ---
 
@@ -38,7 +38,12 @@ type Checker interface {
 
 ## Change Impact
 
-**Checker** interface:
+**Exported type references (files that use types from this package):**
+- `AskRequest` → `internal/bootstrap/wire.go`, `internal/tui/init.go`, `internal/tui/model.go`
+- `AskResponse` → `internal/bootstrap/wire.go`, `internal/tui/init.go`, `internal/tui/model.go`
+- `Checker` → `internal/bootstrap/wire.go`, `internal/engine/engine.go`, `internal/engine/orchestration.go`
+- `CheckerConfig` → `internal/bootstrap/wire.go`
+- `PermissionRequest` → `internal/engine/orchestration.go`
 
 ## Dependencies
 

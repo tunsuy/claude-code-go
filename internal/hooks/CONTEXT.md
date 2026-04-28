@@ -2,7 +2,7 @@
 package: hooks
 import_path: internal/hooks
 layer: infra
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [hooks.go]
 ---
 
@@ -17,6 +17,11 @@ source_files: [hooks.go]
 ## Functions
 
 - `NewDispatcher(hooks map[types.HookType][]types.HookDefinition, disabled bool) *Dispatcher`
+
+## Change Impact
+
+**Exported type references (files that use types from this package):**
+- `Dispatcher` → `internal/permissions/checker.go`
 
 ## Dependencies
 

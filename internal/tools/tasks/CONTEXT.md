@@ -2,7 +2,7 @@
 package: tasks
 import_path: internal/tools/tasks
 layer: tools
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [doc.go, tasks.go]
 ---
 
@@ -27,6 +27,11 @@ source_files: [doc.go, tasks.go]
 - `TaskStatusPending`
 - `TaskStatusRunning`
 - `TaskStatusStopped`
+
+## Change Impact
+
+**Exported type references (files that use types from this package):**
+- `Task` → `internal/bootstrap/tools.go`
 
 ## Dependencies
 

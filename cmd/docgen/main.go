@@ -65,13 +65,18 @@ func main() {
 		return packages[i].ImportPath < packages[j].ImportPath
 	})
 
-	// Build dependency graph and change impact.
+	// Build dependency graph.
 	deps := buildDependencyGraph(packages)
-	impacts := analyzeChangeImpact(packages, moduleRoot)
+
+	// Build per-package change impact (type references, mocks, adapters).
+	pkgImpacts := make(map[string]*PackageImpact)
+	for _, pkg := range packages {
+		pkgImpacts[pkg.ImportPath] = analyzePackageImpact(pkg, packages, moduleRoot)
+	}
 
 	// Generate all documents.
 	// Per-package CONTEXT.md goes into each package directory.
-	// INDEX.md and change-impact.md go into the -out directory.
+	// INDEX.md goes into the -out directory.
 	globalDocs := make(map[string]string) // relative to -out dir
 	pkgDocs := make(map[string]string)    // absolute paths
 
@@ -81,11 +86,9 @@ func main() {
 	// Per-package files → write to package directory.
 	for _, pkg := range packages {
 		absPath := filepath.Join(moduleRoot, filepath.FromSlash(pkg.ImportPath), "CONTEXT.md")
-		pkgDocs[absPath] = renderPackage(pkg, deps, impacts)
+		impact := pkgImpacts[pkg.ImportPath]
+		pkgDocs[absPath] = renderPackage(pkg, deps, impact)
 	}
-
-	// change-impact.md
-	globalDocs["change-impact.md"] = renderChangeImpact(impacts)
 
 	// Write or check.
 	absOut := filepath.Join(moduleRoot, *outDir)

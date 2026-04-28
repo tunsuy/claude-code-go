@@ -2,7 +2,7 @@
 package: config
 import_path: internal/config
 layer: infra
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [loader.go, settings.go]
 ---
 
@@ -50,7 +50,9 @@ type ConfigLoader interface {
 
 ## Change Impact
 
-**ConfigLoader** interface:
+**Exported type references (files that use types from this package):**
+- `LayeredSettings` → `internal/bootstrap/wire.go`
+- `SettingsJson` → `internal/state/store.go`
 
 ## Dependencies
 

@@ -2,7 +2,7 @@
 package: msgqueue
 import_path: internal/msgqueue
 layer: services
-generated_at: 2026-04-28T11:59:48Z
+generated_at: 2026-04-28T12:11:54Z
 source_files: [command.go, guard.go, queue.go, signal.go]
 ---
 
@@ -35,6 +35,13 @@ source_files: [command.go, guard.go, queue.go, signal.go]
 - `PriorityNext`
 - `PriorityNow`
 - `Running`
+
+## Change Impact
+
+**Exported type references (files that use types from this package):**
+- `MessageQueue` → `internal/bootstrap/wire.go`, `internal/engine/engine.go`, `internal/tui/init.go`, `internal/tui/model.go`
+- `QueryGuard` → `internal/bootstrap/wire.go`, `internal/tui/init.go`, `internal/tui/model.go`
+- `QueuedCommand` → `internal/engine/query.go`
 
 ## Dependencies
 

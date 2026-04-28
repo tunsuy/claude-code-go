@@ -12,6 +12,7 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/coordinator"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
+	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
 	"github.com/tunsuy/claude-code-go/internal/tools"
@@ -135,6 +136,16 @@ type AppModel struct {
 	// agentEventCh receives sub-agent progress and status events.
 	// May be nil if coordinator mode is not enabled.
 	agentEventCh <-chan coordinator.Event
+
+	// --- Mid-session message queue ---
+	// msgQueue is the unified command queue for mid-session message processing.
+	// If nil, enqueueing is disabled and the legacy direct-dispatch path is used.
+	msgQueue *msgqueue.MessageQueue
+	// queryGuard is the query dispatch guard (three-state machine).
+	// If nil, guard-based dispatch protection is disabled.
+	queryGuard *msgqueue.QueryGuard
+	// queryGen is the current query guard generation, used to match End() calls.
+	queryGen uint64
 }
 
 // newAppModel is the internal constructor; callers use New().
@@ -148,6 +159,8 @@ func newAppModel(
 	permRespCh chan<- permissions.AskResponse,
 	agentCoord tools.AgentCoordinator,
 	agentEventCh <-chan coordinator.Event,
+	mq *msgqueue.MessageQueue,
+	qg *msgqueue.QueryGuard,
 ) AppModel {
 	st := appStore.GetState()
 	cwd := st.WorkingDir
@@ -186,6 +199,8 @@ func newAppModel(
 		permAskCh:      permAskCh,
 		permRespCh:     permRespCh,
 		agentEventCh:   agentEventCh,
+		msgQueue:       mq,
+		queryGuard:     qg,
 	}
 	return m
 }

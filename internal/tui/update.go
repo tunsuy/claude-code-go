@@ -6,6 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
+	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/state"
 )
 
@@ -54,6 +55,7 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.streamCh = msg.ch
 		m.streamingText = ""
 		m.streamingHasMsg = false
+		m.queryGen = msg.gen
 		return m, waitForStreamEvent(msg.ch)
 
 	// --- Streaming events ---
@@ -134,6 +136,16 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.streamingHasMsg = false
 		m.pinnedToBottom = true
 		m.syncViewportContent()
+
+		// P1: End the query guard (best-effort; stale gen is harmless).
+		if m.queryGuard != nil {
+			_ = m.queryGuard.End(m.queryGen)
+		}
+
+		// P1: Between-turn drain — process queued commands now that the query finished.
+		if m.msgQueue != nil && m.msgQueue.Len() > 0 {
+			return m, processQueueCmd(&m)
+		}
 		return m, nil
 
 	case StreamErrorMsg:
@@ -237,6 +249,20 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncViewportContent()
 		return m, nil
 
+	// --- Mid-session message queue events ---
+	case queueChangedMsg:
+		var cmds []tea.Cmd
+		// Re-subscribe for future queue changes.
+		cmds = append(cmds, listenForQueueChange(m.msgQueue))
+		// If idle and queue has commands, drain.
+		if !m.isLoading && m.msgQueue != nil && m.msgQueue.Len() > 0 && m.activeDialog == dialogNone {
+			cmds = append(cmds, processQueueCmd(&m))
+		}
+		return m, tea.Batch(cmds...)
+
+	case queuedSlashMsg:
+		return m.handleSlashCommand(msg.Text)
+
 	// --- Mouse events (scroll wheel) ---
 	case tea.MouseMsg:
 		return m.handleMouse(msg)
@@ -276,6 +302,36 @@ func (m AppModel) handleSlashCommand(text string) (AppModel, tea.Cmd) {
 
 	result := slashCmd.Execute(cmdCtx, args)
 	return m.applyCommandResult(result, name)
+}
+
+// processQueueCmd dequeues the next command from the message queue and
+// dispatches it. Handles both slash commands and user messages.
+// Returns a tea.Cmd that performs the dispatch, or nil if the queue is empty.
+func processQueueCmd(m *AppModel) tea.Cmd {
+	if m.msgQueue == nil {
+		return nil
+	}
+
+	cmd, ok := m.msgQueue.Dequeue("") // main session agentID=""
+	if !ok {
+		return nil
+	}
+
+	switch cmd.Mode {
+	case msgqueue.ModeSlashCommand:
+		text := cmd.Value
+		return func() tea.Msg {
+			return queuedSlashMsg{Text: text}
+		}
+	case msgqueue.ModePrompt:
+		// The user message was already appended to m.messages when enqueued
+		// (in handleSubmit), so we don't append again. Just start the query.
+		m.isLoading = true
+		m.showSpinner = true
+		m.spinner = m.spinner.Reset()
+		return startQueryCmd(m, cmd.Value)
+	}
+	return nil
 }
 
 // applyCommandResult applies a commands.Result to the model.

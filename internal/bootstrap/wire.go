@@ -12,6 +12,7 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/hooks"
 	"github.com/tunsuy/claude-code-go/internal/mcp"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
+	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/oauth"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
@@ -68,6 +69,10 @@ type AppContainer struct {
 	AgentCoordinator tools.AgentCoordinator
 	// AgentEventCh receives sub-agent progress and status events for TUI display.
 	AgentEventCh <-chan coordinator.Event
+	// MsgQueue is the unified command queue for mid-session message processing.
+	MsgQueue *msgqueue.MessageQueue
+	// QueryGuard is the query dispatch guard (three-state machine).
+	QueryGuard *msgqueue.QueryGuard
 }
 
 // defaultModel is used when no model override is provided.
@@ -131,6 +136,10 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	// ── Phase 7.5: StopHook registry (memory extraction) ────────────────────
 	stopHooks := engine.NewStopHookRegistry()
 
+	// ── Phase 7.6: Message queue + query guard (mid-session messaging) ───────
+	mq := msgqueue.NewMessageQueue()
+	qg := msgqueue.NewQueryGuard()
+
 	// Register the memory extraction stop hook. The MemoryStore is created
 	// lazily from the working directory; if creation fails the hook is a no-op.
 	extractStore, _ := memdir.NewMemoryStore(opts.WorkingDir)
@@ -147,6 +156,7 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 		Model:             model,
 		PermissionChecker: permChecker,
 		StopHooks:         stopHooks,
+		MsgQueue:          mq,
 	})
 
 	// ── Phase 9: Coordinator construction ────────────────────────────────────
@@ -174,6 +184,8 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 		Coordinator:      coord,
 		AgentCoordinator: agentCoord,
 		AgentEventCh:     agentEventCh,
+		MsgQueue:         mq,
+		QueryGuard:       qg,
 	}, nil
 }
 
@@ -228,6 +240,10 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		memdir.ExecuteExtractMemories(ctx, hookCtx, testExtractCfg)
 	})
 
+	// ── Phase 7.6: Message queue + query guard (mid-session messaging) ───────
+	mqTest := msgqueue.NewMessageQueue()
+	qgTest := msgqueue.NewQueryGuard()
+
 	// ── Phase 8: Engine construction ─────────────────────────────────────────
 	eng := engine.New(engine.Config{
 		Client:            client,
@@ -235,6 +251,7 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		Model:             model,
 		PermissionChecker: permChecker,
 		StopHooks:         stopHooksTest,
+		MsgQueue:          mqTest,
 	})
 
 	// ── Phase 9: Coordinator construction ────────────────────────────────────
@@ -262,6 +279,8 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		Coordinator:      coord,
 		AgentCoordinator: agentCoord,
 		AgentEventCh:     agentEventCh,
+		MsgQueue:         mqTest,
+		QueryGuard:       qgTest,
 	}, nil
 }
 

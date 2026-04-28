@@ -61,6 +61,9 @@ type QueryParams struct {
 	// LLM's tool schema for this query. This is used to prevent sub-agents
 	// from seeing coordinator-only tools (e.g. TaskCreate, Agent).
 	ExcludeTools map[string]bool
+	// NoWriteBack prevents the query loop from writing messages back to the engine.
+	// Used by forked agents to avoid polluting the parent conversation.
+	NoWriteBack bool
 }
 
 // TaskBudget defines an optional task-level output token budget.
@@ -108,6 +111,10 @@ type engineImpl struct {
 	// permChecker is the permission checker for HIL (Human-in-the-Loop) support.
 	// If nil, all tools are allowed without asking.
 	permChecker permissions.Checker
+
+	// stopHooks fires registered callbacks after each turn completes.
+	// If nil, no stop hooks are executed.
+	stopHooks *StopHookRegistry
 }
 
 // Config is the constructor parameter bundle for New.
@@ -123,6 +130,9 @@ type Config struct {
 	// PermissionChecker is the optional HIL permission checker.
 	// If nil, all tools are allowed without asking.
 	PermissionChecker permissions.Checker
+	// StopHooks is the optional registry of stop hooks fired after each turn.
+	// If nil, no stop hooks are executed.
+	StopHooks *StopHookRegistry
 }
 
 // Compile-time interface assertion: engineImpl must satisfy QueryEngine.
@@ -143,6 +153,7 @@ func New(cfg Config) QueryEngine {
 		microCompactor: compact.NewMicroCompactor(),
 		autoCompactor:  compact.NewAutoCompactor(cfg.Client, cfg.Model, maxTokens),
 		permChecker:    cfg.PermissionChecker,
+		stopHooks:      cfg.StopHooks,
 	}
 }
 

@@ -3,6 +3,7 @@ package tui
 import (
 	"time"
 
+	"github.com/tunsuy/claude-code-go/internal/memdir"
 	"github.com/tunsuy/claude-code-go/pkg/types"
 )
 
@@ -128,7 +129,8 @@ type CommandResultMsg struct {
 
 // MemdirLoadedMsg is sent when the initial CLAUDE.md files have been loaded.
 type MemdirLoadedMsg struct {
-	Paths []string
+	Paths       []string
+	ScopedFiles []memdir.DiscoveredFile // Scoped discovery results (new multi-layer)
 }
 
 // SystemTextMsg surfaces informational text from the engine (e.g. max turns).

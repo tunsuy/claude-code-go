@@ -11,6 +11,7 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/coordinator"
 	"github.com/tunsuy/claude-code-go/internal/engine"
+	"github.com/tunsuy/claude-code-go/internal/memdir"
 	"github.com/tunsuy/claude-code-go/internal/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
 	"github.com/tunsuy/claude-code-go/internal/tools"
@@ -111,6 +112,12 @@ type AppModel struct {
 	memdirPaths []string
 	// memdirPrompt is the concatenated text of all CLAUDE.md files.
 	memdirPrompt string
+	// memoryStore is the project's memory store for relevance queries.
+	memoryStore *memdir.MemoryStore
+	// surfacedMemories tracks memory paths already surfaced this session (dedup).
+	surfacedMemories map[string]bool
+	// sessionMemoryBytes tracks cumulative bytes of surfaced memories this session.
+	sessionMemoryBytes int
 
 	// --- Markdown renderer cache (P1-C) ---
 	// mdRenderer is rebuilt whenever termWidth or darkMode changes.
@@ -164,6 +171,7 @@ func newAppModel(
 		input:               NewInput(vimEnabled),
 		lastTickTime:        time.Now(),
 		expandedToolResults: make(map[string]bool),
+		surfacedMemories:    make(map[string]bool),
 		coordinatorPanel: CoordinatorPanel{
 			Tasks:     make(map[string]AgentTaskState),
 			TaskOrder: []string{},

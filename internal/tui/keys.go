@@ -40,33 +40,98 @@ func (m AppModel) handleKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 // handlePermissionKey handles keys while the permission dialog is open.
+// Supports: arrow keys (Up/Down), j/k (Vim), number keys (1/2/3), y/n shortcuts,
+// Enter to confirm, Esc to cancel.
 func (m AppModel) handlePermissionKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if m.permReq == nil {
 		m.activeDialog = dialogNone
 		return m, nil
 	}
+
+	// Use key.String() for unified matching — works reliably across terminal
+	// emulators regardless of how arrow keys are encoded (ANSI vs raw).
+	// Note: some terminals send LF (\n, "ctrl+j") instead of CR (\r, "enter")
+	// for the Enter key, so we must match both.
+	switch key.String() {
+	case "up":
+		d := m.permReq.Up()
+		m.permReq = &d
+		return m, nil
+	case "down":
+		d := m.permReq.Down()
+		m.permReq = &d
+		return m, nil
+	case "enter", "ctrl+j":
+		return m.confirmPermission()
+	case "esc":
+		return m.denyPermission()
+	}
+
+	// Also check key.Type as fallback.
 	switch key.Type {
 	case tea.KeyUp:
 		d := m.permReq.Up()
 		m.permReq = &d
+		return m, nil
 	case tea.KeyDown:
 		d := m.permReq.Down()
 		m.permReq = &d
+		return m, nil
 	case tea.KeyEnter:
-		allow := m.permReq.Confirm()
-		if m.permReq.respFn != nil {
-			m.permReq.respFn(allow)
-		}
-		m.permReq = nil
-		m.activeDialog = dialogNone
+		return m.confirmPermission()
 	case tea.KeyEsc:
-		// Esc = deny.
-		if m.permReq.respFn != nil {
-			m.permReq.respFn(false)
-		}
-		m.permReq = nil
-		m.activeDialog = dialogNone
+		return m.denyPermission()
 	}
+
+	// Check character keys (number selection, j/k navigation, y/n shortcuts).
+	switch key.String() {
+	case "k", "K":
+		d := m.permReq.Up()
+		m.permReq = &d
+	case "j", "J":
+		d := m.permReq.Down()
+		m.permReq = &d
+	case "1":
+		// Select "Yes" (index 0) and confirm.
+		m.permReq.cursor = 0
+		return m.confirmPermission()
+	case "2":
+		// Select "Always allow" (index 1) and confirm.
+		m.permReq.cursor = 1
+		return m.confirmPermission()
+	case "3":
+		// Select "No" (index 2) and confirm.
+		m.permReq.cursor = 2
+		return m.confirmPermission()
+	case "y", "Y":
+		// Quick accept (same as "1").
+		m.permReq.cursor = 0
+		return m.confirmPermission()
+	case "n", "N":
+		// Quick deny (same as Esc).
+		return m.denyPermission()
+	}
+	return m, nil
+}
+
+// confirmPermission confirms the current permission selection.
+func (m AppModel) confirmPermission() (tea.Model, tea.Cmd) {
+	allow := m.permReq.Confirm()
+	if m.permReq.respFn != nil {
+		m.permReq.respFn(allow)
+	}
+	m.permReq = nil
+	m.activeDialog = dialogNone
+	return m, nil
+}
+
+// denyPermission denies the permission request.
+func (m AppModel) denyPermission() (tea.Model, tea.Cmd) {
+	if m.permReq.respFn != nil {
+		m.permReq.respFn(false)
+	}
+	m.permReq = nil
+	m.activeDialog = dialogNone
 	return m, nil
 }
 

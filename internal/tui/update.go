@@ -35,7 +35,18 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// --- Memdir load complete ---
 	case MemdirLoadedMsg:
 		m.memdirPaths = msg.Paths
-		m.memdirPrompt = memdir.LoadMemoryPrompt(msg.Paths)
+		if len(msg.ScopedFiles) > 0 {
+			m.memdirPrompt = memdir.LoadScopedMemoryPrompt(msg.ScopedFiles)
+		} else {
+			m.memdirPrompt = memdir.LoadMemoryPrompt(msg.Paths)
+		}
+		// Initialize memory store for relevant memory surfacing.
+		if m.memoryStore == nil {
+			workDir := m.appState.GetState().WorkingDir
+			if ms, err := memdir.NewMemoryStore(workDir); err == nil {
+				m.memoryStore = ms
+			}
+		}
 		return m, nil
 
 	// --- Internal: stream channel ready ---

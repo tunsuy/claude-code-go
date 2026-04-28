@@ -216,6 +216,12 @@ func (t *memoryWriteTool) IsConcurrencySafe(_ tools.Input) bool { return false }
 // IsReadOnly returns false because this tool modifies state.
 func (t *memoryWriteTool) IsReadOnly(_ tools.Input) bool { return false }
 
+// CheckPermissions allows memory writes without asking — memories are stored in
+// the user's own ~/.claude/ directory and pose no security risk.
+func (t *memoryWriteTool) CheckPermissions(_ tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
+}
+
 // ValidateInput checks required fields.
 func (t *memoryWriteTool) ValidateInput(input tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	var in MemoryWriteInput
@@ -319,6 +325,12 @@ func (t *memoryDeleteTool) IsConcurrencySafe(_ tools.Input) bool { return false 
 
 // IsReadOnly returns false because this tool modifies state.
 func (t *memoryDeleteTool) IsReadOnly(_ tools.Input) bool { return false }
+
+// CheckPermissions allows memory deletions without asking — memories are stored in
+// the user's own ~/.claude/ directory and pose no security risk.
+func (t *memoryDeleteTool) CheckPermissions(_ tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
+}
 
 // IsDestructive returns true because deletion is hard to reverse.
 func (t *memoryDeleteTool) IsDestructive(_ tools.Input) bool { return true }

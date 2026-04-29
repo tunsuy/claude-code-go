@@ -240,11 +240,6 @@ func summarizeExports(pkg *PackageInfo) string {
 	return strings.Join(parts, ", ")
 }
 
-func packageFileName(importPath string) string {
-	name := strings.ReplaceAll(importPath, "/", "-")
-	return name + ".md"
-}
-
 func formatDepList(deps []string) string {
 	short := make([]string, len(deps))
 	for i, d := range deps {

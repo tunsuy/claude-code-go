@@ -272,9 +272,6 @@ func layerOrder(layer string) int {
 	return -1
 }
 
-// strPtr returns a pointer to s.
-func strPtr(s string) *string { return &s }
-
 // checkDesignNotes uses git diff to find packages with changed .go files,
 // then checks if those packages have a non-empty Design Notes section in
 // their CONTEXT.md. Returns import paths of packages missing notes.

@@ -2,7 +2,7 @@
 package: session
 import_path: internal/session
 layer: infra
-generated_at: 2026-04-29T02:22:15Z
+generated_at: 2026-04-29T02:31:52Z
 source_files: [store.go]
 ---
 

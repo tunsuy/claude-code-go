@@ -2,7 +2,7 @@
 package: bootstrap
 import_path: internal/bootstrap
 layer: cli
-generated_at: 2026-04-29T02:22:15Z
+generated_at: 2026-04-29T02:31:52Z
 source_files: [auth.go, bootstrap.go, mcp.go, misc.go, plugin.go, root.go, run.go, session.go, tools.go, wire.go]
 ---
 

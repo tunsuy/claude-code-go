@@ -2,7 +2,7 @@
 package: coordinator
 import_path: internal/coordinator
 layer: core
-generated_at: 2026-04-29T02:22:15Z
+generated_at: 2026-04-29T02:31:52Z
 source_files: [adapter.go, coordinator.go, prompt.go]
 ---
 

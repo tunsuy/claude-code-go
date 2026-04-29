@@ -2,7 +2,7 @@
 package: agenttype
 import_path: internal/agenttype
 layer: infra
-generated_at: 2026-04-29T02:22:15Z
+generated_at: 2026-04-29T02:31:52Z
 source_files: [agenttype.go, builtins.go, loader.go, prompts.go, registry.go, tasktype.go]
 ---
 

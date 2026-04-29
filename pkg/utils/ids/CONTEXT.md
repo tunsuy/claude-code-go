@@ -2,7 +2,7 @@
 package: ids
 import_path: pkg/utils/ids
 layer: types
-generated_at: 2026-04-29T02:22:15Z
+generated_at: 2026-04-29T02:31:52Z
 source_files: [ids.go]
 ---
 

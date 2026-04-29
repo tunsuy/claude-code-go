@@ -2,7 +2,7 @@
 package: agentctx
 import_path: internal/agentctx
 layer: infra
-generated_at: 2026-04-28T12:11:54Z
+generated_at: 2026-04-29T02:22:15Z
 source_files: [agentctx.go]
 ---
 
@@ -21,3 +21,5 @@ source_files: [agentctx.go]
 
 **Imported by:** `internal/bootstrap`
 
+<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
+<!-- MANUAL NOTES BELOW — preserved across regeneration -->

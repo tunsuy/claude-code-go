@@ -84,10 +84,15 @@ func main() {
 	globalDocs["INDEX.md"] = renderIndex(packages)
 
 	// Per-package files → write to package directory.
+	// Preserve existing Design Notes sections across regeneration.
 	for _, pkg := range packages {
 		absPath := filepath.Join(moduleRoot, filepath.FromSlash(pkg.ImportPath), "CONTEXT.md")
 		impact := pkgImpacts[pkg.ImportPath]
-		pkgDocs[absPath] = renderPackage(pkg, deps, impact)
+		generated := renderPackage(pkg, deps, impact)
+
+		// Extract and re-append any existing Design Notes.
+		existingNotes := extractDesignNotes(absPath)
+		pkgDocs[absPath] = appendDesignNotes(generated, existingNotes)
 	}
 
 	// Write or check.

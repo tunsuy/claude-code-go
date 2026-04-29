@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -210,6 +211,10 @@ func renderPackage(pkg *PackageInfo, deps *DependencyGraph, impact *PackageImpac
 		sb.WriteString("\n\n")
 	}
 
+	// Design Notes separator — everything below this line is preserved across regeneration.
+	sb.WriteString("<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->\n")
+	sb.WriteString("<!-- MANUAL NOTES BELOW — preserved across regeneration -->\n")
+
 	return sb.String()
 }
 
@@ -256,4 +261,38 @@ func countLayers(byLayer map[string][]*PackageInfo) int {
 		}
 	}
 	return count
+}
+
+// designNotesSeparator is the marker line that separates auto-generated content
+// from manually written Design Notes. Everything after this marker is preserved
+// across regeneration.
+const designNotesSeparator = "<!-- MANUAL NOTES BELOW — preserved across regeneration -->"
+
+// extractDesignNotes reads an existing CONTEXT.md file and returns any content
+// after the designNotesSeparator. Returns "" if the file doesn't exist or has
+// no manual notes.
+func extractDesignNotes(path string) string {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	content := string(data)
+	idx := strings.Index(content, designNotesSeparator)
+	if idx < 0 {
+		return ""
+	}
+	notes := strings.TrimSpace(content[idx+len(designNotesSeparator):])
+	if notes == "" {
+		return ""
+	}
+	return notes
+}
+
+// appendDesignNotes appends preserved Design Notes to a newly generated
+// CONTEXT.md content. If notes is empty, returns content unchanged.
+func appendDesignNotes(content, notes string) string {
+	if notes == "" {
+		return content
+	}
+	return content + "\n" + notes + "\n"
 }

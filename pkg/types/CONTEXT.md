@@ -2,7 +2,7 @@
 package: types
 import_path: pkg/types
 layer: types
-generated_at: 2026-04-28T12:11:54Z
+generated_at: 2026-04-29T02:22:15Z
 source_files: [command.go, hooks.go, ids.go, logs.go, message.go, permissions.go, plugin.go, types.go]
 ---
 
@@ -173,3 +173,5 @@ type MCPConnection interface {
 
 **Imported by:** `internal/bootstrap`, `internal/compact`, `internal/config`, `internal/engine`, `internal/hooks`, `internal/memdir`, `internal/permissions`, `internal/plugin`, `internal/session`, `internal/state`, `internal/tui`, `pkg/utils/ids`
 
+<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
+<!-- MANUAL NOTES BELOW — preserved across regeneration -->

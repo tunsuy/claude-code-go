@@ -2,7 +2,7 @@
 package: fs
 import_path: pkg/utils/fs
 layer: types
-generated_at: 2026-04-28T12:11:54Z
+generated_at: 2026-04-29T02:22:15Z
 source_files: [fs.go]
 ---
 
@@ -23,3 +23,5 @@ source_files: [fs.go]
 
 **Imported by:** `internal/bootstrap`, `internal/session`
 
+<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
+<!-- MANUAL NOTES BELOW — preserved across regeneration -->

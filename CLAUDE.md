@@ -65,6 +65,8 @@ make docs-check   # verify generated docs are up-to-date
 
 **使用方式**: 修改某个包之前，先 Read 该包目录下的 CONTEXT.md 了解导出类型和变更影响链，避免遗漏关联修改。
 
+**Design Notes 规则**: 完成功能开发后，将关键设计决策 append 到相关包的 CONTEXT.md 末尾的 `## Design Notes` 段。记录"为什么这样设计"而非"做了什么"。这个段在 `make docs` 重生成时会被保留。
+
 ## Coding Conventions
 
 ### Formatting & Style

@@ -2,7 +2,7 @@
 package: memdir
 import_path: internal/memdir
 layer: services
-generated_at: 2026-04-28T12:11:54Z
+generated_at: 2026-04-29T02:22:15Z
 source_files: [discover.go, extract.go, extract_prompt.go, freshness.go, include.go, loader.go, relevance.go, scope.go, store.go, types.go]
 ---
 
@@ -73,3 +73,5 @@ source_files: [discover.go, extract.go, extract_prompt.go, freshness.go, include
 
 **Imported by:** `internal/bootstrap`, `internal/tools/memory`, `internal/tui`
 
+<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
+<!-- MANUAL NOTES BELOW — preserved across regeneration -->

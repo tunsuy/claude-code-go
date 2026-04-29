@@ -2,7 +2,7 @@
 package: memory
 import_path: internal/tools/memory
 layer: tools
-generated_at: 2026-04-28T12:11:54Z
+generated_at: 2026-04-29T02:22:15Z
 source_files: [doc.go, memory.go]
 ---
 
@@ -22,3 +22,5 @@ source_files: [doc.go, memory.go]
 
 **Imported by:** `internal/bootstrap`
 
+<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
+<!-- MANUAL NOTES BELOW — preserved across regeneration -->

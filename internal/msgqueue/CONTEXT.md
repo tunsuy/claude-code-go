@@ -2,7 +2,7 @@
 package: msgqueue
 import_path: internal/msgqueue
 layer: services
-generated_at: 2026-04-28T12:11:54Z
+generated_at: 2026-04-29T02:22:15Z
 source_files: [command.go, guard.go, queue.go, signal.go]
 ---
 
@@ -49,3 +49,5 @@ source_files: [command.go, guard.go, queue.go, signal.go]
 
 **Imported by:** `internal/bootstrap`, `internal/engine`, `internal/tui`
 
+<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
+<!-- MANUAL NOTES BELOW — preserved across regeneration -->

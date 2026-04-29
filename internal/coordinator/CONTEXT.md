@@ -2,7 +2,7 @@
 package: coordinator
 import_path: internal/coordinator
 layer: core
-generated_at: 2026-04-28T12:11:54Z
+generated_at: 2026-04-29T02:22:15Z
 source_files: [adapter.go, coordinator.go, prompt.go]
 ---
 
@@ -88,3 +88,11 @@ type Coordinator interface {
 
 **Imported by:** `internal/bootstrap`, `internal/tui`
 
+<!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
+<!-- MANUAL NOTES BELOW — preserved across regeneration -->
+
+## Design Notes
+
+- Coordinator vs AgentCoordinator: 两个接口是为了打破 tools→coordinator 的循环依赖。tools 包定义 AgentCoordinator（string-based），coordinator 包实现 Coordinator（typed AgentID），adapter.go 做桥接。改任一个接口都要同步改另一个。(2026-04-28)
+- UseContext.Coordinator 在子 agent 里故意设为 nil，防止无限递归 spawn。见 bootstrap/wire.go buildRunAgentFn()。(2026-04-28)
+- nameIndex 用于 SendMessage 名称路由，SpawnAgent 时注册，ResolveAgent 时查找。(2026-04-28)

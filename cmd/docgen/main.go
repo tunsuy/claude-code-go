@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -99,6 +100,9 @@ func main() {
 	absOut := filepath.Join(moduleRoot, *outDir)
 
 	if *check {
+		exitCode := 0
+
+		// Check 1: AST-generated content is up to date.
 		stale := checkStaleMulti(absOut, globalDocs, pkgDocs)
 		if len(stale) > 0 {
 			fmt.Fprintf(os.Stderr, "docs are out of date. Run 'make docs' to regenerate.\n")
@@ -106,10 +110,23 @@ func main() {
 			for _, f := range stale {
 				fmt.Fprintf(os.Stderr, "  %s\n", f)
 			}
-			os.Exit(1)
+			exitCode = 1
 		}
-		fmt.Println("docs are up to date.")
-		return
+
+		// Check 2: Changed packages must have Design Notes.
+		missing := checkDesignNotes(moduleRoot, packages)
+		if len(missing) > 0 {
+			fmt.Fprintf(os.Stderr, "\npackages with code changes but no Design Notes:\n")
+			for _, m := range missing {
+				fmt.Fprintf(os.Stderr, "  %s/CONTEXT.md — add ## Design Notes explaining why\n", m)
+			}
+			exitCode = 1
+		}
+
+		if exitCode == 0 {
+			fmt.Println("docs are up to date.")
+		}
+		os.Exit(exitCode)
 	}
 
 	// Write files.
@@ -257,3 +274,82 @@ func layerOrder(layer string) int {
 
 // strPtr returns a pointer to s.
 func strPtr(s string) *string { return &s }
+
+// checkDesignNotes uses git diff to find packages with changed .go files,
+// then checks if those packages have a non-empty Design Notes section in
+// their CONTEXT.md. Returns import paths of packages missing notes.
+func checkDesignNotes(moduleRoot string, packages []*PackageInfo) []string {
+	changedPkgs := getChangedPackages(moduleRoot)
+	if len(changedPkgs) == 0 {
+		return nil
+	}
+
+	// Build a set of known package import paths for filtering.
+	knownPkgs := make(map[string]bool)
+	for _, pkg := range packages {
+		knownPkgs[pkg.ImportPath] = true
+	}
+
+	var missing []string
+	for _, pkgPath := range changedPkgs {
+		if !knownPkgs[pkgPath] {
+			continue
+		}
+		contextPath := filepath.Join(moduleRoot, filepath.FromSlash(pkgPath), "CONTEXT.md")
+		notes := extractDesignNotes(contextPath)
+		if strings.TrimSpace(notes) == "" {
+			missing = append(missing, pkgPath)
+		}
+	}
+
+	sort.Strings(missing)
+	return missing
+}
+
+// getChangedPackages runs git diff to find packages with changed .go files.
+// It compares against the merge-base with main (i.e. changes on this branch).
+// Falls back to HEAD~1 if merge-base fails. Returns relative import paths.
+func getChangedPackages(moduleRoot string) []string {
+	// Try to find merge-base with main.
+	base := "HEAD~1"
+	if out, err := exec.Command("git", "merge-base", "HEAD", "main").Output(); err == nil {
+		base = strings.TrimSpace(string(out))
+	}
+
+	// Get changed .go files (excluding tests and CONTEXT.md).
+	out, err := exec.Command("git", "diff", "--name-only", base, "--", "*.go").Output()
+	if err != nil {
+		// Fallback: check staged + unstaged changes.
+		out, err = exec.Command("git", "diff", "--name-only", "HEAD", "--", "*.go").Output()
+		if err != nil {
+			return nil
+		}
+	}
+
+	// Extract unique package directories.
+	pkgSet := make(map[string]bool)
+	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Skip test files — they don't need Design Notes.
+		if strings.HasSuffix(line, "_test.go") {
+			continue
+		}
+		// Skip generated files.
+		if strings.HasSuffix(line, "CONTEXT.md") {
+			continue
+		}
+		dir := filepath.Dir(line)
+		dir = filepath.ToSlash(dir)
+		pkgSet[dir] = true
+	}
+
+	var result []string
+	for pkg := range pkgSet {
+		result = append(result, pkg)
+	}
+	sort.Strings(result)
+	return result
+}

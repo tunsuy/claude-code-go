@@ -22,9 +22,16 @@ export ANTHROPIC_API_KEY=sk-ant-...  # or use OAuth: claude /config
 # Build
 make build    # output: bin/claude
 make all      # full check: vet + test + build
+make docs     # regenerate API context docs
 ```
 
 ## Quick Reference
+
+### Auto-Generated Context (开发前先看)
+
+修改某个包之前，先 Read 该包目录下的 CONTEXT.md：
+- **索引**: `docs/generated/INDEX.md`
+- **包详情**: `<package>/CONTEXT.md`（如 `internal/coordinator/CONTEXT.md`）
 
 ### Frequently Modified Paths
 

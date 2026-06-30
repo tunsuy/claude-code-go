@@ -94,6 +94,7 @@ type AgentCoordinator interface {
 type AgentSpawnRequest struct {
 	Description  string
 	Prompt       string
+	SystemPrompt string // optional system prompt override
 	AllowedTools []string
 	DenyTools    []string // tools to explicitly exclude
 	MaxTurns     int

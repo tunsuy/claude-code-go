@@ -164,3 +164,22 @@ func TestAgentProfile_EffectiveModel(t *testing.T) {
 		}
 	}
 }
+
+func TestResolveModel_PriorityAndInheritance(t *testing.T) {
+	t.Setenv("CLAUDE_CODE_SUBAGENT_MODEL", "")
+
+	if got := ResolveModel("claude-opus-4-5", "sonnet", "haiku"); got != "sonnet" {
+		t.Errorf("tool model priority: got %q", got)
+	}
+	if got := ResolveModel("claude-opus-4-5", "", "opus"); got != "claude-opus-4-5" {
+		t.Errorf("alias should inherit exact parent model: got %q", got)
+	}
+	if got := ResolveModel("claude-sonnet-4-20250514", "", "inherit"); got != "" {
+		t.Errorf("inherit should return empty override, got %q", got)
+	}
+
+	t.Setenv("CLAUDE_CODE_SUBAGENT_MODEL", "haiku")
+	if got := ResolveModel("claude-sonnet-4-20250514", "opus", "sonnet"); got != "haiku" {
+		t.Errorf("env model priority: got %q", got)
+	}
+}

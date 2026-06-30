@@ -5,6 +5,11 @@
 // bootstrap/ may import it without creating dependency cycles.
 package agenttype
 
+import (
+	"os"
+	"strings"
+)
+
 // AgentType is the canonical string identifier for a sub-agent kind.
 type AgentType string
 
@@ -84,6 +89,44 @@ func (p *AgentProfile) EffectiveModel() string {
 		return ""
 	}
 	return p.Model
+}
+
+// ResolveModel applies the sub-agent model selection policy.
+//
+// Priority:
+//  1. CLAUDE_CODE_SUBAGENT_MODEL
+//  2. tool-specified model
+//  3. agent profile model
+//  4. inherit parent model (empty return value)
+//
+// Short aliases (haiku/sonnet/opus) inherit the exact parent model if the
+// parent already belongs to that family; otherwise they are returned unchanged
+// for the API/provider layer to resolve consistently with CLI model aliases.
+func ResolveModel(parentModel, toolModel, profileModel string) string {
+	if envModel := strings.TrimSpace(os.Getenv("CLAUDE_CODE_SUBAGENT_MODEL")); envModel != "" {
+		return resolveModelAlias(parentModel, envModel)
+	}
+	if strings.TrimSpace(toolModel) != "" {
+		return resolveModelAlias(parentModel, toolModel)
+	}
+	if profileModel == "" || profileModel == "inherit" {
+		return ""
+	}
+	return resolveModelAlias(parentModel, profileModel)
+}
+
+func resolveModelAlias(parentModel, model string) string {
+	model = strings.TrimSpace(model)
+	if model == "" || model == "inherit" {
+		return ""
+	}
+	switch strings.ToLower(model) {
+	case "haiku", "sonnet", "opus":
+		if strings.Contains(strings.ToLower(parentModel), strings.ToLower(model)) {
+			return parentModel
+		}
+	}
+	return model
 }
 
 // CoordinatorOnlyTools is the list of tools that should generally be excluded

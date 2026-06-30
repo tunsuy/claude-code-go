@@ -81,6 +81,12 @@ func TestBuiltin_ExploreProfile(t *testing.T) {
 			t.Errorf("Explore missing tool %q", need)
 		}
 	}
+	if p.Model != "haiku" {
+		t.Errorf("Explore Model = %q, want %q", p.Model, "haiku")
+	}
+	if p.MaxTurns != 20 {
+		t.Errorf("Explore MaxTurns = %d, want 20", p.MaxTurns)
+	}
 }
 
 func TestBuiltin_NoneCanSpawnSubAgents(t *testing.T) {

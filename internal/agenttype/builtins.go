@@ -35,6 +35,8 @@ var builtinProfiles = []*AgentProfile{
 			Mode:  ToolFilterAllowlist,
 			Tools: []string{"Read", "Glob", "Grep", "Bash", "WebSearch", "WebFetch"},
 		},
+		Model:             "haiku",
+		MaxTurns:          20,
 		CanSpawnSubAgents: false,
 	},
 	{

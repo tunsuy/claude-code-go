@@ -2,7 +2,10 @@ package bootstrap
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
+
+	"github.com/tunsuy/claude-code-go/internal/agenttype"
 )
 
 // TestMain sets up the test environment.
@@ -67,6 +70,51 @@ func TestResolveModel_Override(t *testing.T) {
 	got := resolveModel(nil, want)
 	if got != want {
 		t.Errorf("resolveModel(nil, %q) = %q, want %q", want, got, want)
+	}
+}
+
+func TestLoadCustomAgentProfiles_UserAndProjectOverride(t *testing.T) {
+	home := t.TempDir()
+	work := t.TempDir()
+
+	userAgents := filepath.Join(home, ".claude", "agents")
+	projectAgents := filepath.Join(work, ".claude", "agents")
+	if err := os.MkdirAll(userAgents, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(projectAgents, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := os.WriteFile(filepath.Join(userAgents, "reviewer.json"), []byte(`{
+		"name": "reviewer",
+		"display_name": "Reviewer",
+		"description": "user reviewer",
+		"system_prompt": "user prompt"
+	}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectAgents, "reviewer.json"), []byte(`{
+		"name": "reviewer",
+		"display_name": "Reviewer",
+		"description": "project reviewer",
+		"system_prompt": "project prompt"
+	}`), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	reg := agenttype.NewRegistry()
+	loadCustomAgentProfiles(reg, home, work)
+
+	profile, ok := reg.Get(agenttype.AgentType("reviewer"))
+	if !ok {
+		t.Fatal("expected reviewer profile")
+	}
+	if profile.Description != "project reviewer" {
+		t.Errorf("project profile should override user profile, got %q", profile.Description)
+	}
+	if profile.SystemPrompt != "project prompt" {
+		t.Errorf("SystemPrompt = %q", profile.SystemPrompt)
 	}
 }
 

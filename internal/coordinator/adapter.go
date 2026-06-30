@@ -40,7 +40,7 @@ func (a *coordinatorAdapter) SpawnAgent(ctx context.Context, req tools.AgentSpaw
 		Name:                 req.AgentName,
 		Background:           req.Background,
 		CacheParams:          req.CacheParams,
-		SystemPromptOverride: "", // uses profile prompt
+		SystemPromptOverride: req.SystemPrompt,
 	})
 	if err != nil {
 		return "", err

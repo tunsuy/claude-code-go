@@ -171,6 +171,7 @@ func (t *agentTool) Call(input tools.Input, ctx *tools.UseContext, onProgress to
 	agentID, err := ctx.Coordinator.SpawnAgent(ctx.Ctx, tools.AgentSpawnRequest{
 		Description:  truncateStr(in.Prompt, 100),
 		Prompt:       in.Prompt,
+		SystemPrompt: in.SystemPrompt,
 		AllowedTools: in.AllowedTools,
 		MaxTurns:     maxTurns,
 		AgentType:    agentType,

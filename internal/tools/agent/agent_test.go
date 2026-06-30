@@ -357,6 +357,51 @@ func TestAgentTool_Call_WithMaxTurns(t *testing.T) {
 	}
 }
 
+func TestAgentTool_Call_PassesSystemPromptAndAgentOptions(t *testing.T) {
+	t.Parallel()
+	var capturedReq tools.AgentSpawnRequest
+	mock := &mockCoordinator{
+		spawnFn: func(_ context.Context, req tools.AgentSpawnRequest) (string, error) {
+			capturedReq = req
+			return "agent-custom", nil
+		},
+		waitFn: func(_ context.Context, _ string) (string, error) {
+			return "ok", nil
+		},
+	}
+	ctx := &tools.UseContext{
+		Ctx:         context.Background(),
+		Coordinator: mock,
+	}
+
+	input, _ := json.Marshal(agent.AgentInput{
+		Prompt:       "review this",
+		SystemPrompt: "You are a strict reviewer.",
+		AgentType:    "verify",
+		AgentName:    "reviewer",
+		Model:        "sonnet",
+	})
+	result, err := agent.AgentTool.Call(input, ctx, nil)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result.IsError {
+		t.Fatalf("unexpected IsError: %s", result.Content)
+	}
+	if capturedReq.SystemPrompt != "You are a strict reviewer." {
+		t.Errorf("SystemPrompt = %q", capturedReq.SystemPrompt)
+	}
+	if capturedReq.AgentType != "verify" {
+		t.Errorf("AgentType = %q", capturedReq.AgentType)
+	}
+	if capturedReq.AgentName != "reviewer" {
+		t.Errorf("AgentName = %q", capturedReq.AgentName)
+	}
+	if capturedReq.Model != "sonnet" {
+		t.Errorf("Model = %q", capturedReq.Model)
+	}
+}
+
 func TestAgentTool_Call_EmptyPrompt(t *testing.T) {
 	t.Parallel()
 	mock := &mockCoordinator{}

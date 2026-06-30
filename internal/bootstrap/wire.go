@@ -120,13 +120,7 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	agentProfiles := agenttype.NewRegistry()
 	agenttype.RegisterBuiltins(agentProfiles)
 
-	// Load custom agent definitions from .claude/agents/ (if exists).
-	customAgentsDir := filepath.Join(opts.WorkingDir, ".claude", "agents")
-	if customs, loadErr := agenttype.LoadCustomAgents(customAgentsDir); loadErr == nil {
-		for _, p := range customs {
-			_ = agentProfiles.Register(p)
-		}
-	}
+	loadCustomAgentProfiles(agentProfiles, opts.HomeDir, opts.WorkingDir)
 
 	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────
 	pool := mcp.NewPool()
@@ -233,6 +227,7 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 	// ── Phase 4.5: Agent type registry (test path) ──────────────────────
 	agentProfilesTest := agenttype.NewRegistry()
 	agenttype.RegisterBuiltins(agentProfilesTest)
+	loadCustomAgentProfiles(agentProfilesTest, opts.HomeDir, opts.WorkingDir)
 
 	// ── Phase 5: MCP pool (deferred connections happen on first use) ─────────
 	pool := mcp.NewPool()
@@ -339,10 +334,11 @@ var coordinatorToolNames = map[string]bool{
 func buildRunAgentFn(
 	eng engine.QueryEngine,
 	reg *tools.Registry,
-	_ state.AppState,
+	appState state.AppState,
 	onProgress coordinator.OnProgressFn,
 	agentProfiles *agenttype.Registry,
 ) coordinator.RunAgentFn {
+	parentModel := appState.MainLoopModel.ModelID
 	return func(ctx context.Context, agentID coordinator.AgentID, req coordinator.SpawnRequest, _ <-chan string) (string, error) {
 		desc := req.Description
 		agentName := req.Name
@@ -362,8 +358,8 @@ func buildRunAgentFn(
 			}
 		}
 
-		// Look up the agent profile.
-		profile, ok := agentProfiles.Get(agenttype.AgentType(agentTypeName))
+		// Look up the agent profile by type key or display name.
+		profile, ok := agentProfiles.Resolve(agentTypeName)
 		if !ok {
 			// Fallback to worker profile.
 			profile, _ = agentProfiles.Get(agenttype.AgentTypeWorker)
@@ -388,11 +384,12 @@ func buildRunAgentFn(
 		// Build ExcludeTools from profile.
 		excludeTools := buildExcludeToolsFromProfile(profile, reg, req.AllowedTools, req.DenyTools)
 
-		// Resolve model: request > profile > inherit.
-		queryModel := req.Model
-		if queryModel == "" && profile != nil {
-			queryModel = profile.EffectiveModel()
+		// Resolve model: env > request > profile > inherit.
+		profileModel := ""
+		if profile != nil {
+			profileModel = profile.Model
 		}
+		queryModel := agenttype.ResolveModel(parentModel, req.Model, profileModel)
 
 		// Build the initial user message.
 		userMsg := types.Message{
@@ -414,14 +411,19 @@ func buildRunAgentFn(
 			AgentID: string(agentID),
 		}
 
+		maxTurns := req.MaxTurns
+		if profile != nil && profile.MaxTurns > 0 && maxTurns == coordinator.DefaultMaxTurns {
+			maxTurns = profile.MaxTurns
+		}
+
 		params := engine.QueryParams{
-			Messages:     []types.Message{userMsg},
-			SystemPrompt: systemPrompt,
+			Messages:       []types.Message{userMsg},
+			SystemPrompt:   systemPrompt,
 			ToolUseContext: uctx,
-			QuerySource:  "sub-agent",
-			MaxTurns:     req.MaxTurns,
-			ExcludeTools: excludeTools,
-			Model:        queryModel,
+			QuerySource:    "sub-agent",
+			MaxTurns:       maxTurns,
+			ExcludeTools:   excludeTools,
+			Model:          queryModel,
 		}
 
 		// Run the query loop.
@@ -542,6 +544,23 @@ func toSet(ss []string) map[string]bool {
 		m[s] = true
 	}
 	return m
+}
+
+// loadCustomAgentProfiles loads user-level agents first and project-level
+// agents second, so project definitions can override user defaults.
+func loadCustomAgentProfiles(reg *agenttype.Registry, homeDir, workingDir string) {
+	for _, dir := range []string{
+		filepath.Join(homeDir, ".claude", "agents"),
+		filepath.Join(workingDir, ".claude", "agents"),
+	} {
+		customs, err := agenttype.LoadCustomAgents(dir)
+		if err != nil {
+			continue
+		}
+		for _, p := range customs {
+			_ = reg.Register(p)
+		}
+	}
 }
 
 // truncateDetail truncates a string to a short summary suitable for the

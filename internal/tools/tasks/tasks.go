@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tunsuy/claude-code-go/internal/agenttype"
 	"github.com/tunsuy/claude-code-go/internal/tools"
 )
 
@@ -26,6 +27,7 @@ type Task struct {
 	ID          string     `json:"id"`
 	Description string     `json:"description"`
 	Status      TaskStatus `json:"status"`
+	Type        string     `json:"type,omitempty"`
 	CreatedAt   string     `json:"created_at"`
 	UpdatedAt   string     `json:"updated_at,omitempty"`
 }
@@ -101,11 +103,13 @@ func (t *taskCreateTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.
 		return &tools.Result{IsError: true, Content: "description is required"}, nil
 	}
 
-	// Spawn a new agent as a "task".
+	// Spawn a background agent as a "task".
 	agentID, err := ctx.Coordinator.SpawnAgent(ctx.Ctx, tools.AgentSpawnRequest{
 		Description:  in.Description,
 		Prompt:       in.Description,
 		AllowedTools: in.Tools,
+		AgentType:    string(agenttype.AgentTypeWorker),
+		Background:   true,
 	})
 	if err != nil {
 		return &tools.Result{IsError: true, Content: fmt.Sprintf("failed to create task: %v", err)}, nil
@@ -115,6 +119,7 @@ func (t *taskCreateTool) Call(input tools.Input, ctx *tools.UseContext, _ tools.
 		ID:          agentID,
 		Description: in.Description,
 		Status:      TaskStatusRunning,
+		Type:        string(agenttype.TaskTypeLocalAgent),
 		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
 	}
 	out, _ := json.Marshal(task)

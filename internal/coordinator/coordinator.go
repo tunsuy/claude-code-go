@@ -260,9 +260,9 @@ func noopRunAgent(_ context.Context, _ AgentID, _ SpawnRequest, _ <-chan string)
 // Coordinator method implementations
 // ─────────────────────────────────────────────────────────────────────────────
 
-// defaultMaxTurns is the safety limit applied when the caller does not specify
+// DefaultMaxTurns is the safety limit applied when the caller does not specify
 // a MaxTurns value. This prevents sub-agents from running indefinitely.
-const defaultMaxTurns = 30
+const DefaultMaxTurns = 30
 
 // SpawnAgent starts a new sub-agent goroutine and registers it.
 // If an agent with the same Description is already running, the existing
@@ -274,7 +274,7 @@ func (c *coordinatorImpl) SpawnAgent(ctx context.Context, req SpawnRequest) (Age
 
 	// Apply a default MaxTurns safety limit when the caller does not set one.
 	if req.MaxTurns <= 0 {
-		req.MaxTurns = defaultMaxTurns
+		req.MaxTurns = DefaultMaxTurns
 	}
 
 	// ── Deduplication + creation under a single write lock to prevent TOCTOU
@@ -293,8 +293,13 @@ func (c *coordinatorImpl) SpawnAgent(ctx context.Context, req SpawnRequest) (Age
 		}
 	}
 
-	// Generate a unique, correctly-formatted AgentID.
-	raw := ids.NewAgentId("worker")
+	// Generate a unique, correctly-formatted AgentID. Prefix by sub-agent type
+	// when available so traces and persisted IDs remain human-scannable.
+	idPrefix := req.SubagentType
+	if idPrefix == "" {
+		idPrefix = "worker"
+	}
+	raw := ids.NewAgentId(idPrefix)
 	agentID := AgentID(raw)
 
 	agentCtx, cancelFn := context.WithCancel(ctx)

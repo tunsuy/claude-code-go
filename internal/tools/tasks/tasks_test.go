@@ -409,6 +409,12 @@ func TestTaskCreateTool_Call_Success(t *testing.T) {
 	if len(capturedReq.AllowedTools) != 2 {
 		t.Errorf("expected 2 AllowedTools, got %d", len(capturedReq.AllowedTools))
 	}
+	if !capturedReq.Background {
+		t.Error("TaskCreate should spawn agents in background mode")
+	}
+	if capturedReq.AgentType != "worker" {
+		t.Errorf("AgentType = %q, want worker", capturedReq.AgentType)
+	}
 
 	// Verify output structure.
 	// The result now contains JSON followed by a guidance message.
@@ -431,6 +437,9 @@ func TestTaskCreateTool_Call_Success(t *testing.T) {
 	}
 	if task.Description != "build feature X" {
 		t.Errorf("expected description 'build feature X', got %q", task.Description)
+	}
+	if task.Type != "local_agent" {
+		t.Errorf("expected type 'local_agent', got %q", task.Type)
 	}
 
 	// Verify the guidance message mentions TaskGet.

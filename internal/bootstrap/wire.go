@@ -78,6 +78,8 @@ type AppContainer struct {
 	QueryGuard *msgqueue.QueryGuard
 	// AgentProfiles holds all registered agent type profiles (built-in + custom).
 	AgentProfiles *agenttype.Registry
+	// MemoryStore is the project's auto-memory store (may be nil).
+	MemoryStore *memdir.MemoryStore
 }
 
 // defaultModel is used when no model override is provided.
@@ -151,14 +153,9 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	mq := msgqueue.NewMessageQueue()
 	qg := msgqueue.NewQueryGuard()
 
-	// Register the memory extraction stop hook. The MemoryStore is created
-	// lazily from the working directory; if creation fails the hook is a no-op.
-	extractStore, _ := memdir.NewMemoryStore(opts.WorkingDir)
-	extractCfg := memdir.DefaultExtractConfig()
-	extractCfg.Store = extractStore
-	stopHooks.Register("extract_memories", func(ctx context.Context, hookCtx *engine.StopHookContext) {
-		memdir.ExecuteExtractMemories(ctx, hookCtx, extractCfg)
-	})
+	// Register memory stop hooks (extract + auto dream).
+	memoryStore := buildMemoryStore(settings, opts.WorkingDir)
+	registerMemoryStopHooks(stopHooks, settings, memoryStore)
 
 	// ── Phase 8: Engine construction ─────────────────────────────────────────
 	eng := engine.New(engine.Config{
@@ -199,6 +196,7 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 			MsgQueue:         mq,
 			QueryGuard:       qg,
 			AgentProfiles:    agentProfiles,
+			MemoryStore:      memoryStore,
 		}, nil
 	}
 
@@ -251,12 +249,8 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 
 	// ── Phase 7.5: StopHook registry ─────────────────────────────────────────
 	stopHooksTest := engine.NewStopHookRegistry()
-	testExtractStore, _ := memdir.NewMemoryStore(opts.WorkingDir)
-	testExtractCfg := memdir.DefaultExtractConfig()
-	testExtractCfg.Store = testExtractStore
-	stopHooksTest.Register("extract_memories", func(ctx context.Context, hookCtx *engine.StopHookContext) {
-		memdir.ExecuteExtractMemories(ctx, hookCtx, testExtractCfg)
-	})
+	testMemoryStore := buildMemoryStore(settings, opts.WorkingDir)
+	registerMemoryStopHooks(stopHooksTest, settings, testMemoryStore)
 
 	// ── Phase 7.6: Message queue + query guard (mid-session messaging) ───────
 	mqTest := msgqueue.NewMessageQueue()
@@ -301,7 +295,55 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		MsgQueue:         mqTest,
 		QueryGuard:       qgTest,
 		AgentProfiles:    agentProfilesTest,
+		MemoryStore:      testMemoryStore,
 	}, nil
+}
+
+func buildMemoryStore(settings *config.LayeredSettings, workingDir string) *memdir.MemoryStore {
+	opts := memdir.MemoryPathOptions{}
+	if settings != nil && settings.Merged != nil {
+		opts.AutoMemoryDirectory = settings.Merged.AutoMemoryDirectory
+	}
+	store, err := memdir.NewMemoryStoreWithOptions(workingDir, opts)
+	if err != nil {
+		return nil
+	}
+	return store
+}
+
+func settingsAutoMemoryEnabled(settings *config.LayeredSettings) *bool {
+	if settings == nil || settings.Merged == nil {
+		return nil
+	}
+	return settings.Merged.AutoMemoryEnabled
+}
+
+func registerMemoryStopHooks(
+	stopHooks *engine.StopHookRegistry,
+	settings *config.LayeredSettings,
+	store *memdir.MemoryStore,
+) {
+	enabled := memdir.IsAutoMemoryEnabled(false, settingsAutoMemoryEnabled(settings))
+
+	extractCfg := memdir.DefaultExtractConfig()
+	extractCfg.Store = store
+	extractCfg.Enabled = memdir.IsExtractMemoriesEnabled(false, settingsAutoMemoryEnabled(settings))
+	stopHooks.Register("extract_memories", func(ctx context.Context, hookCtx *engine.StopHookContext) {
+		if !enabled {
+			return
+		}
+		memdir.ExecuteExtractMemories(ctx, hookCtx, extractCfg)
+	})
+
+	dreamCfg := memdir.DefaultAutoDreamConfig()
+	dreamCfg.Store = store
+	dreamCfg.Enabled = memdir.IsAutoDreamEnabled(false, settingsAutoMemoryEnabled(settings))
+	stopHooks.Register("auto_dream", func(ctx context.Context, hookCtx *engine.StopHookContext) {
+		if !enabled {
+			return
+		}
+		memdir.ExecuteAutoDream(ctx, hookCtx, dreamCfg)
+	})
 }
 
 // coordinatorToolNames is the set of tool names that should NOT be available to

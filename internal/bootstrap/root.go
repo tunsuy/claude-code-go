@@ -230,6 +230,7 @@ func runInteractive(f *rootFlags, opts ContainerOptions) error {
 		container.AgentEventCh,
 		container.MsgQueue,
 		container.QueryGuard,
+		container.MemoryStore,
 	)
 	p := tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 	if _, err := p.Run(); err != nil {

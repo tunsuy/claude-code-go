@@ -108,16 +108,33 @@ func LoadAllMemory(claudeMdPaths []string, store *MemoryStore) string {
 		sb.WriteString("\n\n")
 	}
 
-	// Load auto-memory index if available.
-	// The index contains [Title](filename.md) links so the LLM can locate files.
-	if store != nil {
-		idx, err := store.LoadMemoryIndex()
-		if err == nil && idx != "" {
-			sb.WriteString("# Auto Memory\n\n")
-			sb.WriteString(idx)
-			sb.WriteString("\n\n")
-		}
+	appendAutoMemoryIndex(&sb, store)
+	return strings.TrimSpace(sb.String())
+}
+
+// LoadScopedAllMemory loads scoped CLAUDE.md files (with @include) plus the auto-memory index.
+func LoadScopedAllMemory(files []DiscoveredFile, store *MemoryStore) string {
+	var sb strings.Builder
+
+	scopedPrompt := LoadScopedMemoryPrompt(files)
+	if scopedPrompt != "" {
+		sb.WriteString(scopedPrompt)
+		sb.WriteString("\n\n")
 	}
 
+	appendAutoMemoryIndex(&sb, store)
 	return strings.TrimSpace(sb.String())
+}
+
+func appendAutoMemoryIndex(sb *strings.Builder, store *MemoryStore) {
+	if store == nil {
+		return
+	}
+	idx, err := store.LoadMemoryIndex()
+	if err != nil || idx == "" {
+		return
+	}
+	sb.WriteString("# Auto Memory\n\n")
+	sb.WriteString(idx)
+	sb.WriteString("\n\n")
 }

@@ -63,6 +63,8 @@ type SettingsJson struct {
 	DisableAllHooks     *bool                                     `json:"disableAllHooks,omitempty"`
 	DefaultShell        string                                    `json:"defaultShell,omitempty"`
 	AllowManagedHooksOnly *bool                                   `json:"allowManagedHooksOnly,omitempty"`
+	AutoMemoryEnabled   *bool                                     `json:"autoMemoryEnabled,omitempty"`
+	AutoMemoryDirectory string                                    `json:"autoMemoryDirectory,omitempty"`
 }
 
 // SettingSource identifies the configuration layer.

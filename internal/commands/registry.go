@@ -45,6 +45,8 @@ type Result struct {
 	OpenDialog string
 	// ClearHistory signals the TUI to wipe the conversation history.
 	ClearHistory bool
+	// TriggerDream requests a manual memory consolidation (/dream).
+	TriggerDream bool
 }
 
 // CommandContext carries the read-only application context available to commands.

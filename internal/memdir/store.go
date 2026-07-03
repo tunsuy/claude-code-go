@@ -30,10 +30,21 @@ type MemoryStore struct {
 	memoryDir string
 }
 
+// MemoryPathOptions configures how the auto-memory directory is resolved.
+type MemoryPathOptions struct {
+	// AutoMemoryDirectory is a project-relative override from settings.json.
+	AutoMemoryDirectory string
+}
+
 // NewMemoryStore creates a MemoryStore for the given project directory.
-// It computes the memory path as ~/.claude/projects/<slug>/memory/.
+// It computes the memory path as ~/.claude/projects/<slug>/memory/ unless overridden.
 func NewMemoryStore(projectDir string) (*MemoryStore, error) {
-	memDir, err := autoMemoryPath(projectDir)
+	return NewMemoryStoreWithOptions(projectDir, MemoryPathOptions{})
+}
+
+// NewMemoryStoreWithOptions creates a MemoryStore using optional path overrides.
+func NewMemoryStoreWithOptions(projectDir string, opts MemoryPathOptions) (*MemoryStore, error) {
+	memDir, err := autoMemoryPath(projectDir, opts)
 	if err != nil {
 		return nil, fmt.Errorf("memdir: compute memory path: %w", err)
 	}
@@ -204,16 +215,27 @@ func (ms *MemoryStore) LoadMemoryIndex() (string, error) {
 }
 
 // autoMemoryPath computes the project's auto memory directory:
-// ~/.claude/projects/<slug>/memory/
-func autoMemoryPath(projectDir string) (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("user home dir: %w", err)
+// ~/.claude/projects/<slug>/memory/ unless overridden.
+func autoMemoryPath(projectDir string, opts MemoryPathOptions) (string, error) {
+	if override := strings.TrimSpace(os.Getenv("CLAUDE_COWORK_MEMORY_PATH_OVERRIDE")); override != "" {
+		return filepath.Clean(override), nil
 	}
 
 	absProject, err := filepath.Abs(projectDir)
 	if err != nil {
 		return "", fmt.Errorf("abs project dir: %w", err)
+	}
+
+	if custom := strings.TrimSpace(opts.AutoMemoryDirectory); custom != "" {
+		if filepath.IsAbs(custom) {
+			return filepath.Clean(custom), nil
+		}
+		return filepath.Clean(filepath.Join(absProject, custom)), nil
+	}
+
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("user home dir: %w", err)
 	}
 
 	slug := sanitizeProjectSlug(absProject)

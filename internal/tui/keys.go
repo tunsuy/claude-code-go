@@ -1,8 +1,12 @@
 package tui
 
 import (
+	"os"
+	"strings"
+
 	tea "github.com/charmbracelet/bubbletea"
 
+	"github.com/tunsuy/claude-code-go/internal/memdir"
 	"github.com/tunsuy/claude-code-go/internal/msgqueue"
 )
 
@@ -142,10 +146,19 @@ func (m AppModel) handleCompactKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.String() == "y" || key.String() == "Y":
 		m.activeDialog = dialogNone
-		// Trigger compact: clear messages and notify engine.
+		engineMsgs := m.queryEngine.GetMessages()
 		m.messages = nil
 		m.queryEngine.SetMessages(nil)
+		sessionID := m.sessionID
+		store := m.memoryStore
 		return m, func() tea.Msg {
+			if store != nil && len(engineMsgs) > 0 {
+				home, _ := os.UserHomeDir()
+				_, _ = memdir.SaveSessionMemory(engineMsgs, "", memdir.SessionMemoryConfig{
+					SessionID: sessionID,
+					HomeDir:   home,
+				})
+			}
 			return CompactDoneMsg{Summary: "Conversation history cleared."}
 		}
 	case key.String() == "n" || key.String() == "N" || key.Type == tea.KeyEsc:
@@ -272,6 +285,12 @@ func (m AppModel) handleSubmit() (tea.Model, tea.Cmd) {
 	m.input = m.input.SetValue("")
 	m.pinnedToBottom = true
 
+	// Check for # quick memory input.
+	if strings.HasPrefix(text, "# ") {
+		m.input = m.input.SetValue("")
+		return m.handleQuickMemory(strings.TrimPrefix(text, "# "))
+	}
+
 	// Check for slash commands.
 	if IsSlashCommand(text) {
 		// P1: Queue slash commands when a query is running.
@@ -304,6 +323,24 @@ func (m AppModel) handleSubmit() (tea.Model, tea.Cmd) {
 	m.spinner = m.spinner.Reset()
 	queryCmd := startQueryCmd(&m, text)
 	return m, queryCmd
+}
+
+// handleQuickMemory saves a user preference via the # shortcut.
+func (m AppModel) handleQuickMemory(text string) (tea.Model, tea.Cmd) {
+	text = strings.TrimSpace(text)
+	if text == "" || m.memoryStore == nil {
+		m.messages = append(m.messages, newSystemMessage("Memory shortcut requires non-empty text and an active project."))
+		m.syncViewportContent()
+		return m, nil
+	}
+	ack, err := memdir.SaveQuickMemory(m.memoryStore, text)
+	if err != nil {
+		m.messages = append(m.messages, newSystemMessage("Could not save memory: "+err.Error()))
+	} else {
+		m.messages = append(m.messages, newSystemMessage(ack))
+	}
+	m.syncViewportContent()
+	return m, nil
 }
 
 // handleTabCompletion cycles through slash command completions.

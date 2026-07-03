@@ -234,6 +234,9 @@ func (t *memoryWriteTool) ValidateInput(input tools.Input, _ *tools.UseContext) 
 	if in.Content == "" {
 		return tools.ValidationResult{OK: false, Reason: "content is required"}, nil
 	}
+	if err := memdir.ScanSecrets(in.Content); err != nil {
+		return tools.ValidationResult{OK: false, Reason: err.Error()}, nil
+	}
 	return tools.ValidationResult{OK: true}, nil
 }
 
@@ -382,10 +385,12 @@ func (t *memoryDeleteTool) Call(input tools.Input, ctx *tools.UseContext, _ tool
 
 // getStore extracts the MemoryStore from the UseContext.
 // Returns nil if no store is available.
-func getStore(_ *tools.UseContext) *memdir.MemoryStore {
-	// Get the working directory from os, then create a MemoryStore.
-	// In a real implementation, the MemoryStore would be injected via
-	// the UseContext or a dependency container.
+func getStore(ctx *tools.UseContext) *memdir.MemoryStore {
+	if ctx != nil && ctx.MemoryStore != nil {
+		if store, ok := ctx.MemoryStore.(*memdir.MemoryStore); ok {
+			return store
+		}
+	}
 	wd, err := os.Getwd()
 	if err != nil {
 		return nil

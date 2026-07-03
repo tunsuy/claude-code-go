@@ -123,6 +123,9 @@ type UseContext struct {
 	Coordinator AgentCoordinator
 	// AgentID is the ID of the current agent ("" for main session).
 	AgentID string
+	// MemoryStore is the project memory store injected by bootstrap/TUI.
+	// Concrete type: *memdir.MemoryStore (set in internal/tools/memory).
+	MemoryStore any
 }
 
 // ValidationResult is the output of ValidateInput.

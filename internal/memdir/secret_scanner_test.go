@@ -15,7 +15,8 @@ func TestScanSecrets_BlocksAPIKey(t *testing.T) {
 }
 
 func TestRedactSecrets(t *testing.T) {
-	out := memdir.RedactSecrets("key=ghp_abcdefghijklmnopqrstuvwxyz123456")
+	// ghp_ tokens must be exactly 36 chars after the prefix.
+	out := memdir.RedactSecrets("key=ghp_1234567890abcdefghijklmnopqrstuvwxyz")
 	if strings.Contains(out, "ghp_") {
 		t.Fatalf("expected redacted output, got %q", out)
 	}

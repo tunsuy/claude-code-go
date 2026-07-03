@@ -36,6 +36,7 @@ func New(
 	agentEventCh <-chan coordinator.Event,
 	mq *msgqueue.MessageQueue,
 	qg *msgqueue.QueryGuard,
+	memoryStore *memdir.MemoryStore,
 ) tea.Model {
 	// DEBUG log
 	if f, err := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
@@ -47,7 +48,7 @@ func New(
 	reg := commands.NewRegistry()
 	commands.RegisterBuiltins(reg)
 
-	m := newAppModel(qe, appStore, vimEnabled, dark, reg, permAskCh, permRespCh, agentCoord, agentEventCh, mq, qg)
+	m := newAppModel(qe, appStore, vimEnabled, dark, reg, permAskCh, permRespCh, agentCoord, agentEventCh, mq, qg, memoryStore)
 	return m
 }
 

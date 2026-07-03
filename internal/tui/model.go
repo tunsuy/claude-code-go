@@ -161,6 +161,7 @@ func newAppModel(
 	agentEventCh <-chan coordinator.Event,
 	mq *msgqueue.MessageQueue,
 	qg *msgqueue.QueryGuard,
+	memoryStore *memdir.MemoryStore,
 ) AppModel {
 	st := appStore.GetState()
 	cwd := st.WorkingDir
@@ -195,6 +196,7 @@ func newAppModel(
 		},
 		welcomeHeader:  NewWelcomeHeader(model, cwd),
 		pinnedToBottom: true,
+		memoryStore:    memoryStore,
 		viewport:       viewport.New(80, 20),
 		permAskCh:      permAskCh,
 		permRespCh:     permRespCh,

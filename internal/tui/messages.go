@@ -106,6 +106,11 @@ type TickMsg struct{ Time time.Time }
 // CompactDoneMsg is sent when /compact finishes.
 type CompactDoneMsg struct{ Summary string }
 
+// DreamDoneMsg is sent when /dream finishes.
+type DreamDoneMsg struct {
+	Err string
+}
+
 // AgentStatusMsg is pushed from Agent-Core to update a sub-agent's status.
 type AgentStatusMsg struct {
 	TaskID      string

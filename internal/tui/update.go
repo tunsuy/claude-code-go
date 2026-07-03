@@ -36,17 +36,20 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// --- Memdir load complete ---
 	case MemdirLoadedMsg:
 		m.memdirPaths = msg.Paths
-		if len(msg.ScopedFiles) > 0 {
-			m.memdirPrompt = memdir.LoadScopedMemoryPrompt(msg.ScopedFiles)
-		} else {
-			m.memdirPrompt = memdir.LoadMemoryPrompt(msg.Paths)
-		}
-		// Initialize memory store for relevant memory surfacing.
-		if m.memoryStore == nil {
+		store := m.memoryStore
+		if store == nil {
 			workDir := m.appState.GetState().WorkingDir
 			if ms, err := memdir.NewMemoryStore(workDir); err == nil {
+				store = ms
 				m.memoryStore = ms
 			}
+		}
+		if len(msg.ScopedFiles) > 0 {
+			m.memdirPrompt = memdir.LoadScopedAllMemory(msg.ScopedFiles, store)
+		} else if store != nil {
+			m.memdirPrompt = memdir.LoadAllMemory(msg.Paths, store)
+		} else {
+			m.memdirPrompt = memdir.LoadMemoryPrompt(msg.Paths)
 		}
 		return m, nil
 
@@ -249,6 +252,15 @@ func (m AppModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.syncViewportContent()
 		return m, nil
 
+	case DreamDoneMsg:
+		if msg.Err != "" {
+			m.messages = append(m.messages, newSystemMessage("Dream consolidation failed: "+msg.Err))
+		} else {
+			m.messages = append(m.messages, newSystemMessage("Dream consolidation completed."))
+		}
+		m.syncViewportContent()
+		return m, nil
+
 	// --- Mid-session message queue events ---
 	case queueChangedMsg:
 		var cmds []tea.Cmd
@@ -388,6 +400,10 @@ func (m AppModel) applyCommandResult(result commands.Result, name string) (AppMo
 		m.streamingText = ""
 		m.streamingHasMsg = false
 		m.syncViewportContent()
+	}
+
+	if result.TriggerDream {
+		return m, triggerDreamCmd(&m)
 	}
 
 	switch result.Display {

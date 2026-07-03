@@ -3,6 +3,8 @@ package commands
 import (
 	"fmt"
 	"strings"
+
+	"github.com/tunsuy/claude-code-go/internal/memdir"
 )
 
 // RegisterBuiltins registers all built-in slash commands into r.
@@ -20,6 +22,7 @@ func RegisterBuiltins(r *Registry) {
 	r.Register(cmdConfig())
 	r.Register(cmdCompact())
 	r.Register(cmdMemory())
+	r.Register(cmdDream())
 	r.Register(cmdMCP())
 	r.Register(cmdReview())
 	r.Register(cmdCommit())
@@ -271,29 +274,24 @@ func cmdMemory() *Command {
 		Name:        "memory",
 		Description: "Show loaded CLAUDE.md memory files and auto-memories",
 		Execute: func(ctx CommandContext, args string) Result {
-			var sb strings.Builder
-
-			// Show CLAUDE.md files.
-			sb.WriteString("📝 Memory System Status\n\n")
-			sb.WriteString("## CLAUDE.md Files\n")
-			sb.WriteString("CLAUDE.md files are auto-discovered from the working directory\n")
-			sb.WriteString("up to the filesystem root and the home directory.\n\n")
-
-			// Show auto-memory info.
-			sb.WriteString("## Auto Memories\n")
-			sb.WriteString("Auto-memories are stored at: ~/.claude/projects/<slug>/memory/\n")
-			sb.WriteString("Use the MemoryRead tool to list all memories.\n")
-			sb.WriteString("Use the MemoryWrite tool to create new memories.\n")
-			sb.WriteString("Use the MemoryDelete tool to remove memories.\n\n")
-
-			sub := strings.TrimSpace(args)
-			if sub == "list" {
-				sb.WriteString("Tip: Ask the assistant to 'list my memories' or use the MemoryRead tool.\n")
-			}
-
+			store, _ := memdir.NewMemoryStore(ctx.WorkingDir)
+			text := memdir.FormatMemoryStatus(ctx.WorkingDir, store)
 			return Result{
-				Text:    sb.String(),
+				Text:    text,
 				Display: DisplayMessage,
+			}
+		},
+	}
+}
+
+func cmdDream() *Command {
+	return &Command{
+		Name:        "dream",
+		Description: "Manually trigger memory consolidation (auto-dream)",
+		Execute: func(_ CommandContext, _ string) Result {
+			return Result{
+				Display:      DisplayNone,
+				TriggerDream: true,
 			}
 		},
 	}

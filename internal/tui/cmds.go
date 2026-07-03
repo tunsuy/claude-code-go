@@ -61,7 +61,7 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 	}
 
 	// Surface relevant memories (if memory store is available).
-	if m.memoryStore != nil {
+	if m.memoryStore != nil && memdir.IsAutoMemoryEnabled(false, nil) {
 		cfg := memdir.DefaultRelevanceConfig()
 		relevantMemories, err := memdir.SurfaceRelevantMemories(
 			m.memoryStore,
@@ -88,8 +88,9 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 		SystemPrompt: sysPrompt,
 		QuerySource:  "foreground",
 		ToolUseContext: &tools.UseContext{
-			Ctx:         ctx,
-			Coordinator: m.agentCoordinator,
+			Ctx:          ctx,
+			Coordinator:  m.agentCoordinator,
+			MemoryStore:  m.memoryStore,
 		},
 	}
 
@@ -198,4 +199,31 @@ func abortQueryCmd(qe engine.QueryEngine) tea.Cmd {
 		qe.Interrupt(context.Background())
 		return nil
 	}
+}
+
+// triggerDreamCmd runs manual memory consolidation in the background.
+func triggerDreamCmd(m *AppModel) tea.Cmd {
+	return func() tea.Msg {
+		if m.memoryStore == nil || m.queryEngine == nil {
+			return DreamDoneMsg{Err: "memory store unavailable"}
+		}
+		cache := &engine.CacheSafeParams{
+			SystemPrompt: engine.SystemPrompt{
+				Parts: []engine.SystemPromptPart{{Text: m.memdirPrompt}},
+			},
+			ToolUseContext: &tools.UseContext{
+				Ctx:         context.Background(),
+				MemoryStore: m.memoryStore,
+			},
+		}
+		err := memdir.RunManualDream(context.Background(), m.queryEngine, cache, m.memoryStore)
+		return DreamDoneMsg{Err: errString(err)}
+	}
+}
+
+func errString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
 }

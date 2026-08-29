@@ -37,34 +37,34 @@ type AttributionConfig struct {
 // SettingsJson corresponds to the complete settings.json file structure.
 // All fields use omitempty to ensure unset fields are not written back (backwards-compatible).
 type SettingsJson struct {
-	Schema              string                                    `json:"$schema,omitempty"`
-	APIKey              string                                    `json:"apiKey,omitempty"`
-	APIKeyHelper        string                                    `json:"apiKeyHelper,omitempty"`
-	BaseURL             string                                    `json:"baseUrl,omitempty"`
-	Provider            string                                    `json:"provider,omitempty"` // API provider: direct, bedrock, vertex, foundry, openai
-	AWSCredentialExport string                                    `json:"awsCredentialExport,omitempty"`
-	AWSAuthRefresh      string                                    `json:"awsAuthRefresh,omitempty"`
-	GCPAuthRefresh      string                                    `json:"gcpAuthRefresh,omitempty"`
-	OpenAIOrganization  string                                    `json:"openaiOrganization,omitempty"` // OpenAI organization ID
-	OpenAIProject       string                                    `json:"openaiProject,omitempty"`      // OpenAI project ID
-	RespectGitignore    *bool                                     `json:"respectGitignore,omitempty"`
-	CleanupPeriodDays   *int                                      `json:"cleanupPeriodDays,omitempty"`
-	Env                 map[string]string                         `json:"env,omitempty"`
-	Attribution         *AttributionConfig                        `json:"attribution,omitempty"`
-	Permissions         *PermissionsConfig                        `json:"permissions,omitempty"`
-	Model               string                                    `json:"model,omitempty"`
-	AvailableModels     []string                                  `json:"availableModels,omitempty"`
-	ModelOverrides      map[string]string                         `json:"modelOverrides,omitempty"`
-	EnableAllProjectMCP *bool                                     `json:"enableAllProjectMcpServers,omitempty"`
-	EnabledMCPServers   []string                                  `json:"enabledMcpjsonServers,omitempty"`
-	DisabledMCPServers  []string                                  `json:"disabledMcpjsonServers,omitempty"`
-	Hooks               map[types.HookType][]types.HookDefinition `json:"hooks,omitempty"`
-	Worktree            *WorktreeConfig                           `json:"worktree,omitempty"`
-	DisableAllHooks     *bool                                     `json:"disableAllHooks,omitempty"`
-	DefaultShell        string                                    `json:"defaultShell,omitempty"`
-	AllowManagedHooksOnly *bool                                   `json:"allowManagedHooksOnly,omitempty"`
-	AutoMemoryEnabled   *bool                                     `json:"autoMemoryEnabled,omitempty"`
-	AutoMemoryDirectory string                                    `json:"autoMemoryDirectory,omitempty"`
+	Schema                string                                    `json:"$schema,omitempty"`
+	APIKey                string                                    `json:"apiKey,omitempty"`
+	APIKeyHelper          string                                    `json:"apiKeyHelper,omitempty"`
+	BaseURL               string                                    `json:"baseUrl,omitempty"`
+	Provider              string                                    `json:"provider,omitempty"` // API provider: direct, bedrock, vertex, foundry, openai
+	AWSCredentialExport   string                                    `json:"awsCredentialExport,omitempty"`
+	AWSAuthRefresh        string                                    `json:"awsAuthRefresh,omitempty"`
+	GCPAuthRefresh        string                                    `json:"gcpAuthRefresh,omitempty"`
+	OpenAIOrganization    string                                    `json:"openaiOrganization,omitempty"` // OpenAI organization ID
+	OpenAIProject         string                                    `json:"openaiProject,omitempty"`      // OpenAI project ID
+	RespectGitignore      *bool                                     `json:"respectGitignore,omitempty"`
+	CleanupPeriodDays     *int                                      `json:"cleanupPeriodDays,omitempty"`
+	Env                   map[string]string                         `json:"env,omitempty"`
+	Attribution           *AttributionConfig                        `json:"attribution,omitempty"`
+	Permissions           *PermissionsConfig                        `json:"permissions,omitempty"`
+	Model                 string                                    `json:"model,omitempty"`
+	AvailableModels       []string                                  `json:"availableModels,omitempty"`
+	ModelOverrides        map[string]string                         `json:"modelOverrides,omitempty"`
+	EnableAllProjectMCP   *bool                                     `json:"enableAllProjectMcpServers,omitempty"`
+	EnabledMCPServers     []string                                  `json:"enabledMcpjsonServers,omitempty"`
+	DisabledMCPServers    []string                                  `json:"disabledMcpjsonServers,omitempty"`
+	Hooks                 map[types.HookType][]types.HookDefinition `json:"hooks,omitempty"`
+	Worktree              *WorktreeConfig                           `json:"worktree,omitempty"`
+	DisableAllHooks       *bool                                     `json:"disableAllHooks,omitempty"`
+	DefaultShell          string                                    `json:"defaultShell,omitempty"`
+	AllowManagedHooksOnly *bool                                     `json:"allowManagedHooksOnly,omitempty"`
+	AutoMemoryEnabled     *bool                                     `json:"autoMemoryEnabled,omitempty"`
+	AutoMemoryDirectory   string                                    `json:"autoMemoryDirectory,omitempty"`
 }
 
 // SettingSource identifies the configuration layer.

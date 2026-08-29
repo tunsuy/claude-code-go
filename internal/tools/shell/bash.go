@@ -88,8 +88,29 @@ func (t *bashTool) InputSchema() tools.InputSchema {
 }
 
 func (t *bashTool) IsConcurrencySafe(_ tools.Input) bool { return false }
-func (t *bashTool) IsReadOnly(_ tools.Input) bool         { return false }
-func (t *bashTool) IsDestructive(_ tools.Input) bool      { return true }
+func (t *bashTool) IsReadOnly(_ tools.Input) bool        { return false }
+func (t *bashTool) IsDestructive(_ tools.Input) bool     { return true }
+
+// CheckPermissions denies commands containing dangerous patterns (sudo, eval,
+// rm -rf, curl|sh, ...). Compound commands are split on &&, ||, and ; so every
+// sub-command is checked independently. See security.go.
+func (t *bashTool) CheckPermissions(input tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	var in BashInput
+	if err := json.Unmarshal(input, &in); err != nil {
+		return tools.PermissionResult{Behavior: tools.PermissionPassthrough}, nil
+	}
+	if findings := AnalyzeCommand(in.Command); len(findings) > 0 {
+		reasons := make([]string, len(findings))
+		for i, f := range findings {
+			reasons[i] = f.String()
+		}
+		return tools.PermissionResult{
+			Behavior: tools.PermissionDeny,
+			Reason:   "command rejected by security checks: " + strings.Join(reasons, "; "),
+		}, nil
+	}
+	return tools.PermissionResult{Behavior: tools.PermissionPassthrough}, nil
+}
 
 func (t *bashTool) InterruptBehavior() tools.InterruptBehavior {
 	return tools.InterruptBehaviorCancel

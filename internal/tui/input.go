@@ -18,8 +18,8 @@ const (
 
 // InputModel is the bottom prompt input, supporting normal and Vim key modes.
 type InputModel struct {
-	textarea  textarea.Model
-	vimMode   VimMode
+	textarea   textarea.Model
+	vimMode    VimMode
 	vimEnabled bool
 	// For normal-mode multi-key sequences.
 	pendingKey string

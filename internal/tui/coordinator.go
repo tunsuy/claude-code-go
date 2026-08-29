@@ -10,7 +10,7 @@ import (
 type AgentStatus int
 
 const (
-	AgentRunning   AgentStatus = iota
+	AgentRunning AgentStatus = iota
 	AgentPaused
 	AgentCompleted
 	AgentFailed
@@ -35,8 +35,8 @@ func (s AgentStatus) String() string {
 type AgentTaskState struct {
 	ID           string
 	Name         string
-	AgentType    string     // agent type key (e.g. "worker", "explore")
-	Description  string     // human-readable task description
+	AgentType    string // agent type key (e.g. "worker", "explore")
+	Description  string // human-readable task description
 	Status       AgentStatus
 	StartTime    time.Time
 	ElapsedMs    int64

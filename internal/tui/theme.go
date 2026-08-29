@@ -39,10 +39,10 @@ var DefaultDarkTheme = Theme{
 
 // DefaultLightTheme is the built-in light theme.
 var DefaultLightTheme = Theme{
-	Primary:   lipgloss.Color("4"),  // blue
-	Secondary: lipgloss.Color("0"),  // black
-	Accent:    lipgloss.Color("5"),  // magenta
-	Muted:     lipgloss.Color("8"),  // gray
+	Primary:   lipgloss.Color("4"), // blue
+	Secondary: lipgloss.Color("0"), // black
+	Accent:    lipgloss.Color("5"), // magenta
+	Muted:     lipgloss.Color("8"), // gray
 	Error:     lipgloss.Color("1"),
 	Warning:   lipgloss.Color("3"),
 	Success:   lipgloss.Color("2"),

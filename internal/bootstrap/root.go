@@ -15,13 +15,13 @@ import (
 // rootFlags groups all flags declared on the root cobra command.
 type rootFlags struct {
 	// Core execution control
-	print          bool
+	print           bool
 	continueSession bool
-	resume         string
-	model          string
-	outputFormat   string
-	maxTurns       int
-	maxBudgetUSD   float64
+	resume          string
+	model           string
+	outputFormat    string
+	maxTurns        int
+	maxBudgetUSD    float64
 
 	// Permission control
 	dangerouslySkipPermissions bool
@@ -39,24 +39,24 @@ type rootFlags struct {
 	agents             string
 
 	// Session management
-	sessionID          string
-	sessionName        string
-	noSessionPersist   bool
-	forkSession        bool
+	sessionID        string
+	sessionName      string
+	noSessionPersist bool
+	forkSession      bool
 
 	// Debug & diagnostics
-	debug        bool
+	debug         bool
 	debugToStderr bool
-	debugFile    string
-	verbose      bool
-	bare         bool
+	debugFile     string
+	verbose       bool
+	bare          bool
 
 	// Mode extensions (interactive only)
-	worktree     string
-	tmux         bool
-	effort       string
-	thinking     string
-	ide          bool
+	worktree      string
+	tmux          bool
+	effort        string
+	thinking      string
+	ide           bool
 	fallbackModel string
 }
 
@@ -178,12 +178,12 @@ func runInteractiveOrHeadless(cmd *cobra.Command, f *rootFlags, args []string) e
 	}
 
 	opts := ContainerOptions{
-		HomeDir:    homeDir,
-		WorkingDir: cwd,
+		HomeDir:       homeDir,
+		WorkingDir:    cwd,
 		ModelOverride: f.model,
-		Verbose:    f.verbose,
-		Debug:      f.debug,
-		DebugFile:  f.debugFile,
+		Verbose:       f.verbose,
+		Debug:         f.debug,
+		DebugFile:     f.debugFile,
 	}
 
 	if f.print {

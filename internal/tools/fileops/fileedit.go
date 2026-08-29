@@ -63,7 +63,16 @@ func (t *fileEditTool) InputSchema() tools.InputSchema {
 }
 
 func (t *fileEditTool) IsConcurrencySafe(_ tools.Input) bool { return false }
-func (t *fileEditTool) IsReadOnly(_ tools.Input) bool         { return false }
+func (t *fileEditTool) IsReadOnly(_ tools.Input) bool        { return false }
+
+// CheckPermissions denies edits to protected configuration files and paths
+// inside protected directories (see dangerous.go).
+func (t *fileEditTool) CheckPermissions(input tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	if _, reason, dangerous := checkDangerousPath(writeTargetPath(input)); dangerous {
+		return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: reason}, nil
+	}
+	return tools.PermissionResult{Behavior: tools.PermissionPassthrough}, nil
+}
 
 func (t *fileEditTool) UserFacingName(input tools.Input) string {
 	var in FileEditInput

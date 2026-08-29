@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"fmt"
-	"os"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -38,13 +36,6 @@ func New(
 	qg *msgqueue.QueryGuard,
 	memoryStore *memdir.MemoryStore,
 ) tea.Model {
-	// DEBUG log
-	if f, err := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err == nil {
-		fmt.Fprintf(f, "[DEBUG] TUI New: permAskCh=%v, permRespCh=%v, agentCoord=%v, agentEventCh=%v\n",
-			permAskCh != nil, permRespCh != nil, agentCoord != nil, agentEventCh != nil)
-		f.Close()
-	}
-
 	reg := commands.NewRegistry()
 	commands.RegisterBuiltins(reg)
 
@@ -117,14 +108,15 @@ func listenForPermissionRequest(
 			Message:     req.Message,
 			Input:       string(req.Input),
 			ProjectPath: req.ProjectPath,
-			RespFn: func(allow bool) {
+			RespFn: func(allow, alwaysAllow bool) {
 				decision := tools.PermissionDeny
 				if allow {
 					decision = tools.PermissionAllow
 				}
 				respCh <- permissions.AskResponse{
-					ID:       req.ID,
-					Decision: decision,
+					ID:          req.ID,
+					Decision:    decision,
+					AlwaysAllow: allow && alwaysAllow,
 				}
 			},
 		}

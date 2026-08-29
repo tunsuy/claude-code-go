@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/engine"
 	"github.com/tunsuy/claude-code-go/internal/state"
 	"github.com/tunsuy/claude-code-go/pkg/types"
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 // ---------------------------------------------------------------------------
@@ -49,8 +49,8 @@ func (f *fakeEngine) Query(_ context.Context, params engine.QueryParams) (<-chan
 	return ch, nil
 }
 
-func (f *fakeEngine) Interrupt(_ context.Context) { f.interrupted = true }
-func (f *fakeEngine) GetMessages() []types.Message { return f.messages }
+func (f *fakeEngine) Interrupt(_ context.Context)      { f.interrupted = true }
+func (f *fakeEngine) GetMessages() []types.Message     { return f.messages }
 func (f *fakeEngine) SetMessages(msgs []types.Message) { f.messages = msgs }
 func (f *fakeEngine) SetModel(m string)                { f.model = m }
 
@@ -73,7 +73,7 @@ func drainChan(ch chan engine.Msg) []engine.Msg {
 func newTestModel() AppModel {
 	fe := newFakeEngine()
 	appStore := state.NewAppStateStore(state.AppState{
-		WorkingDir: "/tmp",
+		WorkingDir:    "/tmp",
 		MainLoopModel: state.ModelSetting{ModelID: "test-model"},
 	})
 	reg := commands.NewRegistry()
@@ -242,11 +242,11 @@ func TestDispatchEngineMsg(t *testing.T) {
 					gotType = "StreamToolUseInputDeltaMsg"
 				case StreamToolUseCompleteMsg:
 					gotType = "StreamToolUseCompleteMsg"
-			case StreamToolResultMsg:
-				gotType = "StreamToolResultMsg"
-			case StreamAssistantTurnMsg:
-				gotType = "StreamAssistantTurnMsg"
-			case StreamDoneMsg:
+				case StreamToolResultMsg:
+					gotType = "StreamToolResultMsg"
+				case StreamAssistantTurnMsg:
+					gotType = "StreamAssistantTurnMsg"
+				case StreamDoneMsg:
 					gotType = "StreamDoneMsg"
 				case StreamErrorMsg:
 					gotType = "StreamErrorMsg"
@@ -420,7 +420,7 @@ func TestUpdate_PermissionRequestMsg(t *testing.T) {
 		ToolName:  "bash",
 		ToolUseID: "use1",
 		Message:   "run command?",
-		RespFn:    func(allow bool) { called = allow },
+		RespFn:    func(allow, alwaysAllow bool) { called = allow },
 	})
 	if m.activeDialog != dialogPermission {
 		t.Errorf("expected dialogPermission, got %d", m.activeDialog)
@@ -709,7 +709,7 @@ func TestHandlePermissionKey_EnterAllow(t *testing.T) {
 	var decision bool
 	d := newPermissionDialog(PermissionRequestMsg{
 		ToolName: "bash",
-		RespFn:   func(allow bool) { decision = allow },
+		RespFn:   func(allow, alwaysAllow bool) { decision = allow },
 	})
 	m.activeDialog = dialogPermission
 	m.permReq = &d
@@ -728,7 +728,7 @@ func TestHandlePermissionKey_EscDeny(t *testing.T) {
 	var decision *bool
 	d := newPermissionDialog(PermissionRequestMsg{
 		ToolName: "bash",
-		RespFn:   func(allow bool) { b := allow; decision = &b },
+		RespFn:   func(allow, alwaysAllow bool) { b := allow; decision = &b },
 	})
 	m.activeDialog = dialogPermission
 	m.permReq = &d
@@ -1283,7 +1283,10 @@ func TestToString(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestItoa(t *testing.T) {
-	tests := []struct{ n int; want string }{
+	tests := []struct {
+		n    int
+		want string
+	}{
 		{0, "0"},
 		{1, "1"},
 		{42, "42"},

@@ -54,8 +54,17 @@ func (t *fileWriteTool) InputSchema() tools.InputSchema {
 }
 
 func (t *fileWriteTool) IsConcurrencySafe(_ tools.Input) bool { return false }
-func (t *fileWriteTool) IsReadOnly(_ tools.Input) bool         { return false }
-func (t *fileWriteTool) IsDestructive(_ tools.Input) bool      { return true }
+func (t *fileWriteTool) IsReadOnly(_ tools.Input) bool        { return false }
+func (t *fileWriteTool) IsDestructive(_ tools.Input) bool     { return true }
+
+// CheckPermissions denies writes to protected configuration files and paths
+// inside protected directories (see dangerous.go).
+func (t *fileWriteTool) CheckPermissions(input tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	if _, reason, dangerous := checkDangerousPath(writeTargetPath(input)); dangerous {
+		return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: reason}, nil
+	}
+	return tools.PermissionResult{Behavior: tools.PermissionPassthrough}, nil
+}
 
 func (t *fileWriteTool) UserFacingName(input tools.Input) string {
 	var in FileWriteInput

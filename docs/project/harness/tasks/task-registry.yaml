@@ -4,7 +4,7 @@
 # 格式遵循 docs/project/harness/protocols/agent-output.md 中的任务数据结构
 
 project: "claude-code-go"
-last_updated: "2026-04-10"
+last_updated: "2026-08-29"
 version: "1.0"
 
 tasks:
@@ -808,3 +808,121 @@ tasks:
       - "全量交付条件确认"
     completed_at: "2026-04-10"
     notes: "26/26 PASS，全量交付条件满足"
+
+  # ─────────────────────────────────────────────────────────────
+  # M5 · 权限系统补全（来源: docs/analysis/permission-system-gap-analysis.md）
+  # ─────────────────────────────────────────────────────────────
+  - id: "T-060"
+    title: "权限P0-1: 危险文件/目录保护列表"
+    description: |
+      在 internal/permissions/filesystem.go 中新增危险文件/目录保护：
+      DANGEROUS_FILES（.gitconfig/.bashrc/.zshrc/.mcp.json/.claude.json 等）与
+      DANGEROUS_DIRECTORIES（.git/.vscode/.idea/.claude 等）列表，
+      提供 IsDangerousPath/CheckDangerousPath 判定函数，供权限管线拒绝
+      对危险路径的写入/编辑。附带单元测试 filesystem_test.go。
+    role: "agent-infra"
+    status: "completed"
+    priority: "P0"
+    milestone: "M5"
+    depends_on: []
+    artifacts:
+      - "internal/permissions/filesystem.go"
+      - "internal/permissions/filesystem_test.go"
+    acceptance_criteria:
+      - "IsDangerousPath 对列表内文件/目录返回 true（含子路径）"
+      - "对普通路径返回 false，不误伤"
+      - "单元测试覆盖绝对/相对路径、~ 展开、大小写变体"
+    completed_at: "2026-08-29"
+    notes: "来源: permission-system-gap-analysis.md P0-1；实现位于 internal/permissions/filesystem.go（判定函数）与 internal/tools/fileops/dangerous.go（Write/Edit/NotebookEdit CheckPermissions 拒绝危险路径）"
+
+  - id: "T-061"
+    title: "权限P0-2: Bash 命令基础安全检查"
+    description: |
+      在 internal/tools/shell/security.go 中新增 Bash 命令安全分析：
+      1. 危险模式检测（sudo/eval/rm -rf/管道到 shell/重定向到危险路径）
+      2. 复合命令拆分（&&、||、;），对每个子命令独立检查
+      通过 bashTool.CheckPermissions 接入权限管线，命中即 Deny 并给出原因。
+    role: "agent-tools"
+    status: "completed"
+    completed_at: "2026-08-29"
+    priority: "P0"
+    milestone: "M5"
+    depends_on: []
+    artifacts:
+      - "internal/tools/shell/security.go"
+      - "internal/tools/shell/security_test.go"
+    acceptance_criteria:
+      - "sudo/eval/rm -rf 等危险命令被 Deny 且带原因"
+      - "复合命令中任一子命令危险则整体 Deny"
+      - "普通命令（ls/go build）不受影响"
+    notes: "实现位于 internal/tools/shell/security.go（AnalyzeCommand: 复合命令按 &&/||/; 拆分、管道按 | 拆分、模式锚定在命令首词，避免 echo \"sudo\" 误伤）；接入点为 bashTool.CheckPermissions。来源: permission-system-gap-analysis.md P0-2"
+
+  - id: "T-062"
+    title: "权限P0-3: 权限持久化(Always Allow)"
+    description: |
+      在 internal/permissions/persist.go 中实现权限持久化：
+      用户选择 "Yes, and always allow" 时，将规则写入项目 .claude/settings.json
+      的 permissions.allow，并同步更新 checker 内存中的 AlwaysAllowRules。
+      TUI AskResponse 增加 UserModified/AlwaysAllow 信号；config 包增加
+      settings.json 原子写回函数。
+    role: "agent-infra"
+    status: "completed"
+    completed_at: "2026-08-29"
+    priority: "P0"
+    milestone: "M5"
+    depends_on: ["T-060"]
+    artifacts:
+      - "internal/permissions/persist.go"
+      - "internal/permissions/persist_test.go"
+      - "internal/config/writer.go"
+      - "internal/config/writer_test.go"
+    acceptance_criteria:
+      - "选择 AlwaysAllow 后 settings.json permissions.allow 出现对应规则且幂等"
+      - "checker 内存规则同步更新，后续同规则调用直接 Allow"
+      - "写回采用临时文件+rename 原子操作，不破坏文件中其他字段"
+    notes: "config.AddPermissionRule 泛型 map 往返保留未知字段+临时文件 rename 原子写；checker.persistAllowRule 同步内存 AlwaysAllowRules[RuleSourceProject]；AskResponse.AlwaysAllow 由 TUI 第2选项触发（RespFn 改为 func(allow, alwaysAllow bool)）；ruleForTool 对 PathTool 生成 Tool(path/**) 规则。来源: permission-system-gap-analysis.md P0-3"
+
+  - id: "T-063"
+    title: "权限P1-4: 拒绝降级机制"
+    description: |
+      扩展 internal/permissions/denial.go：增加 DENIAL_LIMITS 阈值
+      （maxConsecutive: 3, maxTotal: 20）与 shouldFallbackToPrompting 判定，
+      连续拒绝达到阈值时权限管线降级为 prompting 模式并向用户提示。
+      RequestPermission 流程接入该判定。
+    role: "agent-infra"
+    status: "pending"
+    priority: "P1"
+    milestone: "M5"
+    depends_on: ["T-060"]
+    artifacts:
+      - "internal/permissions/denial.go"
+      - "internal/permissions/denial_test.go"
+    acceptance_criteria:
+      - "连续 3 次拒绝触发降级标记"
+      - "累计 20 次拒绝触发降级标记"
+      - "非连续拒绝不触发 maxConsecutive"
+    status: "completed"
+    completed_at: "2026-08-29"
+    notes: "denial.go 新增 DENIAL_LIMITS{MaxConsecutive:3, MaxTotal:20}、consecutive 计数器、RecordApproval() 重置连击、shouldFallbackToPrompting() 判定；checker.RequestPermission Deny 分支在阈值命中且 ask/resp 通道可用时路由到 askUser 直接向用户确认（带解释性 message），而非新增 PermissionMode 值——降级是行为路由而非模式切换。approval 后连击归零。denial_test.go 覆盖三类验收 + 无通道时不降级 + 集成流（阈值后第4次拒绝转为用户确认）。来源: permission-system-gap-analysis.md P1-4"
+
+  - id: "T-064"
+    title: "权限P1-5: Shell 规则通配符匹配"
+    description: |
+      在 internal/tools/shell/ 中实现 Bash 工具的 PreparePermissionMatcher：
+      支持 "Bash(git *)"、前缀匹配（"Bash(go build:*)"）与 glob 语义，
+      使 settings.json 中的通配符规则能正确匹配命令内容。
+    role: "agent-tools"
+    status: "pending"
+    priority: "P1"
+    milestone: "M5"
+    depends_on: ["T-061"]
+    artifacts:
+      - "internal/tools/shell/matcher.go"
+      - "internal/tools/shell/matcher_test.go"
+    acceptance_criteria:
+      - "Bash(git *) 匹配 'git status'、'git push'，不匹配 'gits'"
+      - "Bash(go test:*) 匹配 'go test ./...'"
+      - "精确规则 Bash(ls) 只匹配 'ls'"
+    status: "completed"
+    completed_at: "2026-08-29"
+    notes: "matcher.go 实现 bashTool.PreparePermissionMatcher：从 BashInput.command 构建闭包调用 MatchCommandRule(pattern, command)。三种模式：'git *' glob（* 匹配含空格任意字符，QuoteMeta 转义其余部分）；'go test:*' 前缀（匹配裸命令或 prefix+空格+参数，避免 'go tests' 误匹配）；'ls' 精确。复合/管道命令拆分为独立 stage（复用 security.go 的 splitCompoundCommand/splitPipeline），每个 stage 必须单独满足规则。checker.matchPattern 已有的内容模式分发无需改动——Bash 规则从此生效。来源: permission-system-gap-analysis.md P1-5"

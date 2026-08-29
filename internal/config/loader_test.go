@@ -53,7 +53,7 @@ func TestLoad_AllThreeLayers(t *testing.T) {
 	t.Setenv("ANTHROPIC_MODEL", "")
 	t.Setenv("CLAUDE_MODEL", "")
 	t.Setenv("OPENAI_MODEL", "")
-	
+
 	home := t.TempDir()
 	project := t.TempDir()
 

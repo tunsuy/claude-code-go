@@ -6,9 +6,9 @@ import "time"
 type SpinnerMode int
 
 const (
-	SpinnerModeNormal  SpinnerMode = iota // single agent
-	SpinnerModeBrief                      // brief / compact
-	SpinnerModeTeammate                   // multi-agent
+	SpinnerModeNormal   SpinnerMode = iota // single agent
+	SpinnerModeBrief                       // brief / compact
+	SpinnerModeTeammate                    // multi-agent
 )
 
 var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}

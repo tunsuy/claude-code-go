@@ -404,8 +404,6 @@ func summariseToolInput(input map[string]any, maxLen int) string {
 	return result
 }
 
-
-
 func toString(v any) string {
 	switch t := v.(type) {
 	case string:

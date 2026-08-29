@@ -30,6 +30,10 @@ type AskResponse struct {
 	ID string
 	// Decision is the user's choice: PermissionAllow or PermissionDeny.
 	Decision tools.PermissionBehavior
+	// AlwaysAllow is true if the user chose "yes, and don't ask again" — the
+	// checker persists an allow rule for the tool call and applies it to
+	// subsequent identical calls.
+	AlwaysAllow bool
 	// UserModified is true if the user altered the tool input before approving.
 	UserModified bool
 }

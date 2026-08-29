@@ -13,10 +13,10 @@ const appVersion = "0.1.0"
 
 // WelcomeHeader contains data for the startup welcome banner.
 type WelcomeHeader struct {
-	version  string
-	model    string
-	cwd      string
-	shown    bool // whether the header has been shown (only show once)
+	version string
+	model   string
+	cwd     string
+	shown   bool // whether the header has been shown (only show once)
 }
 
 // NewWelcomeHeader creates a new welcome header with default values.
@@ -43,10 +43,10 @@ func (w WelcomeHeader) IsShown() bool {
 // View renders the welcome header banner.
 // Format:
 //
-//	     Claude Code Go v0.1.0
-//	     claude-sonnet-4-20250514 · API Usage Billing
-//	     ~/path/to/cwd
-//	     Welcome to Claude Code Go!  /effort to tune speed vs. intelligence
+//	Claude Code Go v0.1.0
+//	claude-sonnet-4-20250514 · API Usage Billing
+//	~/path/to/cwd
+//	Welcome to Claude Code Go!  /effort to tune speed vs. intelligence
 func (w WelcomeHeader) View(width int, theme Theme) string {
 	if w.shown {
 		return ""

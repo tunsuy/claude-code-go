@@ -27,7 +27,7 @@ type PermissionDialog struct {
 	projectPath string // project path for "always allow" option
 	options     []string
 	cursor      int
-	respFn      func(allow bool)
+	respFn      func(allow, alwaysAllow bool)
 }
 
 // newPermissionDialog creates a PermissionDialog from a PermissionRequestMsg.
@@ -85,6 +85,11 @@ func (d PermissionDialog) Choice() PermissionChoice {
 // Confirm returns true if the user chose Yes or AlwaysAllow.
 func (d PermissionDialog) Confirm() bool {
 	return d.cursor == 0 || d.cursor == 1
+}
+
+// AlwaysAllow returns true if the user chose the "always allow" option.
+func (d PermissionDialog) AlwaysAllow() bool {
+	return d.cursor == 1
 }
 
 // View renders the permission dialog matching the original Claude Code style.

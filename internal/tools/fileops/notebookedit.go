@@ -67,7 +67,16 @@ func (t *notebookEditTool) InputSchema() tools.InputSchema {
 }
 
 func (t *notebookEditTool) IsConcurrencySafe(_ tools.Input) bool { return false }
-func (t *notebookEditTool) IsReadOnly(_ tools.Input) bool         { return false }
+func (t *notebookEditTool) IsReadOnly(_ tools.Input) bool        { return false }
+
+// CheckPermissions denies edits to notebooks inside protected directories
+// (see dangerous.go).
+func (t *notebookEditTool) CheckPermissions(input tools.Input, _ *tools.UseContext) (tools.PermissionResult, error) {
+	if _, reason, dangerous := checkDangerousPath(writeTargetPath(input)); dangerous {
+		return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: reason}, nil
+	}
+	return tools.PermissionResult{Behavior: tools.PermissionPassthrough}, nil
+}
 
 func (t *notebookEditTool) UserFacingName(input tools.Input) string {
 	var in NotebookEditInput

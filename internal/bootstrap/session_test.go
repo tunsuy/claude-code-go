@@ -178,7 +178,7 @@ func TestLoadSessionMessages_Continue_Happy(t *testing.T) {
 
 	now := time.Now()
 	os.Chtimes(olderPath, now.Add(-10*time.Minute), now.Add(-10*time.Minute)) //nolint:errcheck
-	os.Chtimes(newerPath, now, now)                                            //nolint:errcheck
+	os.Chtimes(newerPath, now, now)                                           //nolint:errcheck
 
 	f := &rootFlags{continueSession: true}
 	got, err := loadSessionMessages(cwd, f)

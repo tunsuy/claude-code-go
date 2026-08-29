@@ -9,10 +9,10 @@ import (
 
 // TokenUsage holds token counts for the current session.
 type TokenUsage struct {
-	Input          int
-	Output         int
-	CacheRead      int
-	CacheCreated   int
+	Input        int
+	Output       int
+	CacheRead    int
+	CacheCreated int
 }
 
 // StatusBar renders the top status line.

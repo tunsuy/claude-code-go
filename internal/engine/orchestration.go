@@ -256,11 +256,6 @@ func executeOneTool(
 	}
 
 	// Permission check (HIL: Human-in-the-Loop).
-	// DEBUG: Check if permChecker is nil
-	if f, ferr := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
-		fmt.Fprintf(f, "[DEBUG] executeOneTool: tool=%s, permChecker=%v\n", tc.name, permChecker != nil)
-		f.Close()
-	}
 	if permChecker != nil {
 		permReq := permissions.PermissionRequest{
 			ToolName:  tc.name,

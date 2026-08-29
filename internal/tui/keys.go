@@ -123,8 +123,9 @@ func (m AppModel) handlePermissionKey(key tea.KeyMsg) (tea.Model, tea.Cmd) {
 // confirmPermission confirms the current permission selection.
 func (m AppModel) confirmPermission() (tea.Model, tea.Cmd) {
 	allow := m.permReq.Confirm()
+	alwaysAllow := allow && m.permReq.AlwaysAllow()
 	if m.permReq.respFn != nil {
-		m.permReq.respFn(allow)
+		m.permReq.respFn(allow, alwaysAllow)
 	}
 	m.permReq = nil
 	m.activeDialog = dialogNone
@@ -134,7 +135,7 @@ func (m AppModel) confirmPermission() (tea.Model, tea.Cmd) {
 // denyPermission denies the permission request.
 func (m AppModel) denyPermission() (tea.Model, tea.Cmd) {
 	if m.permReq.respFn != nil {
-		m.permReq.respFn(false)
+		m.permReq.respFn(false, false)
 	}
 	m.permReq = nil
 	m.activeDialog = dialogNone

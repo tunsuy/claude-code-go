@@ -100,20 +100,22 @@ type stubPermTool struct {
 	permBehavior tools.PermissionBehavior
 }
 
-func (s *stubPermTool) Name() string    { return s.name }
-func (s *stubPermTool) Aliases() []string { return nil }
+func (s *stubPermTool) Name() string                                                { return s.name }
+func (s *stubPermTool) Aliases() []string                                           { return nil }
 func (s *stubPermTool) Description(_ tools.Input, _ tools.PermissionContext) string { return "" }
-func (s *stubPermTool) InputSchema() tools.InputSchema { return tools.InputSchema{Type: "object"} }
+func (s *stubPermTool) InputSchema() tools.InputSchema                              { return tools.InputSchema{Type: "object"} }
 func (s *stubPermTool) Prompt(_ context.Context, _ tools.PermissionContext) (string, error) {
 	return "", nil
 }
-func (s *stubPermTool) MaxResultSizeChars() int                     { return -1 }
-func (s *stubPermTool) SearchHint() string                         { return "" }
-func (s *stubPermTool) IsConcurrencySafe(_ tools.Input) bool        { return s.readOnly }
-func (s *stubPermTool) IsReadOnly(_ tools.Input) bool               { return s.readOnly }
-func (s *stubPermTool) IsDestructive(_ tools.Input) bool            { return false }
-func (s *stubPermTool) IsEnabled() bool                            { return true }
-func (s *stubPermTool) InterruptBehavior() tools.InterruptBehavior  { return tools.InterruptBehaviorCancel }
+func (s *stubPermTool) MaxResultSizeChars() int              { return -1 }
+func (s *stubPermTool) SearchHint() string                   { return "" }
+func (s *stubPermTool) IsConcurrencySafe(_ tools.Input) bool { return s.readOnly }
+func (s *stubPermTool) IsReadOnly(_ tools.Input) bool        { return s.readOnly }
+func (s *stubPermTool) IsDestructive(_ tools.Input) bool     { return false }
+func (s *stubPermTool) IsEnabled() bool                      { return true }
+func (s *stubPermTool) InterruptBehavior() tools.InterruptBehavior {
+	return tools.InterruptBehaviorCancel
+}
 func (s *stubPermTool) ValidateInput(_ tools.Input, _ *tools.UseContext) (tools.ValidationResult, error) {
 	return tools.ValidationResult{OK: true}, nil
 }

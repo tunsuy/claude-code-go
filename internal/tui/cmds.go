@@ -88,9 +88,9 @@ func startQueryCmd(m *AppModel, userText string) tea.Cmd {
 		SystemPrompt: sysPrompt,
 		QuerySource:  "foreground",
 		ToolUseContext: &tools.UseContext{
-			Ctx:          ctx,
-			Coordinator:  m.agentCoordinator,
-			MemoryStore:  m.memoryStore,
+			Ctx:         ctx,
+			Coordinator: m.agentCoordinator,
+			MemoryStore: m.memoryStore,
 		},
 	}
 

@@ -411,8 +411,10 @@ func TestQuery_EndTurn_FiresStopHooks(t *testing.T) {
 
 	reg := NewStopHookRegistry()
 	reg.Register("integration_test", func(_ context.Context, hookCtx *StopHookContext) {
-		hookCalled.Store(true)
+		// Store the source before the called flag: the test's wait loop breaks
+		// as soon as hookCalled is observed, so the two stores must not race.
 		hookSource.Store(hookCtx.QuerySource)
+		hookCalled.Store(true)
 	})
 
 	events := buildEndTurnEvents("Hello")

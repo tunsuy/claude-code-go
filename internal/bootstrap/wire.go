@@ -144,6 +144,7 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 		Registry:   reg,
 		AskCh:      askCh,
 		RespCh:     respCh,
+		Persist:    &permissions.PersistConfig{ProjectDir: opts.WorkingDir},
 	})
 
 	// ── Phase 7.5: StopHook registry (memory extraction) ────────────────────
@@ -174,31 +175,31 @@ func BuildContainer(opts ContainerOptions) (*AppContainer, error) {
 	onStatusChange := buildOnStatusChangeFn(agentEventCh)
 
 	coord := coordinator.New(coordinator.Config{
-			CoordinatorMode:  true,
-			RunAgent:         buildRunAgentFn(eng, reg, appState, onProgress, agentProfiles),
-			OnProgress:       onProgress,
-			OnStatusChange:   onStatusChange,
-			SummaryGenerator: coordinator.DefaultSummaryGenerator,
-		})
-		agentCoord := coordinator.NewAgentCoordinator(coord)
+		CoordinatorMode:  true,
+		RunAgent:         buildRunAgentFn(eng, reg, appState, onProgress, agentProfiles),
+		OnProgress:       onProgress,
+		OnStatusChange:   onStatusChange,
+		SummaryGenerator: coordinator.DefaultSummaryGenerator,
+	})
+	agentCoord := coordinator.NewAgentCoordinator(coord)
 
-		return &AppContainer{
-			QueryEngine:      eng,
-			AppStateStore:    store,
-			ToolRegistry:     reg,
-			MCPPool:          pool,
-			Settings:         settings,
-			PermAskCh:        askCh,
-			PermRespCh:       respCh,
-			Coordinator:      coord,
-			AgentCoordinator: agentCoord,
-			AgentEventCh:     agentEventCh,
-			MsgQueue:         mq,
-			QueryGuard:       qg,
-			AgentProfiles:    agentProfiles,
-			MemoryStore:      memoryStore,
-		}, nil
-	}
+	return &AppContainer{
+		QueryEngine:      eng,
+		AppStateStore:    store,
+		ToolRegistry:     reg,
+		MCPPool:          pool,
+		Settings:         settings,
+		PermAskCh:        askCh,
+		PermRespCh:       respCh,
+		Coordinator:      coord,
+		AgentCoordinator: agentCoord,
+		AgentEventCh:     agentEventCh,
+		MsgQueue:         mq,
+		QueryGuard:       qg,
+		AgentProfiles:    agentProfiles,
+		MemoryStore:      memoryStore,
+	}, nil
+}
 
 // BuildHeadlessContainer wires up a minimal container for non-interactive (-p) mode.
 // No MCP connections are pre-established; OAuth pre-warm is still performed.
@@ -245,6 +246,7 @@ func BuildContainerWithClient(opts ContainerOptions, client api.Client) (*AppCon
 		Registry:   reg,
 		AskCh:      askCh,
 		RespCh:     respCh,
+		Persist:    &permissions.PersistConfig{ProjectDir: opts.WorkingDir},
 	})
 
 	// ── Phase 7.5: StopHook registry ─────────────────────────────────────────

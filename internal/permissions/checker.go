@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/tunsuy/claude-code-go/internal/hooks"
 	"github.com/tunsuy/claude-code-go/internal/tools"
@@ -34,9 +35,9 @@ type Checker interface {
 
 // PermissionRequest bundles the parameters for a full permission flow.
 type PermissionRequest struct {
-	ToolName   string
-	ToolUseID  string
-	Input      tools.Input
+	ToolName  string
+	ToolUseID string
+	Input     tools.Input
 	// ToolResult is the preliminary result from tools.CheckPermissions (may be
 	// PermissionPassthrough if the tool deferred).
 	ToolResult tools.PermissionResult
@@ -44,15 +45,19 @@ type PermissionRequest struct {
 
 // checker is the concrete Checker implementation.
 type checker struct {
-	permCtx    types.ToolPermissionContext
+	permCtx types.ToolPermissionContext
+	// mu guards permCtx and persist: persistAllowRule mutates the allow rules
+	// while CanUseTool reads them from the engine goroutine.
+	mu         sync.RWMutex
+	persist    PersistConfig
 	dispatcher *hooks.Dispatcher
 	// t is the resolved tool (may be nil if registry is nil).
-	registry   interface {
+	registry interface {
 		Get(name string) (tools.Tool, bool)
 	}
-	askCh      chan<- AskRequest
-	respCh     <-chan AskResponse
-	denial     *DenialTrackingState
+	askCh  chan<- AskRequest
+	respCh <-chan AskResponse
+	denial *DenialTrackingState
 }
 
 // CheckerConfig is the constructor config for NewChecker.
@@ -71,11 +76,15 @@ type CheckerConfig struct {
 	// RespCh is used to receive user responses to AskRequests.
 	// If nil, Ask decisions are downgraded to Deny.
 	RespCh <-chan AskResponse
+	// Persist optionally configures always-allow rule persistence to the
+	// project's .claude/settings.json. If nil, persistence is disabled and
+	// always-allow responses only update the in-memory rules.
+	Persist *PersistConfig
 }
 
 // NewChecker constructs a new Checker.
 func NewChecker(cfg CheckerConfig) Checker {
-	return &checker{
+	c := &checker{
 		permCtx:    cfg.PermCtx,
 		dispatcher: cfg.Dispatcher,
 		registry:   cfg.Registry,
@@ -83,6 +92,10 @@ func NewChecker(cfg CheckerConfig) Checker {
 		respCh:     cfg.RespCh,
 		denial:     &DenialTrackingState{},
 	}
+	if cfg.Persist != nil {
+		c.persist = *cfg.Persist
+	}
+	return c
 }
 
 // CanUseTool implements the permission decision chain without user interaction.
@@ -92,6 +105,11 @@ func (c *checker) CanUseTool(
 	input tools.Input,
 	tctx *tools.UseContext,
 ) (tools.PermissionResult, error) {
+	// Snapshot read: persistAllowRule may concurrently append allow rules from
+	// a user response while the engine goroutine runs this check.
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	// 1. bypassPermissions mode → unconditional allow.
 	if c.permCtx.Mode == types.PermissionModeBypassPermissions {
 		return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
@@ -144,11 +162,6 @@ func (c *checker) CanUseTool(
 	}
 
 	// 7. PermissionMode default decisions.
-	// DEBUG log
-	if f, ferr := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
-		fmt.Fprintf(f, "[DEBUG] CanUseTool step 7: tool=%s, mode=%s\n", toolName, c.permCtx.Mode)
-		f.Close()
-	}
 	switch c.permCtx.Mode {
 	case types.PermissionModeDontAsk:
 		return tools.PermissionResult{Behavior: tools.PermissionAllow}, nil
@@ -214,18 +227,18 @@ func (c *checker) RequestPermission(
 		return result, err
 	}
 
-	// DEBUG: Write to file for TUI debugging
-	if f, ferr := os.OpenFile("/tmp/claude-code-debug.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); ferr == nil {
-		fmt.Fprintf(f, "[DEBUG] RequestPermission: tool=%s, behavior=%s, mode=%s, askCh=%v, respCh=%v\n",
-			req.ToolName, result.Behavior, c.permCtx.Mode, c.askCh != nil, c.respCh != nil)
-		f.Close()
-	}
-
 	switch result.Behavior {
 	case tools.PermissionAllow:
+		c.denial.RecordApproval()
 		return result, nil
 
 	case tools.PermissionDeny:
+		// Denial-downgrade: when the session keeps hitting denials (consecutive
+		// streak or accumulated total), stop auto-denying and ask the user
+		// directly — the deny rules are fighting the session, not guarding it.
+		if c.shouldFallbackToPrompting() && c.askCh != nil && c.respCh != nil {
+			return c.askUser(ctx, req, "many denials in this session; confirm directly: "+result.Reason)
+		}
 		c.denial.Record(DenialRecord{
 			ToolName:  req.ToolName,
 			ToolUseID: req.ToolUseID,
@@ -245,41 +258,67 @@ func (c *checker) RequestPermission(
 			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: result.Reason}, nil
 		}
 
-		askReq := AskRequest{
-			ID:          req.ToolUseID,
-			ToolName:    req.ToolName,
-			ToolUseID:   req.ToolUseID,
-			Message:     result.Reason,
-			Input:       req.Input,
-			ProjectPath: getProjectPath(),
-		}
-		select {
-		case c.askCh <- askReq:
-		case <-ctx.Done():
-			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "context cancelled"}, nil
-		}
-
-		// Wait for response (60-second deadline handled by the TUI side).
-		select {
-		case resp, ok := <-c.respCh:
-			if !ok {
-				return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "response channel closed"}, nil
-			}
-			if resp.Decision == tools.PermissionAllow {
-				return tools.PermissionResult{Behavior: tools.PermissionAllow, Reason: "user approved"}, nil
-			}
-			c.denial.Record(DenialRecord{
-				ToolName:  req.ToolName,
-				ToolUseID: req.ToolUseID,
-				Reason:    "user denied",
-			})
-			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "user denied"}, nil
-		case <-ctx.Done():
-			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "context cancelled"}, nil
-		}
+		return c.askUser(ctx, req, result.Reason)
 	}
 
 	return result, nil
+}
+
+// askUser forwards an AskRequest to the TUI layer and waits for the response.
+// message is the human-readable explanation shown in the permission dialog.
+func (c *checker) askUser(
+	ctx context.Context,
+	req PermissionRequest,
+	message string,
+) (tools.PermissionResult, error) {
+	askReq := AskRequest{
+		ID:          req.ToolUseID,
+		ToolName:    req.ToolName,
+		ToolUseID:   req.ToolUseID,
+		Message:     message,
+		Input:       req.Input,
+		ProjectPath: getProjectPath(),
+	}
+	select {
+	case c.askCh <- askReq:
+	case <-ctx.Done():
+		return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "context cancelled"}, nil
+	}
+
+	// Wait for response (60-second deadline handled by the TUI side).
+	select {
+	case resp, ok := <-c.respCh:
+		if !ok {
+			return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "response channel closed"}, nil
+		}
+		if resp.Decision == tools.PermissionAllow {
+			if resp.AlwaysAllow {
+				// "Yes, and always allow" — register a rule so subsequent
+				// calls of the same shape are allowed without asking.
+				c.persistAllowRule(ruleForTool(req.ToolName, req.Input, c.registry))
+			}
+			c.denial.RecordApproval()
+			reason := "user approved"
+			if resp.AlwaysAllow {
+				reason = "user approved (always allowed)"
+			}
+			return tools.PermissionResult{Behavior: tools.PermissionAllow, Reason: reason}, nil
+		}
+		c.denial.Record(DenialRecord{
+			ToolName:  req.ToolName,
+			ToolUseID: req.ToolUseID,
+			Reason:    "user denied",
+		})
+		return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "user denied"}, nil
+	case <-ctx.Done():
+		return tools.PermissionResult{Behavior: tools.PermissionDeny, Reason: "context cancelled"}, nil
+	}
+}
+
+// shouldFallbackToPrompting reports whether the denial-tracking state has hit
+// a threshold that warrants downgrading auto-denials to user prompts.
+func (c *checker) shouldFallbackToPrompting() bool {
+	return c.denial.shouldFallbackToPrompting()
 }
 
 // GetDenialCount implements Checker.

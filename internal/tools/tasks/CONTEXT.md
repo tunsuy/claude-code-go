@@ -2,7 +2,7 @@
 package: tasks
 import_path: internal/tools/tasks
 layer: tools
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [doc.go, tasks.go]
 ---
 
@@ -12,7 +12,7 @@ source_files: [doc.go, tasks.go]
 
 ## Structs
 
-- **Task** — 5 fields: ID, Description, Status, CreatedAt, UpdatedAt
+- **Task** — 6 fields: ID, Description, Status, Type, CreatedAt, UpdatedAt
 - **TaskCreateInput** — 3 fields: Description, Tools, Priority
 - **TaskGetInput** — 1 fields: ID
 - **TaskListInput** — 1 fields: Status
@@ -35,7 +35,7 @@ source_files: [doc.go, tasks.go]
 
 ## Dependencies
 
-**Imports:** `internal/tools`
+**Imports:** `internal/agenttype`, `internal/tools`
 
 **Imported by:** `internal/bootstrap`
 

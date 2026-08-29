@@ -890,7 +890,7 @@ tasks:
       连续拒绝达到阈值时权限管线降级为 prompting 模式并向用户提示。
       RequestPermission 流程接入该判定。
     role: "agent-infra"
-    status: "pending"
+    status: "completed"
     priority: "P1"
     milestone: "M5"
     depends_on: ["T-060"]
@@ -901,7 +901,6 @@ tasks:
       - "连续 3 次拒绝触发降级标记"
       - "累计 20 次拒绝触发降级标记"
       - "非连续拒绝不触发 maxConsecutive"
-    status: "completed"
     completed_at: "2026-08-29"
     notes: "denial.go 新增 DENIAL_LIMITS{MaxConsecutive:3, MaxTotal:20}、consecutive 计数器、RecordApproval() 重置连击、shouldFallbackToPrompting() 判定；checker.RequestPermission Deny 分支在阈值命中且 ask/resp 通道可用时路由到 askUser 直接向用户确认（带解释性 message），而非新增 PermissionMode 值——降级是行为路由而非模式切换。approval 后连击归零。denial_test.go 覆盖三类验收 + 无通道时不降级 + 集成流（阈值后第4次拒绝转为用户确认）。来源: permission-system-gap-analysis.md P1-4"
 
@@ -912,7 +911,7 @@ tasks:
       支持 "Bash(git *)"、前缀匹配（"Bash(go build:*)"）与 glob 语义，
       使 settings.json 中的通配符规则能正确匹配命令内容。
     role: "agent-tools"
-    status: "pending"
+    status: "completed"
     priority: "P1"
     milestone: "M5"
     depends_on: ["T-061"]
@@ -923,6 +922,5 @@ tasks:
       - "Bash(git *) 匹配 'git status'、'git push'，不匹配 'gits'"
       - "Bash(go test:*) 匹配 'go test ./...'"
       - "精确规则 Bash(ls) 只匹配 'ls'"
-    status: "completed"
     completed_at: "2026-08-29"
     notes: "matcher.go 实现 bashTool.PreparePermissionMatcher：从 BashInput.command 构建闭包调用 MatchCommandRule(pattern, command)。三种模式：'git *' glob（* 匹配含空格任意字符，QuoteMeta 转义其余部分）；'go test:*' 前缀（匹配裸命令或 prefix+空格+参数，避免 'go tests' 误匹配）；'ls' 精确。复合/管道命令拆分为独立 stage（复用 security.go 的 splitCompoundCommand/splitPipeline），每个 stage 必须单独满足规则。checker.matchPattern 已有的内容模式分发无需改动——Bash 规则从此生效。来源: permission-system-gap-analysis.md P1-5"

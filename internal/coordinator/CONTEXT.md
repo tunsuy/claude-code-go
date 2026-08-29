@@ -2,7 +2,7 @@
 package: coordinator
 import_path: internal/coordinator
 layer: core
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [adapter.go, coordinator.go, prompt.go]
 ---
 
@@ -60,6 +60,7 @@ type Coordinator interface {
 - `AgentStatusFailed`
 - `AgentStatusRunning`
 - `AgentStatusStopped`
+- `DefaultMaxTurns`
 - `EventProgress`
 - `EventStatusChange`
 

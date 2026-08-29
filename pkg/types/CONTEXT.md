@@ -2,7 +2,7 @@
 package: types
 import_path: pkg/types
 layer: types
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [command.go, hooks.go, ids.go, logs.go, message.go, permissions.go, plugin.go, types.go]
 ---
 
@@ -155,17 +155,17 @@ type MCPConnection interface {
 - `AdditionalWorkingDirectory` → `internal/bootstrap/wire.go`, `internal/state/store.go`
 - `AggregatedHookResult` → `internal/hooks/hooks.go`
 - `AppStateReader` → `internal/state/store.go`
-- `ContentBlock` → `internal/bootstrap/run.go`, `internal/bootstrap/session_test.go` (test), `internal/bootstrap/wire.go`, `internal/compact/auto.go`, `internal/compact/compact_test.go` (test) + 14 more
+- `ContentBlock` → `internal/bootstrap/run.go`, `internal/bootstrap/session_test.go` (test), `internal/bootstrap/wire.go`, `internal/compact/auto.go`, `internal/compact/compact_test.go` (test) + 16 more
 - `EntryEnvelope` → `internal/session/store.go`, `internal/session/store_test.go` (test)
 - `HookDefinition` → `internal/config/loader.go`, `internal/config/loader_test.go` (test), `internal/hooks/hooks.go`
 - `HookResult` → `internal/hooks/hooks.go`
 - `LoadedPlugin` → `internal/plugin/plugin.go`, `internal/state/store.go`
 - `MCPConnection` → `internal/state/store.go`
-- `Message` → `internal/bootstrap/run.go`, `internal/bootstrap/session.go`, `internal/bootstrap/session_test.go` (test), `internal/bootstrap/wire.go`, `internal/compact/auto.go` + 21 more
+- `Message` → `internal/bootstrap/run.go`, `internal/bootstrap/session.go`, `internal/bootstrap/session_test.go` (test), `internal/bootstrap/wire.go`, `internal/compact/auto.go` + 23 more
 - `PluginConfig` → `internal/plugin/plugin.go`
 - `PluginError` → `internal/plugin/plugin.go`
 - `SerializedMessage` → `internal/bootstrap/session.go`, `internal/bootstrap/session_test.go` (test)
-- `ToolPermissionContext` → `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test), `internal/state/store.go`
+- `ToolPermissionContext` → `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test), `internal/permissions/denial_test.go` (test), `internal/permissions/persist_test.go` (test), `internal/state/store.go`
 
 ## Dependencies
 

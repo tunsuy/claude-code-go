@@ -1,6 +1,6 @@
 ---
 type: auto-generated-index
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 package_count: 38
 ---
 
@@ -28,10 +28,10 @@ package_count: 38
 | `internal/api` | Services | Client(2m), StreamReader(1m), APIError, APIErrorData, Accumulator | [CONTEXT](../../internal/api/CONTEXT.md) |
 | `internal/compact` | Services | Compressor(2m), AutoCompactTrackingState, AutoCompactor, CacheEdit, CompactionExtra | [CONTEXT](../../internal/compact/CONTEXT.md) |
 | `internal/mcp` | Services | MCPClient(7m), Transport(3m), HTTPTransportConfig, JSONRPCError, JSONRPCMessage | [CONTEXT](../../internal/mcp/CONTEXT.md) |
-| `internal/memdir` | Services | DiscoveredFile, ExtractMemoriesConfig, MemoryFile, MemoryHeader, MemoryStore | [CONTEXT](../../internal/memdir/CONTEXT.md) |
+| `internal/memdir` | Services | AutoDreamConfig, DiscoveredFile, ExtractMemoriesConfig, MemoryFile, MemoryHeader | [CONTEXT](../../internal/memdir/CONTEXT.md) |
 | `internal/msgqueue` | Services | MessageQueue, QueryGuard, QueuedCommand, Signal | [CONTEXT](../../internal/msgqueue/CONTEXT.md) |
 | `internal/oauth` | Services | TokenStore(3m), AuthCodeListener, AuthURLParams, Client, FileStore | [CONTEXT](../../internal/oauth/CONTEXT.md) |
-| `internal/permissions` | Services | Checker(3m), AskRequest, AskResponse, CheckerConfig, DenialRecord | [CONTEXT](../../internal/permissions/CONTEXT.md) |
+| `internal/permissions` | Services | Checker(3m), AskRequest, AskResponse, CheckerConfig, DangerousPathResult | [CONTEXT](../../internal/permissions/CONTEXT.md) |
 | `internal/coordinator` | Core | Coordinator(8m), AgentUsage, Config, Event, MCPClientInfo | [CONTEXT](../../internal/coordinator/CONTEXT.md) |
 | `internal/engine` | Core | QueryEngine(5m), BudgetTracker, CacheSafeParams, Config, ForkedAgentConfig | [CONTEXT](../../internal/engine/CONTEXT.md) |
 | `internal/tools` | Tools | AgentCoordinator(9m), MCPToolInfo(1m), PathTool(1m), PermissionContext(1m), SearchOrReadTool(1m), ... | [CONTEXT](../../internal/tools/CONTEXT.md) |
@@ -41,7 +41,7 @@ package_count: 38
 | `internal/tools/mcp` | Tools | ListMcpResourcesInput, MCPProxyTool, MCPToolInput, ReadMcpResourceInput | [CONTEXT](../../internal/tools/mcp/CONTEXT.md) |
 | `internal/tools/memory` | Tools | MemoryDeleteInput, MemoryReadInput, MemoryWriteInput | [CONTEXT](../../internal/tools/memory/CONTEXT.md) |
 | `internal/tools/misc` | Tools | BriefInput, SkillInput, SleepInput, SyntheticOutputInput, ToolSearchInput | [CONTEXT](../../internal/tools/misc/CONTEXT.md) |
-| `internal/tools/shell` | Tools | BashInput, BashOutput | [CONTEXT](../../internal/tools/shell/CONTEXT.md) |
+| `internal/tools/shell` | Tools | BashInput, BashOutput, SecurityFinding | [CONTEXT](../../internal/tools/shell/CONTEXT.md) |
 | `internal/tools/tasks` | Tools | Task, TaskCreateInput, TaskGetInput, TaskListInput, TaskOutputInput | [CONTEXT](../../internal/tools/tasks/CONTEXT.md) |
 | `internal/tools/web` | Tools | HTTPClient(1m), WebFetchInput, WebFetchOutput, WebSearchInput, WebSearchOutput | [CONTEXT](../../internal/tools/web/CONTEXT.md) |
 | `internal/tui` | TUI | AgentColorManager, AgentProgressMsg, AgentStatusMsg, AgentTaskState, AppModel | [CONTEXT](../../internal/tui/CONTEXT.md) |

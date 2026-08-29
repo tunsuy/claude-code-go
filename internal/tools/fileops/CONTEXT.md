@@ -2,13 +2,13 @@
 package: fileops
 import_path: internal/tools/fileops
 layer: tools
-generated_at: 2026-04-29T02:31:52Z
-source_files: [doc.go, fileedit.go, fileread.go, filewrite.go, glob.go, grep.go, helpers.go, notebookedit.go, write_atomic.go]
+generated_at: 2026-08-29T07:13:26Z
+source_files: [dangerous.go, doc.go, fileedit.go, fileread.go, filewrite.go, glob.go, grep.go, helpers.go, notebookedit.go, write_atomic.go]
 ---
 
 # internal/tools/fileops
 
-> Layer: **Tools** · Files: 9 · Interfaces: 0 · Structs: 10 · Functions: 0
+> Layer: **Tools** · Files: 10 · Interfaces: 0 · Structs: 10 · Functions: 0
 
 ## Structs
 

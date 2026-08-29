@@ -2,7 +2,7 @@
 package: engine
 import_path: internal/engine
 layer: core
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [budget.go, cache_params.go, engine.go, forked_agent.go, msg.go, orchestration.go, query.go, stop_hooks.go]
 ---
 
@@ -87,12 +87,14 @@ type QueryEngine interface {
 ## Change Impact
 
 **Exported type references (files that use types from this package):**
+- `CacheSafeParams` → `internal/memdir/dream.go`, `internal/tui/cmds.go`
 - `Config` → `internal/bootstrap/wire.go`
-- `ForkedAgentConfig` → `internal/memdir/extract.go`
+- `ForkedAgentConfig` → `internal/memdir/dream.go`, `internal/memdir/extract.go`, `internal/memdir/session_memory.go`
 - `Msg` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`, `internal/tui/model.go`, `internal/tui/tui_test.go` (test)
-- `QueryEngine` → `internal/bootstrap/wire.go`, `internal/tui/cmds.go`, `internal/tui/init.go`, `internal/tui/model.go`
+- `QueryEngine` → `internal/bootstrap/wire.go`, `internal/memdir/dream.go`, `internal/tui/cmds.go`, `internal/tui/init.go`, `internal/tui/model.go`
 - `QueryParams` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`, `internal/tui/tui_test.go` (test)
-- `StopHookContext` → `internal/bootstrap/wire.go`, `internal/memdir/extract.go`, `internal/memdir/extract_test.go` (test)
+- `StopHookContext` → `internal/bootstrap/wire.go`, `internal/memdir/dream.go`, `internal/memdir/extract.go`, `internal/memdir/extract_test.go` (test), `internal/memdir/session_memory.go`
+- `StopHookRegistry` → `internal/bootstrap/wire.go`
 - `SystemPrompt` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`
 - `SystemPromptPart` → `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/tui/cmds.go`
 - `ToolResultMsg` → `internal/tui/tui_test.go` (test)

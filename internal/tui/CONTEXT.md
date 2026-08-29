@@ -2,13 +2,13 @@
 package: tui
 import_path: internal/tui
 layer: tui
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [agentcolors.go, cmds.go, coordinator.go, init.go, input.go, keys.go, messagelist.go, messages.go, model.go, permissions.go, spinner.go, statusbar.go, styles.go, theme.go, update.go, view.go, welcome.go]
 ---
 
 # internal/tui
 
-> Layer: **TUI** · Files: 17 · Interfaces: 0 · Structs: 34 · Functions: 6
+> Layer: **TUI** · Files: 17 · Interfaces: 0 · Structs: 35 · Functions: 6
 
 ## Structs
 
@@ -20,6 +20,7 @@ source_files: [agentcolors.go, cmds.go, coordinator.go, init.go, input.go, keys.
 - **CommandResultMsg** — 2 fields: Text, IsError
 - **CompactDoneMsg** — 1 fields: Summary
 - **CoordinatorPanel** — 3 fields: Tasks, SelectedIndex, TaskOrder
+- **DreamDoneMsg** — 1 fields: Err
 - **InputChangedMsg** — 1 fields: Text
 - **InputModel** — 4 fields
 - **InputSubmittedMsg** — 1 fields: Text
@@ -51,7 +52,7 @@ source_files: [agentcolors.go, cmds.go, coordinator.go, init.go, input.go, keys.
 
 - `IsSlashCommand(text string) bool`
 - `MessageListView(messages []types.Message, width int, darkMode bool, theme Theme, mdRenderer *glamour.TermRenderer, expandedToolResults map[string]bool) string`
-- `New(qe engine.QueryEngine, appStore *state.AppStateStore, vimEnabled bool, dark bool, permAskCh <-chan permissions.AskRequest, permRespCh chan<- permissions.AskResponse, agentCoord tools.AgentCoordinator, agentEventCh <-chan coordinator.Event, mq *msgqueue.MessageQueue, qg *msgqueue.QueryGuard) tea.Model`
+- `New(qe engine.QueryEngine, appStore *state.AppStateStore, vimEnabled bool, dark bool, permAskCh <-chan permissions.AskRequest, permRespCh chan<- permissions.AskResponse, agentCoord tools.AgentCoordinator, agentEventCh <-chan coordinator.Event, mq *msgqueue.MessageQueue, qg *msgqueue.QueryGuard, memoryStore *memdir.MemoryStore) tea.Model`
 - `NewAgentColorManager() *AgentColorManager`
 - `NewInput(vimEnabled bool) InputModel`
 - `NewWelcomeHeader(model string, cwd string) WelcomeHeader`

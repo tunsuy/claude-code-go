@@ -2,7 +2,7 @@
 package: bootstrap
 import_path: internal/bootstrap
 layer: cli
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [auth.go, bootstrap.go, mcp.go, misc.go, plugin.go, root.go, run.go, session.go, tools.go, wire.go]
 ---
 
@@ -12,7 +12,7 @@ source_files: [auth.go, bootstrap.go, mcp.go, misc.go, plugin.go, root.go, run.g
 
 ## Structs
 
-- **AppContainer** — 13 fields: QueryEngine, AppStateStore, ToolRegistry, MCPPool, Settings, PermAskCh, PermRespCh, Coordinator, ...
+- **AppContainer** — 14 fields: QueryEngine, AppStateStore, ToolRegistry, MCPPool, Settings, PermAskCh, PermRespCh, Coordinator, ...
 - **ContainerOptions** — 6 fields: HomeDir, WorkingDir, ModelOverride, Verbose, Debug, DebugFile
 
 ## Functions

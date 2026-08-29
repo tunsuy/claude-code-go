@@ -2,13 +2,13 @@
 package: agenttype
 import_path: internal/agenttype
 layer: infra
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [agenttype.go, builtins.go, loader.go, prompts.go, registry.go, tasktype.go]
 ---
 
 # internal/agenttype
 
-> Layer: **Infra** · Files: 6 · Interfaces: 0 · Structs: 3 · Functions: 3
+> Layer: **Infra** · Files: 6 · Interfaces: 0 · Structs: 3 · Functions: 4
 
 ## Structs
 
@@ -21,6 +21,7 @@ source_files: [agenttype.go, builtins.go, loader.go, prompts.go, registry.go, ta
 - `LoadCustomAgents(dir string) ([]*AgentProfile, error)`
 - `NewRegistry() *Registry`
 - `RegisterBuiltins(r *Registry)`
+- `ResolveModel(parentModel string, toolModel string, profileModel string) string`
 
 ## Constants
 
@@ -30,10 +31,13 @@ source_files: [agenttype.go, builtins.go, loader.go, prompts.go, registry.go, ta
 - `AgentTypePlan`
 - `AgentTypeVerify`
 - `AgentTypeWorker`
+- `TaskTypeDream`
 - `TaskTypeInProcessTeammate`
 - `TaskTypeLocalAgent`
 - `TaskTypeLocalBash`
-- `TaskTypeRemote`
+- `TaskTypeLocalWorkflow`
+- `TaskTypeMonitorMCP`
+- `TaskTypeRemoteAgent`
 - `ToolFilterAllowlist`
 - `ToolFilterDenylist`
 
@@ -51,7 +55,7 @@ source_files: [agenttype.go, builtins.go, loader.go, prompts.go, registry.go, ta
 
 **Imports:** *(none — zero-dependency)*
 
-**Imported by:** `internal/bootstrap`
+**Imported by:** `internal/bootstrap`, `internal/tools/tasks`
 
 <!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
 <!-- MANUAL NOTES BELOW — preserved across regeneration -->

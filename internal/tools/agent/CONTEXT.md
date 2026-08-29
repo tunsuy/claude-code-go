@@ -2,7 +2,7 @@
 package: agent
 import_path: internal/tools/agent
 layer: tools
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [agent.go, doc.go, getagentstatus.go, sendmessage.go]
 ---
 

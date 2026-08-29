@@ -2,7 +2,7 @@
 package: tools
 import_path: internal/tools
 layer: tools
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [base.go, registry.go, tool.go]
 ---
 
@@ -94,7 +94,7 @@ type Tool interface {
 
 ## Structs
 
-- **AgentSpawnRequest** — 10 fields: Description, Prompt, AllowedTools, DenyTools, MaxTurns, AgentType, Model, Background, ...
+- **AgentSpawnRequest** — 11 fields: Description, Prompt, SystemPrompt, AllowedTools, DenyTools, MaxTurns, AgentType, Model, ...
 - **BaseTool**
 - **InputSchema** — 3 fields: Type, Properties, Required
 - **MCPInfo** — 2 fields: ServerName, ToolName
@@ -102,7 +102,7 @@ type Tool interface {
 - **Registry** — 4 fields
 - **Result** — 3 fields: Content, IsError, ContextModifier
 - **SearchOrReadResult** — 3 fields: IsSearch, IsRead, Path
-- **UseContext** — 5 fields: Ctx, AbortCh, PermCtx, Coordinator, AgentID
+- **UseContext** — 6 fields: Ctx, AbortCh, PermCtx, Coordinator, AgentID, MemoryStore
 - **ValidationResult** — 2 fields: OK, Reason
 
 ## Function Types
@@ -129,6 +129,7 @@ type Tool interface {
 **Test Mocks (must add new methods when interfaces change):**
 - `stubTool` in `internal/engine/orchestration_test.go`
 - `stubRegistry` in `internal/permissions/checker_test.go`
+- `stubPathTool` in `internal/permissions/persist_test.go`
 - `mockTool` in `internal/tools/registry_test.go`
 - `stubTool` in `test/integration/engine_e2e_test.go`
 
@@ -140,12 +141,12 @@ type Tool interface {
 - `MCPInfo` → `internal/mcp/adapter.go`, `internal/tools/mcp/mcp.go`
 - `MCPToolInfo` → `internal/mcp/adapter.go`, `internal/tools/mcp/mcp.go`
 - `OnProgressFn` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go`, `internal/tools/agent/getagentstatus.go` + 16 more
-- `PathTool` → `internal/tools/fileops/fileedit.go`, `internal/tools/fileops/fileread.go`, `internal/tools/fileops/filewrite.go`, `internal/tools/fileops/notebookedit.go`
+- `PathTool` → `internal/permissions/persist.go`, `internal/tools/fileops/fileedit.go`, `internal/tools/fileops/fileread.go`, `internal/tools/fileops/filewrite.go`, `internal/tools/fileops/notebookedit.go`
 - `PermissionContext` → `internal/engine/orchestration_test.go` (test), `internal/engine/query.go`, `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go` + 17 more
-- `PermissionResult` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/ask.go`, `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test) + 1 more
+- `PermissionResult` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/ask.go`, `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test) + 7 more
 - `Registry` → `internal/bootstrap/mcp.go`, `internal/bootstrap/tools.go`, `internal/bootstrap/wire.go`, `internal/engine/engine.go`, `internal/engine/orchestration.go` + 1 more
 - `Result` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go`, `internal/tools/agent/getagentstatus.go` + 16 more
-- `Tool` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test), `internal/tools/agent/agent.go` + 31 more
+- `Tool` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker.go`, `internal/permissions/checker_test.go` (test), `internal/permissions/persist.go` + 33 more
 - `UseContext` → `internal/bootstrap/mcp.go`, `internal/bootstrap/run.go`, `internal/bootstrap/wire.go`, `internal/engine/cache_params.go`, `internal/engine/cache_params_test.go` (test) + 34 more
 - `ValidationResult` → `internal/engine/orchestration_test.go` (test), `internal/mcp/adapter.go`, `internal/permissions/checker_test.go` (test), `internal/tools/fileops/fileread.go`, `internal/tools/fileops/glob.go` + 5 more
 

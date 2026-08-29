@@ -2,13 +2,13 @@
 package: config
 import_path: internal/config
 layer: infra
-generated_at: 2026-04-29T02:31:52Z
-source_files: [loader.go, settings.go]
+generated_at: 2026-08-29T07:13:26Z
+source_files: [loader.go, settings.go, writer.go]
 ---
 
 # internal/config
 
-> Layer: **Infra** · Files: 2 · Interfaces: 1 · Structs: 6 · Functions: 1
+> Layer: **Infra** · Files: 3 · Interfaces: 1 · Structs: 6 · Functions: 2
 
 ## Interfaces
 
@@ -27,11 +27,12 @@ type ConfigLoader interface {
 - **LayeredSettings** — 5 fields: User, Project, Local, Policy, Merged
 - **Loader** — 2 fields
 - **PermissionsConfig** — 6 fields: Allow, Deny, Ask, DefaultMode, DisableBypass, AdditionalDirs
-- **SettingsJson** — 26 fields: Schema, APIKey, APIKeyHelper, BaseURL, Provider, AWSCredentialExport, AWSAuthRefresh, GCPAuthRefresh, ...
+- **SettingsJson** — 28 fields: Schema, APIKey, APIKeyHelper, BaseURL, Provider, AWSCredentialExport, AWSAuthRefresh, GCPAuthRefresh, ...
 - **WorktreeConfig** — 2 fields: SymlinkDirectories, SparsePaths
 
 ## Functions
 
+- `AddPermissionRule(projectDir string, list string, rule string) error`
 - `NewLoader(homeDir string, projectDir string) *Loader`
 
 ## Constants
@@ -39,6 +40,9 @@ type ConfigLoader interface {
 - `ClaudeDir`
 - `ClaudeLocalDir`
 - `ManagedSettingsFile`
+- `PermissionListAllow`
+- `PermissionListAsk`
+- `PermissionListDeny`
 - `SessionsDir`
 - `SettingsFile`
 - `SourceLocal`
@@ -58,7 +62,7 @@ type ConfigLoader interface {
 
 **Imports:** `pkg/types`
 
-**Imported by:** `internal/bootstrap`, `internal/state`
+**Imported by:** `internal/bootstrap`, `internal/permissions`, `internal/state`
 
 <!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
 <!-- MANUAL NOTES BELOW — preserved across regeneration -->

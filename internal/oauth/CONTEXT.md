@@ -2,7 +2,7 @@
 package: oauth
 import_path: internal/oauth
 layer: services
-generated_at: 2026-04-29T02:31:52Z
+generated_at: 2026-08-29T07:13:26Z
 source_files: [client.go, crypto.go, crypto_aes.go, listener.go, refresh.go, store.go, store_darwin.go, store_other.go, types.go]
 ---
 

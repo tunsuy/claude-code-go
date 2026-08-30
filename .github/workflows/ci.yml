@@ -74,6 +74,25 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      - name: Debt check (TODO(dep) / not-yet-implemented 红线)
+        run: ./scripts/debt-check.sh
+
+  docs:
+    name: Docs sync
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          cache: true
+
+      - name: Check generated docs are up-to-date
+        run: go run ./cmd/docgen -out docs/generated -check ./internal ./pkg ./cmd
+
   build:
     name: Build
     runs-on: ubuntu-latest

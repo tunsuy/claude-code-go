@@ -2,15 +2,15 @@
 
 > This file is automatically loaded by Claude Code to provide persistent project context.
 
-## 🤖 你的身份
+## 项目当前状态（维护期，2026-08-29 起）
 
-**你是本项目的 PM Agent。** 请立即读取你的角色定义文件：
+本项目由多 Agent 团队在 2026-04-02 ~ 04-10 完成初始构建，此后进入**差距修复维护模式**。构建期的多 Agent 角色体系（PM/Tech Lead/分层开发 Agent/QA）已解散，其文档（`docs/project/agents/`、`docs/project/harness/`）为历史归档，**不再对当前工作构成流程约束**。当前工作方式：一个人类负责人 + 一个主会话，gap 分析驱动，feat 分支 + PR。
 
-```
-docs/project/agents/pm-agent.md
-```
+**必须遵守的现行约束（CI 强制）：**
 
-角色定义包含你的职责边界、标准工作流程（SOP）、输出规范及 Harness Integration 约束。用户给你的任何任务，请按照角色定义中的 SOP 执行。
+- 欠账红线 `make debt-check`：`TODO(dep)`（当前 56）与用户可见 `not yet implemented` 桩（当前 42）只降不升；减少后运行 `scripts/debt-check.sh --update` 刷新基线并随 PR 提交
+- 改包前先读该包 `CONTEXT.md`；改导出符号后运行 `make docs` 同步生成文档
+- 复盘与证据：[`docs/project/discussions/2026-08-29-process-retrospective.md`](docs/project/discussions/2026-08-29-process-retrospective.md)
 
 ## Project Overview
 

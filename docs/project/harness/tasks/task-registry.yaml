@@ -1,4 +1,17 @@
 # Claude Code Go — Task Registry
+# ⛔ 已封存（2026-08-29）— 本注册表为构建期（M0–M3，2026-04）的历史归档，不再是活跃数据源。
+#
+# 封存原因：2026-04-13 之后注册表停止更新，而项目在此期间合并了 13 个 PR（#7–#19）
+# 及若干直接提交，均未登记。两套账本并存导致注册表无法反映真实状态（复盘 P2，
+# 详见 docs/project/discussions/2026-08-29-process-retrospective.md 建议 2）。
+# 事后追录只会制造第二套被追认的历史，故选择封存而非补录。
+#
+# 此后唯一事实来源：git log + GitHub Issues/PR。
+# 欠账红线（TODO(dep) / not-yet-implemented 计数）由 scripts/debt-check.sh 在 CI 中强制。
+#
+# ─────────────────────────────────────────────────────────────
+# 以下为构建期原始内容（未修改）
+#
 # 结构化任务注册表（项目任务唯一数据源）：每个任务必须声明 role、artifacts、acceptance_criteria、depends_on
 # 这些字段是约束机制，强制 PM 派发任务时明确交付边界，Agent 才知道自己负责什么、交付什么、验收标准是什么
 # 格式遵循 docs/project/harness/protocols/agent-output.md 中的任务数据结构

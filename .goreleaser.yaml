@@ -24,9 +24,11 @@ builds:
         goarch: arm64
     ldflags:
       - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
-      - -X main.date={{.Date}}
+      # Inject the released version into bootstrap.appVersion (the ldflags
+      # override point declared in internal/bootstrap/bootstrap.go). Before
+      # v0.8.0 this targeted a nonexistent `main.version`, so released
+      # binaries all printed the build-time default "0.1.0".
+      - -X github.com/tunsuy/claude-code-go/internal/bootstrap.appVersion={{.Version}}
 
 archives:
   - id: default
@@ -99,20 +101,7 @@ release:
     ---
     **Full Changelog**: https://github.com/tunsuy/claude-code-go/compare/{{ .PreviousTag }}...{{ .Tag }}
 
-brews:
-  - name: claude-code-go
-    repository:
-      owner: tunsuy
-      name: homebrew-tap
-      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
-    commit_author:
-      name: tunsuy
-      email: 957126743@qq.com
-    homepage: https://github.com/tunsuy/claude-code-go
-    description: A Go reimplementation of Claude Code — AI coding assistant in your terminal
-    license: MIT
-    skip_upload: true
-    install: |
-      bin.install "claude"
-    test: |
-      system "#{bin}/claude", "--version"
+# NOTE: no `brews:` section — the previously configured tunsuy/homebrew-tap
+# repository does not exist and HOMEBREW_TAP_TOKEN is not set, so every
+# release after enabling it would fail at the tap-publish step. Re-add it
+# only after creating the tap repo and its token.

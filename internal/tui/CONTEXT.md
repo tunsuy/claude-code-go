@@ -2,7 +2,7 @@
 package: tui
 import_path: internal/tui
 layer: tui
-generated_at: 2026-08-29T07:13:26Z
+generated_at: 2026-08-30T01:47:48Z
 source_files: [agentcolors.go, cmds.go, coordinator.go, init.go, input.go, keys.go, messagelist.go, messages.go, model.go, permissions.go, spinner.go, statusbar.go, styles.go, theme.go, update.go, view.go, welcome.go]
 ---
 

@@ -31,7 +31,10 @@ func TestParityTier0(t *testing.T) {
 		{"version-short", []string{"-v"}},
 		{"help-long", []string{"--help"}},
 		{"help-short", []string{"-h"}},
-		{"unknown-subcommand", []string{"definitely-not-a-command"}},
+		// unknown-subcommand is deliberately NOT here: waived 2026-08-30 —
+		// oracle feeds unknown words to the LLM as a prompt (exit 0, real
+		// API spend); Go keeps cobra's error semantics (exit 1). See
+		// cases.md A6/A7 and TestTargetUnknownSubcommandError.
 		// -p with no prompt must fail (usage error) on both, not hang.
 		{"print-no-prompt", []string{"-p"}},
 	}
@@ -114,8 +117,9 @@ func TestParityTier2VersionFormat(t *testing.T) {
 	want := runBinary(t, oracle, "--version")
 	got := runBinary(t, target, "--version")
 
-	// Format "claude <semver>" with version number normalized to a
+	// Format "<semver> (Claude Code)" with version number normalized to a
 	// placeholder: the FORMAT must match, the number itself may differ.
+	// (Parity case A1 — Go output aligned to oracle format 2026-08-30.)
 	if n, g := normalizeOutput(want.Stdout), normalizeOutput(got.Stdout); n != g {
 		t.Errorf("--version output format mismatch:\noracle: %q\ntarget: %q", n, g)
 	}
@@ -138,5 +142,22 @@ func TestTargetSubcommandsRegistered(t *testing.T) {
 		if !strings.Contains(got.Stdout, sub) {
 			t.Errorf("target --help missing subcommand %q", sub)
 		}
+	}
+}
+
+// TestTargetUnknownSubcommandError pins the WAIVED parity decision for A6:
+// unknown words are a usage error in the Go CLI (cobra semantics, exit 1),
+// NOT a prompt handed to the LLM like the TS original (exit 0 + API spend).
+// Runs without the oracle — it guards the Go-side contract only.
+func TestTargetUnknownSubcommandError(t *testing.T) {
+	target := requireTarget(t)
+
+	got := runBinary(t, target, "definitely-not-a-command")
+
+	if got.ExitCode == 0 {
+		t.Errorf("unknown subcommand exited 0 — waived A6 contract is cobra error semantics (exit != 0)")
+	}
+	if !strings.Contains(strings.ToLower(got.Stderr+got.Stdout), "unknown") {
+		t.Errorf("unknown subcommand: expected an \"unknown\" diagnostic, got stderr=%q stdout=%q", got.Stderr, got.Stdout)
 	}
 }

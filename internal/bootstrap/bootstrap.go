@@ -24,6 +24,12 @@ import (
 // Overridden at link-time via -ldflags "-X bootstrap.appVersion=x.y.z".
 var appVersion = "0.1.0"
 
+// appVersionString formats the version for user-facing output.
+// Matches the TS original: "2.1.251 (Claude Code)" — parity case A1.
+func appVersionString() string {
+	return fmt.Sprintf("%s (Claude Code)", appVersion)
+}
+
 // HandleFastPath inspects raw os.Args and handles zero-dependency flags
 // (--version, -v) before cobra is initialised.
 // Returns true if the process should exit immediately (clean exit).
@@ -31,7 +37,7 @@ func HandleFastPath(args []string) bool {
 	for _, arg := range args[1:] {
 		switch arg {
 		case "--version", "-v":
-			fmt.Printf("claude %s\n", appVersion)
+			fmt.Println(appVersionString())
 			return true
 		case "--":
 			// End of flags — stop scanning.

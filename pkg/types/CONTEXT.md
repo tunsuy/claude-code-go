@@ -2,7 +2,7 @@
 package: types
 import_path: pkg/types
 layer: types
-generated_at: 2026-08-29T07:13:26Z
+generated_at: 2026-08-30T01:47:48Z
 source_files: [command.go, hooks.go, ids.go, logs.go, message.go, permissions.go, plugin.go, types.go]
 ---
 

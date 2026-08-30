@@ -16,6 +16,11 @@ import (
 // different version numbers can still be compared.
 var versionRe = regexp.MustCompile(`(?m)^(\s*claude\s+)\d+\.\d+\.\d+`)
 
+// oracleVersionRe matches the TS original's version line "2.1.251 (Claude Code)"
+// (no binary-name prefix, trailing product tag) so it normalizes to the same
+// placeholder as the Go side once the Go format is aligned (parity case A1).
+var oracleVersionRe = regexp.MustCompile(`(?m)^(\s*)\d+\.\d+\.\d+\s+\(Claude Code\)`)
+
 // absPathRe matches absolute home/tmp paths so machine-specific prefixes do
 // not create false diffs.
 var absPathRe = regexp.MustCompile(`/(Users|home|tmp|var)/[^\s,"']+`)
@@ -127,9 +132,11 @@ func requireTarget(t *testing.T) string {
 }
 
 // normalizeVersion replaces concrete version numbers with a placeholder so
-// "claude 1.2.3" and "claude 0.1.0" compare equal.
+// "claude 1.2.3" and "claude 0.1.0" compare equal, and normalizes the
+// oracle-style "2.1.251 (Claude Code)" to the same placeholder.
 func normalizeVersion(line string) string {
-	return versionRe.ReplaceAllString(line, "${1}<version>")
+	line = versionRe.ReplaceAllString(line, "${1}<version>")
+	return oracleVersionRe.ReplaceAllString(line, "${1}<version> (Claude Code)")
 }
 
 // normalizePath replaces absolute paths with a placeholder.

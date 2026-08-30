@@ -2,7 +2,7 @@
 package: api
 import_path: internal/api
 layer: services
-generated_at: 2026-08-29T07:13:26Z
+generated_at: 2026-08-30T01:47:48Z
 source_files: [accumulate.go, client.go, debug_logger.go, errors.go, factory.go, json.go, openai_client.go, openai_stream.go, openai_types.go, retry.go, stream.go, usage.go]
 ---
 

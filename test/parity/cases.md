@@ -14,14 +14,14 @@
 
 | # | 用例 | oracle 行为 | Go 现状 | 状态 |
 |---|------|------------|---------|------|
-| A1 | `--version` / `-v` | 打印 `<semver> (Claude Code)`，exit 0 | 打印 `claude 0.1.0`——**格式不一致**（已实测 2026-08-30，oracle 2.1.251） | ❌ 差距已实测 |
+| A1 | `--version` / `-v` | 打印 `<semver> (Claude Code)`，exit 0 | 打印 `<semver> (Claude Code)`（2026-08-30 已对齐，原为 `claude 0.1.0`） | ✅ Tier-2 |
 | A2 | `--help` / `-h` | 列出 flags，exit 0 | 有帮助文本 | ✅ Tier-0 |
 | A3 | `--help` 关键 flags（`-p`、`--model`、`--output-format`、`--resume`、`--dangerously-skip-permissions`） | 均出现 | 均出现 | ✅ Tier-1 |
 | A4 | help 文本完整逐字对比 | — | 差异较大（flag 集合本身不全） | ⏳ 差距清单见 §D |
 | A5 | `-p` 无 prompt | 报错、exit ≠ 0 | 报错 `no prompt provided` | ✅ Tier-0 |
-| A6 | 未知子命令 | **exit 0**，把未知词当 prompt 交给 LLM 回答（实测 2026-08-30） | cobra 报错 exit 1 | ❌ 行为语义不一致（见下） |
+| A6 | 未知子命令 | **exit 0**，把未知词当 prompt 交给 LLM 回答（实测 2026-08-30） | cobra 报错 exit 1 | ⛔ `waived: 未知参数走 LLM 属于 oracle 的交互设计决策，重写版保持 cobra 传统语义更可预测 2026-08-30`（负责人确认） |
 
-## A7. 未知参数语义（2026-08-30 实测发现的行为差异）
+## A7. 未知参数语义（2026-08-30 实测发现的行为差异）——已 waive
 
 oracle（TS 版）对**未知词**的处理不是"报错退出"，而是**当作 prompt** 走 LLM：
 
@@ -32,13 +32,19 @@ $ claude definitely-not-a-command
 
 Go 版是标准 cobra 行为：`Error: unknown command ...` exit 1。
 
-**决策待定**：这是"bug 还是对齐目标"？oracle 行为依赖 LLM（会消耗 token、
-且输出不确定），Go 行为是传统 CLI 语义。**建议保持 Go 现状并在此行标注
-`waived: 未知参数走 LLM 属于 oracle 的交互设计决策，重写版保持 cobra
-传统语义更可预测 2026-08-30`**——但这是产品决策，需负责人确认。
+**决策（2026-08-30，负责人确认）**：**waive，保持 Go 现状**。理由：
+oracle 行为依赖 LLM（每次敲错命令都消耗 token、输出不确定），cobra 的
+传统 CLI 语义更可预测。落地方式：
+
+- A6 行标注 `waived`（见上表），记录保留；
+- parity 测试不再对齐两版（`unknown-subcommand` 用例从 Tier-0 移除）；
+- 新增 `TestTargetUnknownSubcommandError`（无 oracle 也跑）**钉住 Go 侧
+  契约**：未知子命令必须 exit ≠ 0 且输出含 unknown 诊断——防止未来
+  有人"顺手对齐"把 waive 决策无声推翻。
 
 同理 A1 版本格式：oracle 是 `2.1.251 (Claude Code)`，Go 是 `claude 0.1.0`。
-建议 Go 侧改为 `<version> (Claude Code)` 格式对齐（小改动）。
+**已对齐（2026-08-30）**：Go 侧 `--version` 改为 `<semver> (Claude Code)`
+格式（`bootstrap.appVersionString()`），parity Tier-2 恢复通过。
 
 ## B. 子命令树
 

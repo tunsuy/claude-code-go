@@ -2,7 +2,7 @@
 package: config
 import_path: internal/config
 layer: infra
-generated_at: 2026-08-29T07:13:26Z
+generated_at: 2026-08-30T01:47:48Z
 source_files: [loader.go, settings.go, writer.go]
 ---
 

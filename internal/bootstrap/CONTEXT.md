@@ -2,7 +2,7 @@
 package: bootstrap
 import_path: internal/bootstrap
 layer: cli
-generated_at: 2026-08-29T07:13:26Z
+generated_at: 2026-08-30T01:47:48Z
 source_files: [auth.go, bootstrap.go, mcp.go, misc.go, plugin.go, root.go, run.go, session.go, tools.go, wire.go]
 ---
 
@@ -34,3 +34,14 @@ source_files: [auth.go, bootstrap.go, mcp.go, misc.go, plugin.go, root.go, run.g
 
 <!-- AUTO-GENERATED ABOVE — DO NOT EDIT -->
 <!-- MANUAL NOTES BELOW — preserved across regeneration -->
+
+## Design Notes
+
+- **版本输出格式对齐 oracle（2026-08-30，parity A1）**：`--version` 输出从
+  `claude 0.1.0` 改为 `0.1.0 (Claude Code)`。为什么：原版 TS 的格式是
+  `<semver> (Claude Code)`（无二进制名前缀、带产品后缀），parity Tier-2
+  对齐要求两版格式一致（版本号本身允许不同，由测试归一化处理）。
+  `appVersionString()` 单独成函数而非内联，是因为 doctor / update 等
+  子命令展示版本时未来可复用同一格式，且 ldflags 注入的 `appVersion`
+  保持裸 semver 语义（供 User-Agent 等机器可读场景），展示格式只发生在
+  这一个出口。

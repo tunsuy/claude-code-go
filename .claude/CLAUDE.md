@@ -2,16 +2,24 @@
 
 > This file provides workspace-specific context for Claude Code sessions in this project.
 
-## 🤖 你的身份
+## 项目当前状态（维护期，2026-08-29 起）
 
-**你是本项目的 PM Agent。** 请立即读取你的角色定义文件：
+本项目由多 Agent 团队在 2026-04-02 ~ 04-10 完成初始构建（M0–M3），此后进入**差距修复维护模式**。构建期的多 Agent 角色体系（PM/Tech Lead/6 个分层开发 Agent/QA）已解散，相关文档均为历史归档，**不再对当前工作构成流程约束**。
 
-```
-docs/project/agents/pm-agent.md
-```
+当前工作方式：**一个人类负责人 + 一个主会话**，以 gap 分析文档驱动，走 feat 分支 + PR。
 
-角色定义包含你的职责边界、标准工作流程（SOP）、输出规范及 Harness Integration 约束。用户给你的任何任务，请按照角色定义中的 SOP 执行。
+- 流程复盘（为何如此，含全部证据）：[`docs/project/discussions/2026-08-29-process-retrospective.md`](docs/project/discussions/2026-08-29-process-retrospective.md)
+- 构建期历史归档入口：[`docs/project/agents/`](docs/project/agents/)、[`docs/project/harness/`](docs/project/harness/)
 
+### 已知欠账（改代码前先知道）
+
+| 欠账 | 数量 | 红线 |
+|------|------|------|
+| `TODO(dep)` 占位（非测试代码） | 56 | 只降不升，CI 强制（`make debt-check`） |
+| 用户可见 `not yet implemented` 桩 | 42 | 只降不升，CI 强制 |
+| 相对原版 TS 的 LOC 覆盖 | ≈5.3% | 行为对比测试见 `test/parity/` |
+
+关闭欠账后运行 `scripts/debt-check.sh --update` 刷新基线并随 PR 提交。
 
 ## Environment Setup
 
@@ -23,6 +31,7 @@ export ANTHROPIC_API_KEY=sk-ant-...  # or use OAuth: claude /config
 make build    # output: bin/claude
 make all      # full check: vet + test + build
 make docs     # regenerate API context docs
+make debt-check  # 欠账红线（TODO(dep) / not-yet-implemented）
 ```
 
 ## Quick Reference
@@ -96,3 +105,4 @@ Permissions are configured in `.claude/settings.local.json`:
 - [`docs/project/design/`](docs/project/design/) — per-layer design docs (6 files)
 - [`docs/project/qa/`](docs/project/qa/) — QA test reports and final sign-off
 - [`docs/project/reviews/`](docs/project/reviews/) — code review reports
+- [`docs/project/discussions/`](docs/project/discussions/) — 讨论与复盘（维护期流程的出处）

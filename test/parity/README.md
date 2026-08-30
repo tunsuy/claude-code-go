@@ -58,5 +58,19 @@ not-yet-implemented 桩只降不升，parity 用例保证**降下来的桩对齐
   CI 中常规 `go test ./...` 只编译本包，不含 oracle 时全部 SKIP，不会红；
 - TUI 交互行为（alt-screen、键位）暂不对比，首批只覆盖非交互路径；
 - 版本号、绝对路径、时间戳等不稳定输出由 `normalizeOutput` 归一化后比较；
-- **本机未安装 Go 工具链时无法本地验证编译**——本目录代码需由 CI 首跑验证
-  （2026-08-29 记录：开发机 `go` 不在 PATH）。
+- ~~本机未安装 Go 工具链时无法本地验证编译~~ **已解决**（2026-08-30）：
+  开发机 Go 在 `/Users/marshal/.local/go/bin/go`（go1.24.4，不在默认 PATH），
+  `export PATH="/Users/marshal/.local/go/bin:$PATH"` 后可本地 build + 跑 parity；
+  本机 oracle 为 `~/.local/lib/nodejs/bin/claude`（2.1.251）。首次本地全量
+  实测：13 个子测试 11 过 2 挂（A1 版本格式、A6 未知子命令语义——均为
+  记录在案的行为缺口，见 cases.md），编译与骨架验证通过。
+
+## 首次实测记录（2026-08-30，oracle 2.1.251）
+
+- 命令：`CCG_PARITY_ORACLE=~/.local/lib/nodejs/bin/claude
+  CCG_PARITY_TARGET=$PWD/bin/claude go test ./test/parity/... -v`
+- 结果：**11 PASS / 2 FAIL**（FAIL = cases.md 中 A1、A6 两条已实测差距，
+  属预期——「差异即文档」，测试正确地暴露了真实缺口）；
+- 注意：oracle 被测时会继承测试进程的环境变量与凭据——**未知子命令用例
+  会真实发起 LLM 会话**（消耗 API 额度）。本地跑 unknown-subcommand 用例
+  时请知晓这一点；CI 无 oracle，不受影响。

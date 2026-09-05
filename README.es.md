@@ -50,6 +50,19 @@ Este proyecto es una **reimplementación completa en Go de [Claude Code](https:/
 
 > **🤖 Construido completamente por agentes de IA — cero código de producción escrito por humanos.** La construcción inicial (abril de 2026) fue producida por 9 agentes de IA Claude colaborando durante 9 días; desde agosto de 2026 una única sesión principal de Claude mantiene el proyecto contra un registro de brechas de paridad de comportamiento, con un responsable humano que revisa y fusiona. [Historia completa ↓](#construido-completamente-por-agentes-de-ia)
 
+## ❤️ Patrocinadores
+
+> [¿Quieres aparecer aquí?](https://github.com/tunsuy)
+
+<table>
+  <tr>
+    <td width="180"><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075"><img src="assets/sponsors/orcarouter.png" alt="OrcaRouter" width="150"></a></td>
+    <td><strong><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075">OrcaRouter</a></strong> — una puerta de enlace, todos los modelos. OrcaRouter enruta cada petición al modelo más adecuado entre más de 200 (de frontera y de código abierto), a precios de proveedor, con failover y registro de peticiones. Es compatible con OpenAI y se conecta directamente a Claude Code Go — la configuración exacta está en la sección de <a href="#proveedores-de-api">Proveedores de API</a>.</td>
+  </tr>
+</table>
+
+*Los enlaces de esta sección pueden ser enlaces de referido.*
+
 ## Características
 
 - **TUI interactiva** — Interfaz de terminal completa construida con [Bubble Tea](https://github.com/charmbracelet/bubbletea), con temas oscuro/claro

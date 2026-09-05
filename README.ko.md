@@ -50,6 +50,19 @@
 
 > **🤖 AI 에이전트로 완전히 구축 — 인간이 작성한 프로덕션 코드가 단 한 줄도 없습니다.** 초기 빌드(2026년 4월)는 9개의 Claude AI 에이전트가 9일간 협력하여 완성했으며, 2026년 8월부터는 한 개의 메인 Claude 세션이 행동 동등성 갭 원장에 따라 프로젝트를 유지 보수하고, 한 명의 인간 담당자가 리뷰하고 병합합니다. [전체 이야기 ↓](#ai-에이전트로-완전히-구축)
 
+## ❤️ 스폰서
+
+> [여기에 게시되길 원하시나요?](https://github.com/tunsuy)
+
+<table>
+  <tr>
+    <td width="180"><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075"><img src="assets/sponsors/orcarouter.png" alt="OrcaRouter" width="150"></a></td>
+    <td><strong><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075">OrcaRouter</a></strong> — 하나의 게이트웨이로 모든 모델을. OrcaRouter는 각 요청을 200개 이상의 모델(프론티어 및 오픈소스) 중 가장 적합한 모델로 라우팅하며, 요금은 프로바이더 가격 그대로이고 페일오버와 요청 로그도 제공합니다. OpenAI 호환이므로 Claude Code Go에 바로 연결됩니다 — 구체적인 설정은 <a href="#api-프로바이더">API 프로바이더</a> 섹션을 참고하세요.</td>
+  </tr>
+</table>
+
+*이 섹션의 링크는 추천인(referral) 링크일 수 있습니다.*
+
 ## 기능
 
 - **대화형 TUI** — [Bubble Tea](https://github.com/charmbracelet/bubbletea)로 구축된 완전한 터미널 UI, 다크/라이트 테마 지원

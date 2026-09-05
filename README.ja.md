@@ -52,6 +52,19 @@
 
 ---
 
+## ❤️ スポンサー
+
+> [ここに掲載したい方は](https://github.com/tunsuy)
+
+<table>
+  <tr>
+    <td width="180"><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075"><img src="assets/sponsors/orcarouter.png" alt="OrcaRouter" width="150"></a></td>
+    <td><strong><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075">OrcaRouter</a></strong> — 1 つのゲートウェイで、すべてのモデルへ。OrcaRouter は各リクエストを 200 以上のモデル（フロンティアおよびオープンソース）から最適なものへルーティングし、料金は各プロバイダー価格のまま、フェイルオーバーとリクエストログも備えます。OpenAI 互換のため Claude Code Go にそのまま接続できます — 具体的な設定は <a href="#api-プロバイダー">API プロバイダー</a> を参照してください。</td>
+  </tr>
+</table>
+
+*このセクションのリンクはリファラルリンクの場合があります。*
+
 ## 機能
 
 - **インタラクティブ TUI** — [Bubble Tea](https://github.com/charmbracelet/bubbletea) で構築されたフル機能のターミナル UI、ダーク/ライトテーマ対応

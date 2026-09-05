@@ -70,7 +70,7 @@ func (mcpPoolChecker) Check(ctx context.Context, name string, e config.MCPServer
 	defer cancel()
 
 	pool := mcp.NewPool()
-	defer pool.Disconnect(name)
+	defer func() { _ = pool.Disconnect(name) }()
 	if err := pool.Connect(ctx, name, cfg); err != nil {
 		return mcpHealthResult{Issue: translateMCPConnectError(err, e)}
 	}

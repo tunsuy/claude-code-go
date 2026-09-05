@@ -7,7 +7,7 @@
 
 - ✅ 已纳入 `parity_test.go` 断言
 - ⏳ 已识别、尚未写断言（下批）
-- 🚧 Go 侧为 `not yet implemented` 桩（与 debt 台账联动，共 42 处）
+- 🚧 Go 侧为 `not yet implemented` 桩（与 debt 台账联动，B2/B5 落地后共 27 处，2026-09-05）
 - 🧪 需要 LLM/网络，待录制回放机制
 
 ## A. 版本与帮助（无依赖路径）
@@ -51,10 +51,10 @@ oracle 行为依赖 LLM（每次敲错命令都消耗 token、输出不确定）
 | # | 用例 | oracle 行为 | Go 现状 | 状态 |
 |---|------|------------|---------|------|
 | B1 | `mcp --help` | 存在，exit 0 | 存在 | ✅ Tier-0/1 |
-| B2 | `mcp add/remove/list/get/add-json/add-from-claude-desktop/reset-project-choices` | 真实功能 | **8 个全部 `not yet implemented` 桩** | 🚧 |
+| B2 | `mcp add/remove/list/get/add-json/add-from-claude-desktop/reset-project-choices` | 真实功能 | 已实现（7 个命令，字节级钉在 `internal/bootstrap/mcp_*_test.go`，对 oracle v2.1.261 captures） | ✅ 2026-09-05 |
 | B3 | `mcp serve` | 启动 MCP server | 有实现（未对比） | ⏳ |
 | B4 | `plugin --help` | 存在，exit 0 | 存在 | ✅ Tier-0/1 |
-| B5 | `plugin list/install/uninstall/enable/disable/update/validate/marketplace` | 真实功能 | **8 个全部 `not yet implemented` 桩** | 🚧 |
+| B5 | `plugin list/install/uninstall/enable/disable/update/validate/marketplace` | 真实功能 | 已实现（8 个命令 + marketplace 子树，字节级钉在 `internal/bootstrap/plugin_*_test.go`） | ✅ 2026-09-05 |
 | B6 | `auth login/logout/status` | OAuth 流程 | login/logout/status 已实现 | ⏳ 对比 login 的设备码输出格式 |
 | B7 | `doctor` | 环境体检（逐项检查） | 打印最小报告（Go runtime/version），**无逐项检查** | ⏳ |
 | B8 | `update` | 自更新；`update --check` 查版本 | `update` 桩；`--check` 半实现（打印当前版本 + "not yet implemented"） | 🚧 |
@@ -91,12 +91,12 @@ oracle 行为依赖 LLM（每次敲错命令都消耗 token、输出不确定）
 | 位置 | oracle 有 | Go 现状 |
 |------|-----------|---------|
 | `mcp` | `login <name>` / `logout <name>`（MCP OAuth） | 无 |
-| `plugin` | `details <name>` | 无 |
-| `plugin` | `eval`（插件 eval 套件） | 无 |
-| `plugin` | `init\|new`（脚手架） | 无 |
-| `plugin` | `prune\|autoremove` | 无 |
-| `plugin` | `tag` | 无 |
-| `plugin marketplace` | `add` / `list` / `remove\|rm` / `update` 整棵子树 | Go 只有 `marketplace` 桩（无子命令） |
+| `plugin` | `details <name>` | 无 — `waived: B5 周期未实现，从帮助行与建议名中整体移除 2026-09-05` |
+| `plugin` | `eval`（插件 eval 套件） | 无 — `waived: 同上 2026-09-05` |
+| `plugin` | `init\|new`（脚手架） | 无 — `waived: 同上 2026-09-05` |
+| `plugin` | `prune\|autoremove` | 无 — `waived: 同上（uninstall 留 .orphaned_at 标记，清理语义留给将来） 2026-09-05` |
+| `plugin` | `tag` | 无 — `waived: 同上 2026-09-05` |
+| `plugin marketplace` | `add` / `list` / `remove\|rm` / `update` 整棵子树 | 已实现（2026-09-05，B5 一并落地；远程源见 §B12 分歧） |
 | `agents` | oracle 无二级子命令（options 驱动） | Go 是 `list/add/remove` 三桩，**形态不一致** |
 | `update` | 别名 `upgrade` | 无别名 |
 
@@ -107,7 +107,42 @@ oracle 行为依赖 LLM（每次敲错命令都消耗 token、输出不确定）
   **plugin 生态**（marketplace 子树 + details/eval/init/prune/tag）。
 - `agents` 的形态差异（oracle 用 options，Go 用子命令桩）提示关闭 B9 时
   **不要照 Go 现状实现**，先对齐 oracle 形态。
-- 加上 B2/B5 的 16 个桩：行为缺口合计 **11 顶层 + 9 二级 + 16 桩 = 36 处**。
+- 加上 B2/B5 的桩：行为缺口合计 11 顶层 + 9 二级 + 桩（2026-08-30 快照）。
+- **2026-09-05 更新**：B2/B5 落地关闭 15 个桩（勘误：原记 16，B2 实为 7 个命令
+  而非 8 个；42→27 与 debt 基线一致），marketplace 子树一并实现，
+  `details/eval/init/prune/tag` 5 个二级缺口 waive（见上表）。
+  剩余二级缺口：`mcp login/logout`、`agents` 形态、`update` 别名 = 3 处。
+
+## B12. B2/B5 落地记录（2026-09-05，oracle = claude v2.1.261）
+
+**范围**：`mcp` 7 命令 + `plugin` 8 命令 + `plugin marketplace` 子树，
+全部字节级钉在 `internal/bootstrap/{mcp,plugin}_*_test.go`（测试内注释标注
+对应 capture 编号）。断言放在单测而非 `parity_test.go`：这些命令需要
+HOME/项目目录注入与固定时间戳，双二进制 parity 骨架给不了。
+
+**已记录的分歧**（决策：诚实报错优于隐形桩）：
+
+1. **远程 marketplace 源**（`owner/repo`、`https://…`、`npm:`、`--claudeai`）
+   未实现 → 明确报错 "not supported by this build"，仅支持本地路径。
+2. **`plugin details/eval/init/prune/tag`** 从帮助行与建议名中整体移除
+   （未实现的命令不展示，避免用户踩桩）。
+3. **JSON 解析错误措辞**：Go 与 JS 运行时措辞不同
+   （`invalid character 'o' in literal null…` vs `Unexpected identifier "no"`），
+   外层 `Invalid JSON syntax: JSON Parse error: …` 格式一致。文档化接受。
+4. **hooks modules 文件**只做存在性检查，不按 JS 语义加载。
+5. **`--sparse`/`--config`/`--keep-data`/`-y`** 接受但忽略
+   （其门控的确认交互只在 TTY 下触发，本实现无此路径）。
+
+**未验证边缘**（无 oracle capture，形状为合理推断，已作为回归测试钉住，
+测试内有 `Unverified edge` 注释）：
+
+- `plugin validate` 不存在路径 / 无 manifest 目录的错误形状；
+- `marketplace remove --scope` 只删声明、保留 registry 记录；
+- `marketplace update`（update-all）零市场时的失败文案；
+- `marketplace add <file>` 的 `sourceType: "file"` 分类；
+- hooks.json `hooks` 键非对象时的错误；
+- `plugin disable --all` 跨 scope 的遍历顺序；
+- `github.com/owner/repo`（无 scheme）→ 归入 Path does not exist 而非远程源。
 
 ## C. headless 输出契约
 
@@ -121,7 +156,8 @@ oracle 行为依赖 LLM（每次敲错命令都消耗 token、输出不确定）
 ## D. 首要差距（从用例反推）
 
 1. ~~**B11 子命令盘点**~~：✅ 已完成（2026-08-30，见 §B11），产出 11 个顶层 + 9 个二级缺口。
-2. **B2/B5 的 16 个桩**：占全部 42 桩的 38%，且全部用户直接可见。建议 4 的「了断」（实现或摘除注册）从这里下手性价比最高。
+2. ~~**B2/B5 的 16 个桩**~~：✅ 已完成（2026-09-05，实为 15 桩，见 §B12）——
+   全部实现并字节级钉测，42 桩 → 27 桩，debt 基线已随 PR 刷新。
 3. **后台会话体系整体决策**（§B11 盘点结论）：`--bg`/`attach`/`logs`/`respawn`/`rm` 五件套，做或整体 waive，不留半吊子。
 4. **A4 flag 集合差距**：Go 侧 root flags ≈35 个，oracle 更多（待精确盘点），差距本身即清单。
 

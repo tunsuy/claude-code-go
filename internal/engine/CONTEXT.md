@@ -2,7 +2,7 @@
 package: engine
 import_path: internal/engine
 layer: core
-generated_at: 2026-08-30T01:47:48Z
+generated_at: 2026-09-05T09:11:12Z
 source_files: [budget.go, cache_params.go, engine.go, forked_agent.go, msg.go, orchestration.go, query.go, stop_hooks.go]
 ---
 

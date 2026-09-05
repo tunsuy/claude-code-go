@@ -28,7 +28,7 @@ if [[ "${1:-}" == "--update" ]]; then
 fi
 
 if [[ ! -f "$BASELINE_FILE" ]]; then
-  echo "错误: 找不到 $BASELINE_FILE（应随仓库提交）。请先运行 scripts/debt-check.sh --update 生成。"
+  echo "错误: 找不到 ${BASELINE_FILE}（应随仓库提交）。请先运行 scripts/debt-check.sh --update 生成。"
   exit 1
 fi
 
@@ -45,7 +45,7 @@ if (( count > TODO_DEP_BASELINE )); then
   echo "   如确需新增，请在 PR 说明中给出回填 issue 编号，并同步更新 scripts/debt-baseline.txt。"
   fail=1
 elif (( count < TODO_DEP_BASELINE )); then
-  echo "✅ TODO(dep) $count（基线 $TODO_DEP_BASELINE，减少了 $((TODO_DEP_BASELINE - count)) 个）"
+  echo "✅ TODO(dep) ${count}（基线 ${TODO_DEP_BASELINE}，减少了 $((TODO_DEP_BASELINE - count)) 个）"
   echo "   提示: 请运行 scripts/debt-check.sh --update 刷新基线后一并提交。"
 fi
 
@@ -55,7 +55,7 @@ if (( stubs > NOT_IMPLEMENTED_BASELINE )); then
   grep -rn "not yet implemented" --include="*.go" ./internal ./pkg ./cmd 2>/dev/null | grep -v "_test.go" | cut -d: -f1 | sort -u | head -20
   fail=1
 elif (( stubs < NOT_IMPLEMENTED_BASELINE )); then
-  echo "✅ not-yet-implemented 桩 $stubs（基线 $NOT_IMPLEMENTED_BASELINE，减少了 $((NOT_IMPLEMENTED_BASELINE - stubs)) 个）"
+  echo "✅ not-yet-implemented 桩 ${stubs}（基线 ${NOT_IMPLEMENTED_BASELINE}，减少了 $((NOT_IMPLEMENTED_BASELINE - stubs)) 个）"
   echo "   提示: 请运行 scripts/debt-check.sh --update 刷新基线后一并提交。"
 fi
 

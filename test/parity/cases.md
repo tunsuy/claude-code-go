@@ -17,7 +17,7 @@
 | A1 | `--version` / `-v` | 打印 `<semver> (Claude Code)`，exit 0 | 打印 `<semver> (Claude Code)`（2026-08-30 已对齐，原为 `claude 0.1.0`） | ✅ Tier-2 |
 | A2 | `--help` / `-h` | 列出 flags，exit 0 | 有帮助文本 | ✅ Tier-0 |
 | A3 | `--help` 关键 flags（`-p`、`--model`、`--output-format`、`--resume`、`--dangerously-skip-permissions`） | 均出现 | 均出现 | ✅ Tier-1 |
-| A4 | help 文本完整逐字对比 | — | 差异较大（flag 集合本身不全） | ⏳ 差距清单见 §D |
+| A4 | help 文本完整逐字对比 | — | 差异较大（flag 集合本身不全） | ✅ 已盘点（见 §A4，2026-09-05） |
 | A5 | `-p` 无 prompt | 报错、exit ≠ 0 | 报错 `no prompt provided` | ✅ Tier-0 |
 | A6 | 未知子命令 | **exit 0**，把未知词当 prompt 交给 LLM 回答（实测 2026-08-30） | cobra 报错 exit 1 | ⛔ `waived: 未知参数走 LLM 属于 oracle 的交互设计决策，重写版保持 cobra 传统语义更可预测 2026-08-30`（负责人确认） |
 
@@ -45,6 +45,47 @@ oracle 行为依赖 LLM（每次敲错命令都消耗 token、输出不确定）
 同理 A1 版本格式：oracle 是 `2.1.251 (Claude Code)`，Go 是 `claude 0.1.0`。
 **已对齐（2026-08-30）**：Go 侧 `--version` 改为 `<semver> (Claude Code)`
 格式（`bootstrap.appVersionString()`），parity Tier-2 恢复通过。
+
+## A4. root flag 集合精确盘点（2026-09-05，oracle = claude v2.1.261）
+
+方法：双方 `--help` 输出提取旗标名（oracle 别名行 `-c, --continue` /
+`--allowedTools, --allowed-tools` 需完整展开），再用运行时探针验证隐藏
+旗标（`--version` 短路，不触发 LLM，clean-env）。
+
+**精确数字**：
+
+| | oracle v2.1.261 | Go（main@1110818） |
+|---|---|---|
+| help 可见长旗标 | 68 个名字（65 特性 + 3 别名拼写） | 33 |
+| 短旗标 | 8（-c -d -h -n -p -r -v -w） | 6（-c -h -n -p -r -w，缺 -d -v） |
+| 运行时隐藏旗标（help 不列） | `--max-turns`、`--thinking`、`--debug-to-stderr`（均实测接受） | `--version`（cobra 自动）、`--debug-to-stderr`（MarkHidden） |
+
+**缺口 = 36 个长旗标 + 2 个短旗标**（oracle 可见、Go 完全没有），按主题分组：
+
+| 主题 | 旗标 | 备注 |
+|------|------|------|
+| 别名拼写 | `--allowedTools`、`--disallowedTools` | Go 仅有 kebab-case；oracle 两种拼写都接受 |
+| 后台/云会话（8） | `--bg, --background`、`--cloud`、`--environment`、`--teleport`、`--remote-control`、`--remote-control-session-name-prefix`、`--from-pr` | 与 §B11 五件套绑定（`--bg` 打印的 id 供 `attach`/`logs`/`rm` 用），整体决策见 §D-3 |
+| Chrome 集成（2） | `--chrome`、`--no-chrome` | 低优先 |
+| headless I/O（7） | `--input-format`、`--include-partial-messages`、`--replay-user-messages`、`--include-hook-events`、`--forward-subagent-text`、`--permission-prompts`、`--json-schema` | 与 §C stream-json 契约同族，应随 C2–C4 一起做 |
+| 系统提示/技能（5） | `--agent`、`--exclude-dynamic-system-prompt-sections`、`--system-prompt-snapshot`、`--prompt-suggestions`、`--disable-slash-commands` | 中优先 |
+| MCP/插件（3） | `--strict-mcp-config`、`--plugin-dir`、`--plugin-url` | `--strict-mcp-config` 与 `--mcp-config`（Go 已有）配对，微小 |
+| 企业/API（3） | `--betas`、`--restricted`、`--safe-mode` | 低优先（企业场景） |
+| 界面/无障碍（4） | `--ax-screen-reader`、`--autocompact`、`--brief`、`--tools` | `--tools` 为工具白名单，与 `--allowedTools` 语义近 |
+| 文件（1） | `--file` | 云文件下载，依赖 `--cloud` 体系 |
+| 权限（1） | `--allow-dangerously-skip-permissions` | 与 Go 已有的 `--dangerously-skip-permissions` 配对：使 bypass 可选而非默认 |
+| 短旗标（2） | `-d`（debug）、`-v`（version） | 微小补齐 |
+
+**Go 多余可见旗标：0 个**。原以为 Go 独有的 `--max-turns`、`--thinking`
+均为 oracle 隐藏旗标（实测运行时接受）；两者仅可见性不同（Go 更透明）。
+`--thinking` 值域双方一致（`enabled|adaptive|disabled`）。
+
+**行为一致点（实测）**：未知旗标 + `--version` 双方都打印版本 exit 0
+（Go 靠 `HandleFastPath` 原始 argv 扫描，oracle commander 同样先执行
+version action）——无分歧，无需对齐。
+
+**建议落地顺序**：别名拼写与短旗标（4 项，微小）→ `--strict-mcp-config`
+→ headless I/O 族（与 §C 统一设计）→ 系统提示族 → 其余随五件套决策。
 
 ## B. 子命令树
 
@@ -151,7 +192,7 @@ HOME/项目目录注入与固定时间戳，双二进制 parity 骨架给不了�
 | C1 | `-p --output-format json` 单轮 | 单个 JSON 对象，`type: "result"` | 已实现（见 test/integration） | 🧪 |
 | C2 | `-p --output-format stream-json` | NDJSON 事件流 | 已实现 | 🧪 |
 | C3 | 工具调用轮次的 stream-json 事件序 | 事件类型集合与顺序 | 部分 | 🧪 |
-| C4 | `--max-turns` 达上限时的退出行为 | 明确退出码/结果类型 | 未对比 | 🧪 |
+| C4 | `--max-turns` 达上限时的退出行为 | 明确退出码/结果类型（`--max-turns` 为 oracle **隐藏旗标**，help 不列但运行时接受，实测 2026-09-05） | Go 可见旗标，行为未对比 | 🧪 |
 
 ## D. 首要差距（从用例反推）
 
@@ -159,7 +200,9 @@ HOME/项目目录注入与固定时间戳，双二进制 parity 骨架给不了�
 2. ~~**B2/B5 的 16 个桩**~~：✅ 已完成（2026-09-05，实为 15 桩，见 §B12）——
    全部实现并字节级钉测，42 桩 → 27 桩，debt 基线已随 PR 刷新。
 3. **后台会话体系整体决策**（§B11 盘点结论）：`--bg`/`attach`/`logs`/`respawn`/`rm` 五件套，做或整体 waive，不留半吊子。
-4. **A4 flag 集合差距**：Go 侧 root flags ≈35 个，oracle 更多（待精确盘点），差距本身即清单。
+4. ~~**A4 flag 集合差距**~~：✅ 已完成精确盘点（2026-09-05，见 §A4）——
+   68 vs 33，36 个缺口按主题分组并给出落地顺序；Go 侧无多余可见旗标，
+   `--max-turns`/`--thinking` 实为 oracle 隐藏旗标（仅可见性差异）。
 
 ## 维护规则
 

@@ -46,33 +46,9 @@
 
 ## What is this?
 
-This project is a **complete Go reimplementation of [Claude Code](https://claude.ai/code)** — Anthropic's official TypeScript CLI — rewritten module-by-module in Go, covering all core features: TUI, tool use, permission system, multi-agent coordination, MCP protocol, session management, and more.
+This project is a **complete Go reimplementation of [Claude Code](https://claude.ai/code)** — Anthropic's official TypeScript CLI — rewritten module-by-module in Go, covering all core features: TUI, tool use, permission system, multi-agent coordination, MCP protocol, session management, and more. It understands your codebase, runs tools, and helps you write, review, and refactor code through natural conversation.
 
-### Built entirely by AI agents — zero human-written code
-
-> **No human wrote a single line of production code in this repository.**
-
-The entire project — architecture design, detailed design docs, parallel implementation, code review, QA, and integration testing — was produced by **9 Claude AI agents** collaborating in a structured multi-agent workflow:
-
-```
-PM Agent          →  project plan, milestones, task scheduling
-Tech Lead Agent   →  architecture design, design-doc review, code review
-Agent-Infra       →  infrastructure layer (types, config, state, session)
-Agent-Services    →  services layer (API client, OAuth, MCP, compaction)
-Agent-Core        →  core engine (LLM loop, tool dispatch, coordinator)
-Agent-Tools       →  tools layer (file, shell, search, web — 18 tools at build time)
-Agent-TUI         →  UI layer (Bubble Tea MVU, themes, Vim mode)
-Agent-CLI         →  entry layer (Cobra CLI, DI, bootstrap phases)
-QA Agent          →  test strategy, per-layer acceptance, integration tests
-```
-
-Each agent worked on an isolated Git Worktree branch in parallel, collaborating through the shared codebase, design docs, and QA reports. The result: ~**7,000 lines of production code + a full test suite in 9 days**, with `go test -race ./...` passing.
-
-This is a real-world demonstration that a non-trivial, multi-layer Go application can be fully designed, implemented, reviewed, and shipped by AI agents collaborating asynchronously. Since August 2026 the project is maintained in the same spirit — a single main Claude session working through a behavior-parity gap ledger against the original TypeScript CLI, with one human owner reviewing and merging. Still zero human-written production code (~33,000 lines today). The complete decision trail lives in [`docs/project/`](docs/project/).
-
----
-
-A Go implementation of [Claude Code](https://claude.ai/code) — an agentic AI coding assistant that lives in your terminal. Claude Code understands your codebase, runs tools, and helps you write, review, and refactor code through natural conversation.
+> **🤖 Built entirely by AI agents — zero human-written production code.** The initial build (April 2026) was produced by 9 Claude AI agents collaborating in 9 days; since August 2026 a single main Claude session maintains the project against a behavior-parity ledger, with one human owner reviewing and merging. [Full story ↓](#built-entirely-by-ai-agents)
 
 ## Features
 
@@ -317,6 +293,28 @@ Type `/` in the input to see all available commands:
 | `/init` | Generate a CLAUDE.md for this project |
 
 `/config`, `/mcp`, `/resume`, and `/terminal-setup` are registered but not yet implemented — use the CLI subcommands above for MCP management in the meantime.
+
+## Built entirely by AI agents
+
+> **No human wrote a single line of production code in this repository.**
+
+The entire project — architecture design, detailed design docs, parallel implementation, code review, QA, and integration testing — was produced by **9 Claude AI agents** collaborating in a structured multi-agent workflow:
+
+```
+PM Agent          →  project plan, milestones, task scheduling
+Tech Lead Agent   →  architecture design, design-doc review, code review
+Agent-Infra       →  infrastructure layer (types, config, state, session)
+Agent-Services    →  services layer (API client, OAuth, MCP, compaction)
+Agent-Core        →  core engine (LLM loop, tool dispatch, coordinator)
+Agent-Tools       →  tools layer (file, shell, search, web — 18 tools at build time)
+Agent-TUI         →  UI layer (Bubble Tea MVU, themes, Vim mode)
+Agent-CLI         →  entry layer (Cobra CLI, DI, bootstrap phases)
+QA Agent          →  test strategy, per-layer acceptance, integration tests
+```
+
+Each agent worked on an isolated Git Worktree branch in parallel, collaborating through the shared codebase, design docs, and QA reports. The result: ~**7,000 lines of production code + a full test suite in 9 days**, with `go test -race ./...` passing.
+
+This is a real-world demonstration that a non-trivial, multi-layer Go application can be fully designed, implemented, reviewed, and shipped by AI agents collaborating asynchronously. Since August 2026 the project is maintained in the same spirit — a single main Claude session working through a behavior-parity gap ledger against the original TypeScript CLI, with one human owner reviewing and merging. Still zero human-written production code (~33,000 lines today). The complete decision trail lives in [`docs/project/`](docs/project/).
 
 ## Development
 

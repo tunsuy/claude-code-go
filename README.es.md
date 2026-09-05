@@ -48,29 +48,7 @@
 
 Este proyecto es una **reimplementación completa en Go de [Claude Code](https://claude.ai/code)** — el CLI oficial de TypeScript de Anthropic — reescrito módulo por módulo en Go, cubriendo todas las características principales: TUI, uso de herramientas, sistema de permisos, coordinación multi-agente, protocolo MCP, gestión de sesiones y más.
 
-### Construido completamente por agentes de IA — cero código escrito por humanos
-
-> **Ningún humano escribió una sola línea de código de producción en este repositorio.**
-
-Todo el proyecto — diseño de arquitectura, documentos de diseño detallados, implementación paralela, revisión de código, QA y pruebas de integración — fue producido por **9 agentes de IA Claude** colaborando en un flujo de trabajo multi-agente estructurado:
-
-```
-Agente PM          →  plan del proyecto, hitos, programación de tareas
-Agente Tech Lead   →  diseño de arquitectura, revisión de documentos de diseño, revisión de código
-Agent-Infra        →  capa de infraestructura (tipos, configuración, estado, sesión)
-Agent-Services     →  capa de servicios (cliente API, OAuth, MCP, compactación)
-Agent-Core         →  motor central (bucle LLM, despacho de herramientas, coordinador)
-Agent-Tools        →  capa de herramientas (archivo, shell, búsqueda, web — 18 herramientas al momento de la construcción)
-Agent-TUI          →  capa de UI (Bubble Tea MVU, temas, modo Vim)
-Agent-CLI          →  capa de entrada (Cobra CLI, DI, fases de bootstrap)
-Agente QA          →  estrategia de pruebas, aceptación por capa, pruebas de integración
-```
-
-Resultado: ~**7,000 líneas de código de producción + suite de pruebas completa en 9 días**, con `go test -race ./...` pasando.
-
-Esta es una demostración real de que una aplicación Go no trivial y multicapa puede ser diseñada, implementada, revisada y entregada en su totalidad por agentes de IA que colaboran de forma asíncrona. Desde agosto de 2026 el proyecto se mantiene con el mismo espíritu — una única sesión principal de Claude trabajando sobre un registro de brechas de paridad de comportamiento frente al CLI original en TypeScript, con un responsable humano que revisa y fusiona. Sigue habiendo cero código de producción escrito por humanos (~33,000 líneas en la actualidad). El registro completo de decisiones vive en [`docs/project/`](docs/project/).
-
----
+> **🤖 Construido completamente por agentes de IA — cero código de producción escrito por humanos.** La construcción inicial (abril de 2026) fue producida por 9 agentes de IA Claude colaborando durante 9 días; desde agosto de 2026 una única sesión principal de Claude mantiene el proyecto contra un registro de brechas de paridad de comportamiento, con un responsable humano que revisa y fusiona. [Historia completa ↓](#construido-completamente-por-agentes-de-ia)
 
 ## Características
 
@@ -315,6 +293,28 @@ Escribe `/` en la entrada para ver todos los comandos disponibles:
 | `/init` | Genera un CLAUDE.md para este proyecto |
 
 `/config`, `/mcp`, `/resume` y `/terminal-setup` están registrados pero aún no están implementados — mientras tanto, usa los subcomandos CLI anteriores para gestionar MCP.
+
+## Construido completamente por agentes de IA
+
+> **Ningún humano escribió una sola línea de código de producción en este repositorio.**
+
+Todo el proyecto — diseño de arquitectura, documentos de diseño detallados, implementación paralela, revisión de código, QA y pruebas de integración — fue producido por **9 agentes de IA Claude** colaborando en un flujo de trabajo multi-agente estructurado:
+
+```
+Agente PM          →  plan del proyecto, hitos, programación de tareas
+Agente Tech Lead   →  diseño de arquitectura, revisión de documentos de diseño, revisión de código
+Agent-Infra        →  capa de infraestructura (tipos, configuración, estado, sesión)
+Agent-Services     →  capa de servicios (cliente API, OAuth, MCP, compactación)
+Agent-Core         →  motor central (bucle LLM, despacho de herramientas, coordinador)
+Agent-Tools        →  capa de herramientas (archivo, shell, búsqueda, web — 18 herramientas al momento de la construcción)
+Agent-TUI          →  capa de UI (Bubble Tea MVU, temas, modo Vim)
+Agent-CLI          →  capa de entrada (Cobra CLI, DI, fases de bootstrap)
+Agente QA          →  estrategia de pruebas, aceptación por capa, pruebas de integración
+```
+
+Resultado: ~**7,000 líneas de código de producción + suite de pruebas completa en 9 días**, con `go test -race ./...` pasando.
+
+Esta es una demostración real de que una aplicación Go no trivial y multicapa puede ser diseñada, implementada, revisada y entregada en su totalidad por agentes de IA que colaboran de forma asíncrona. Desde agosto de 2026 el proyecto se mantiene con el mismo espíritu — una única sesión principal de Claude trabajando sobre un registro de brechas de paridad de comportamiento frente al CLI original en TypeScript, con un responsable humano que revisa y fusiona. Sigue habiendo cero código de producción escrito por humanos (~33,000 líneas en la actualidad). El registro completo de decisiones vive en [`docs/project/`](docs/project/).
 
 ## Desarrollo
 

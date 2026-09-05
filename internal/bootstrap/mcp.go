@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -13,51 +14,313 @@ import (
 	"github.com/tunsuy/claude-code-go/internal/tools"
 )
 
+// The `claude mcp` command tree.  The whole tree reproduces the upstream TS
+// CLI's commander.js semantics rather than cobra's: every command disables
+// flag parsing and receives the raw argv tail, which parseMCPFlags
+// (mcp_parse.go) walks with commander's rules (-h wins mid-walk, unknown
+// options error on the raw token, greedy -e/-H, `--` switches to
+// positionals-only).  The dispatch layer below prints failures itself and
+// returns ErrSilent, so main exits 1 without prefixing anything.
+
 // newMCPCmd creates the `claude mcp` subcommand tree.
 func newMCPCmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:          "mcp",
-		Short:        "Manage Model Context Protocol (MCP) server integrations",
-		SilenceUsage: true,
+		Use:                "mcp",
+		Short:              "Manage Model Context Protocol (MCP) server integrations",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return runMCPParent(cmd, args)
+		},
 	}
-
 	cmd.AddCommand(
 		newMCPServeCmd(),
 		newMCPAddCmd(),
-		newMCPRemoveCmd(),
-		newMCPListCmd(),
-		newMCPGetCmd(),
-		newMCPAddJSONCmd(),
 		newMCPAddFromClaudeDesktopCmd(),
+		newMCPAddJSONCmd(),
+		newMCPGetCmd(),
+		newMCPListCmd(),
+		newMCPRemoveCmd(),
 		newMCPResetProjectChoicesCmd(),
+		newMCPHelpCmd(),
 	)
 	return cmd
 }
 
+// mcpDepsBuilder builds the deps bundle from a command's streams.  Swapped in
+// tests to pin the home/project directories.
+var mcpDepsBuilder = newMCPDepsWith
+
+// mcpDispatchRun wires one subcommand: build deps from the command's streams,
+// run fn, then translate a typed failure into the oracle's reporting
+// convention (stderr, no "Error:" prefix, silent exit 1).
+func mcpDispatchRun(cmd *cobra.Command, args []string, fn func(*mcpDeps, []string) error) error {
+	d, err := mcpDepsBuilder(cmd.OutOrStdout(), cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+	if err := fn(d, args); err != nil {
+		return mcpReportError(d, err)
+	}
+	return nil
+}
+
+// mcpReportError prints a run failure the way the oracle does and returns
+// ErrSilent for a silent exit 1.  Internal (untyped) errors pass through for
+// the generic handler.
+func mcpReportError(d *mcpDeps, err error) error {
+	switch e := err.(type) {
+	case *mcpUsageError:
+		fmt.Fprintln(d.Stderr, e.Line1)
+		if e.Line2 != "" {
+			fmt.Fprintln(d.Stderr, e.Line2)
+		}
+	case *mcpMissingArgError:
+		fmt.Fprintln(d.Stderr, e.Error())
+	case *errMCPAction:
+		fmt.Fprintln(d.Stderr, e.msg)
+	case *mcpMiser:
+		// Pre-rendered miss message, already newline-terminated.
+		fmt.Fprint(d.Stderr, e.msg)
+	case *errMCPExit:
+		// Diagnostics were already printed; only the exit code matters.
+	default:
+		return err
+	}
+	return ErrSilent
+}
+
+// mcpCommandNames lists the subcommand names for unknown-command suggestions.
+// The oracle also offers login/logout (documented divergence: not implemented
+// here, so e.g. `mcp bogus` suggests nothing where it would suggest logout).
+var mcpCommandNames = []string{
+	"add", "add-from-claude-desktop", "add-json", "get", "help", "list",
+	"remove", "reset-project-choices", "serve",
+}
+
+// mcpUnknownCommandError builds the commander unknown-command error with its
+// "(Did you mean …?)" suggestion line.
+func mcpUnknownCommandError(name string) error {
+	e := &mcpUsageError{Line1: fmt.Sprintf("error: unknown command '%s'", name)}
+	if s := suggestSimilar(name, mcpCommandNames); len(s) > 0 {
+		e.Line2 = "(Did you mean " + strings.Join(s, " or ") + "?)"
+	}
+	return e
+}
+
+// mcpSubcommands maps subcommand names to run functions for the parent's
+// post-`--` dispatch (cobra matches pre-`--` names itself, since its matcher
+// stops at `--`).
+var mcpSubcommands = map[string]func(*mcpDeps, []string) error{
+	"add":                     runMCPAdd,
+	"add-from-claude-desktop": runMCPAddFromClaudeDesktop,
+	"add-json":                runMCPAddJSON,
+	"get":                     runMCPGet,
+	"list":                    runMCPList,
+	"remove":                  runMCPRemove,
+	"reset-project-choices":   runMCPResetProjectChoices,
+	"serve":                   runMCPServeArgs,
+	"help":                    runMCPHelpArgs,
+}
+
+// runMCPParent handles the `mcp` command itself.  Cobra reaches it only when
+// the first raw token is not a known subcommand: bare `mcp` (help to stderr,
+// exit 1), `-h` (help to stdout, exit 0), an unknown command (deferred error
+// on the first positional — `-h` later in the walk still wins), or tokens
+// after `--`, which cobra's matcher skips but the oracle still dispatches
+// (capture: `mcp -- add` → add's "missing required argument 'name'").
+func runMCPParent(cmd *cobra.Command, args []string) error {
+	d, err := mcpDepsBuilder(cmd.OutOrStdout(), cmd.ErrOrStderr())
+	if err != nil {
+		return err
+	}
+	p, perr := parseMCPFlags(args, mcpParentFlagSpecs)
+	if perr != nil {
+		return mcpReportError(d, perr)
+	}
+	if p.SawHelp {
+		fmt.Fprint(d.Stdout, mcpParentHelp)
+		return nil
+	}
+	if len(p.Positionals) > 0 {
+		name := p.Positionals[0]
+		if fn, ok := mcpSubcommands[name]; ok {
+			if err := fn(d, p.Positionals[1:]); err != nil {
+				return mcpReportError(d, err)
+			}
+			return nil
+		}
+		return mcpReportError(d, mcpUnknownCommandError(name))
+	}
+	fmt.Fprint(d.Stderr, mcpParentHelp)
+	return ErrSilent
+}
+
 func newMCPServeCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "serve",
-		Short: "Start Claude as an MCP server on stdin/stdout",
+		Use:                "serve [options]",
+		Short:              "Start the Claude Code MCP server",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Build a minimal container so we can expose the tool registry.
-			cwd, err := os.Getwd()
-			if err != nil {
-				return fmt.Errorf("mcp serve: get working directory: %w", err)
-			}
-			homeDir, err := os.UserHomeDir()
-			if err != nil {
-				return fmt.Errorf("mcp serve: get home directory: %w", err)
-			}
-			container, err := BuildContainer(ContainerOptions{
-				HomeDir:    homeDir,
-				WorkingDir: cwd,
-			})
-			if err != nil {
-				return fmt.Errorf("mcp serve: build container: %w", err)
-			}
-			return runMCPServe(container)
+			return mcpDispatchRun(cmd, args, runMCPServeArgs)
 		},
 	}
+}
+
+// runMCPServeArgs implements `mcp serve`: -h shows help; the debug/verbose
+// flags are accepted and ignored (debug logging is not wired up).
+func runMCPServeArgs(d *mcpDeps, args []string) error {
+	p, err := parseMCPFlags(args, mcpServeFlagSpecs)
+	if err != nil {
+		return err
+	}
+	if p.SawHelp {
+		fmt.Fprint(d.Stdout, mcpServeHelp)
+		return nil
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("mcp serve: get working directory: %w", err)
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("mcp serve: home directory: %w", err)
+	}
+	container, err := BuildContainer(ContainerOptions{
+		HomeDir:    homeDir,
+		WorkingDir: cwd,
+	})
+	if err != nil {
+		return fmt.Errorf("mcp serve: build container: %w", err)
+	}
+	return runMCPServe(container)
+}
+
+func newMCPAddCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "add [options] <name> <commandOrUrl> [args...]",
+		Short:              "Add an MCP server to Claude Code.",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPAdd)
+		},
+	}
+}
+
+func newMCPAddFromClaudeDesktopCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "add-from-claude-desktop [options]",
+		Short:              "Import MCP servers from Claude Desktop (Mac and WSL only)",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPAddFromClaudeDesktop)
+		},
+	}
+}
+
+func newMCPAddJSONCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "add-json [options] <name> <json>",
+		Short:              "Add an MCP server (stdio, SSE, HTTP, or WebSocket) with a JSON string",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPAddJSON)
+		},
+	}
+}
+
+func newMCPGetCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "get <name>",
+		Short:              "Get details about an MCP server.",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPGet)
+		},
+	}
+}
+
+func newMCPListCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "list",
+		Short:              "List configured MCP servers",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPList)
+		},
+	}
+}
+
+func newMCPRemoveCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "remove [options] <name>",
+		Short:              "Remove an MCP server",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPRemove)
+		},
+	}
+}
+
+func newMCPResetProjectChoicesCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "reset-project-choices",
+		Short:              "Reset all approved and rejected project-scoped (.mcp.json) servers within this project",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPResetProjectChoices)
+		},
+	}
+}
+
+// mcpHelpTopics maps `mcp help <topic>` to its help text.  "help" itself is
+// deliberately absent: `mcp help help` shows the parent help on stderr
+// (oracle-verified).
+var mcpHelpTopics = map[string]string{
+	"add":                     mcpAddHelp,
+	"add-from-claude-desktop": mcpAfcdHelp,
+	"add-json":                mcpAddJSONHelp,
+	"get":                     mcpGetHelp,
+	"list":                    mcpListHelp,
+	"remove":                  mcpRemoveHelp,
+	"reset-project-choices":   mcpResetHelp,
+	"serve":                   mcpServeHelp,
+}
+
+func newMCPHelpCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:                "help [command]",
+		Short:              "display help for command",
+		DisableFlagParsing: true,
+		SilenceUsage:       true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcpDispatchRun(cmd, args, runMCPHelpArgs)
+		},
+	}
+}
+
+// runMCPHelpArgs implements `mcp help [command]`.  Every argument is a topic
+// name — "-h" included: `mcp help -h` shows the parent help on stderr and
+// exits 1, exactly like `mcp help bogus` (oracle-verified).
+func runMCPHelpArgs(d *mcpDeps, args []string) error {
+	if len(args) == 0 {
+		fmt.Fprint(d.Stdout, mcpParentHelp)
+		return nil
+	}
+	if help, ok := mcpHelpTopics[args[0]]; ok {
+		fmt.Fprint(d.Stdout, help)
+		return nil
+	}
+	fmt.Fprint(d.Stderr, mcpParentHelp)
+	return ErrSilent
 }
 
 // runMCPServe serves Claude's built-in tool registry as an MCP server over stdin/stdout.
@@ -202,98 +465,4 @@ func handleMCPToolCall(req mcp.JSONRPCMessage, reg *tools.Registry) *mcp.JSONRPC
 func mustMarshalJSON(v any) json.RawMessage {
 	b, _ := json.Marshal(v)
 	return b
-}
-
-func newMCPAddCmd() *cobra.Command {
-	var (
-		scope     string
-		transport string
-		envVars   []string
-	)
-	cmd := &cobra.Command{
-		Use:   "add <name> <command> [args...]",
-		Short: "Add an MCP stdio server",
-		Args:  cobra.MinimumNArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = scope
-			_ = transport
-			_ = envVars
-			return fmt.Errorf("mcp add: not yet implemented")
-		},
-	}
-	cmd.Flags().StringVar(&scope, "scope", "local", "Config scope: local | project | user")
-	cmd.Flags().StringVar(&transport, "transport", "stdio", "Transport: stdio | sse | http")
-	cmd.Flags().StringArrayVar(&envVars, "env", nil, "Environment variables KEY=VALUE")
-	return cmd
-}
-
-func newMCPRemoveCmd() *cobra.Command {
-	var scope string
-	cmd := &cobra.Command{
-		Use:   "remove <name>",
-		Short: "Remove an MCP server configuration",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = scope
-			return fmt.Errorf("mcp remove: not yet implemented")
-		},
-	}
-	cmd.Flags().StringVar(&scope, "scope", "local", "Config scope: local | project | user")
-	return cmd
-}
-
-func newMCPListCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List configured MCP servers",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("mcp list: not yet implemented")
-		},
-	}
-}
-
-func newMCPGetCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "get <name>",
-		Short: "Show details for a single MCP server",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("mcp get: not yet implemented")
-		},
-	}
-}
-
-func newMCPAddJSONCmd() *cobra.Command {
-	var scope string
-	cmd := &cobra.Command{
-		Use:   "add-json <name> <json>",
-		Short: "Add an MCP server from a raw JSON definition",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			_ = scope
-			return fmt.Errorf("mcp add-json: not yet implemented")
-		},
-	}
-	cmd.Flags().StringVar(&scope, "scope", "local", "Config scope: local | project | user")
-	return cmd
-}
-
-func newMCPAddFromClaudeDesktopCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "add-from-claude-desktop",
-		Short: "Import MCP servers from the Claude desktop app configuration",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("mcp add-from-claude-desktop: not yet implemented")
-		},
-	}
-}
-
-func newMCPResetProjectChoicesCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "reset-project-choices",
-		Short: "Reset project-level MCP server approval choices",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return fmt.Errorf("mcp reset-project-choices: not yet implemented")
-		},
-	}
 }

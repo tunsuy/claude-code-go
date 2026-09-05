@@ -46,31 +46,9 @@
 
 ## 这是什么
 
-本项目是对 [Claude Code](https://claude.ai/code)（Anthropic 官方 TypeScript CLI）**完整功能的 Go 语言复刻**，逐模块对照原版源码实现，覆盖 TUI 界面、工具调用、权限系统、多 Agent 协调、MCP 协议、会话管理等全部核心功能。
+本项目是对 [Claude Code](https://claude.ai/code)（Anthropic 官方 TypeScript CLI）**完整功能的 Go 语言复刻**，逐模块对照原版源码实现，覆盖 TUI 界面、工具调用、权限系统、多 Agent 协调、MCP 协议、会话管理等全部核心功能。它理解你的代码库、执行工具，通过自然对话帮你编写、评审与重构代码。
 
-### 开发方式：零人工代码，全程多 Agent 协作
-
-> **本仓库中不存在任何人类编写的生产代码。**
-
-整个项目由 **9 个 Claude AI Agent** 分工协作完成——从架构设计、详细设计文档、并行编码实现、代码评审，到 QA 验收与集成测试，全流程均由 AI 驱动：
-
-```
-PM Agent          →  项目计划、里程碑、任务调度
-Tech Lead Agent   →  架构设计、设计文档评审、代码评审
-Agent-Infra       →  基础设施层（类型、配置、状态、会话）
-Agent-Services    →  服务层（API 客户端、OAuth、MCP、压缩）
-Agent-Core        →  核心引擎（推理循环、工具分发、多 Agent 协调）
-Agent-Tools       →  工具层（文件、命令、搜索、Web 等，构建期 18 个工具）
-Agent-TUI         →  界面层（Bubble Tea MVU、主题、Vim 模式）
-Agent-CLI         →  入口层（Cobra CLI、依赖注入、启动流程）
-QA Agent          →  测试策略、逐层验收、集成测试
-```
-
-各 Agent 在独立 Git Worktree 分支上并行开发，通过共享代码库、设计文档和 QA 报告协作交互。最终在 **9 天内产出约 7,000 行生产代码 + 完整测试套件**，`go test -race ./...` 全部通过。
-
-这是一次真实规模的验证：**非平凡的多层 Go 应用可以完全由 AI Agent 异步协作设计、实现、评审并交付**。2026 年 8 月起项目进入维护期，仍由 AI 主导——一个主 Claude 会话对照 TypeScript 原版的行为差距台账逐项关闭差距，人类负责人负责评审与合并。至今仍无任何人类编写的生产代码（当前约 33,000 行）。完整决策记录见 [`docs/project/`](docs/project/)。
-
----
+> **🤖 全程由 AI Agent 构建——零人工生产代码。** 初始构建（2026 年 4 月）由 9 个 Claude AI Agent 用 9 天协作完成；2026 年 8 月起由单个主 Claude 会话对照行为对等台账维护项目，人类负责人评审与合并。[完整故事 ↓](#零人工代码的构建故事)
 
 ## 功能特性
 
@@ -315,6 +293,28 @@ claude [flags]
 | `/init` | 为本项目生成 CLAUDE.md |
 
 `/config`、`/mcp`、`/resume`、`/terminal-setup` 已注册但尚未实现——MCP 管理请暂时使用上方的 CLI 子命令。
+
+## 零人工代码的构建故事
+
+> **本仓库中不存在任何人类编写的生产代码。**
+
+整个项目由 **9 个 Claude AI Agent** 分工协作完成——从架构设计、详细设计文档、并行编码实现、代码评审，到 QA 验收与集成测试，全流程均由 AI 驱动：
+
+```
+PM Agent          →  项目计划、里程碑、任务调度
+Tech Lead Agent   →  架构设计、设计文档评审、代码评审
+Agent-Infra       →  基础设施层（类型、配置、状态、会话）
+Agent-Services    →  服务层（API 客户端、OAuth、MCP、压缩）
+Agent-Core        →  核心引擎（推理循环、工具分发、多 Agent 协调）
+Agent-Tools       →  工具层（文件、命令、搜索、Web 等，构建期 18 个工具）
+Agent-TUI         →  界面层（Bubble Tea MVU、主题、Vim 模式）
+Agent-CLI         →  入口层（Cobra CLI、依赖注入、启动流程）
+QA Agent          →  测试策略、逐层验收、集成测试
+```
+
+各 Agent 在独立 Git Worktree 分支上并行开发，通过共享代码库、设计文档和 QA 报告协作交互。最终在 **9 天内产出约 7,000 行生产代码 + 完整测试套件**，`go test -race ./...` 全部通过。
+
+这是一次真实规模的验证：**非平凡的多层 Go 应用可以完全由 AI Agent 异步协作设计、实现、评审并交付**。2026 年 8 月起项目进入维护期，仍由 AI 主导——一个主 Claude 会话对照 TypeScript 原版的行为差距台账逐项关闭差距，人类负责人负责评审与合并。至今仍无任何人类编写的生产代码（当前约 33,000 行）。完整决策记录见 [`docs/project/`](docs/project/)。
 
 ## 开发指南
 

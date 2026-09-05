@@ -235,6 +235,18 @@ export OPENAI_BASE_URL=https://your-resource.openai.azure.com
 export OPENAI_MODEL=your-deployment-name
 ```
 
+**OrcaRouter（AI ゲートウェイ）：**
+[OrcaRouter](https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075) は AI ゲートウェイです。各リクエストを 200 以上のモデル（フロンティアおよびオープンソース）から最適なものへルーティングし、料金は各プロバイダー価格のまま、フェイルオーバーとリクエストログも備えます。OpenAI 互換のため、`openai` プロバイダー経由でそのまま使えます：
+
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=<your-orcarouter-key>
+export OPENAI_BASE_URL=https://api.orcarouter.ai/v1
+export OPENAI_MODEL=orcarouter/auto   # OrcaRouter がリクエストごとにモデルを選択
+```
+
+*（上のリンクはリファラルリンクです。）*
+
 ## 使用方法
 
 ### インタラクティブモード

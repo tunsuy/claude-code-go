@@ -233,6 +233,18 @@ export OPENAI_BASE_URL=https://your-resource.openai.azure.com
 export OPENAI_MODEL=your-deployment-name
 ```
 
+**OrcaRouter (AI gateway):**
+[OrcaRouter](https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075) is an AI gateway that routes each request to the best-fit model among 200+ (frontier and open-source) models at provider prices, with failover and request logs. It is OpenAI-compatible, so it works directly through the `openai` provider:
+
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=<your-orcarouter-key>
+export OPENAI_BASE_URL=https://api.orcarouter.ai/v1
+export OPENAI_MODEL=orcarouter/auto   # let OrcaRouter pick the model per request
+```
+
+*(The link above is a referral link.)*
+
 ## Usage
 
 ### Interactive mode

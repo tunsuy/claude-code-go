@@ -233,6 +233,18 @@ export OPENAI_BASE_URL=https://your-resource.openai.azure.com
 export OPENAI_MODEL=your-deployment-name
 ```
 
+**OrcaRouter（AI 网关）：**
+[OrcaRouter](https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075) 是一个 AI 网关：把每个请求在 200+ 个模型（前沿与开源）中路由到最合适的一个，价格与各提供商官方价格一致，并提供故障转移与请求日志。它兼容 OpenAI API，直接通过 `openai` 提供商即可使用：
+
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=<your-orcarouter-key>
+export OPENAI_BASE_URL=https://api.orcarouter.ai/v1
+export OPENAI_MODEL=orcarouter/auto   # 让 OrcaRouter 为每个请求挑选模型
+```
+
+*（上面的链接是推广（referral）链接。）*
+
 ## 使用说明
 
 ### 交互模式

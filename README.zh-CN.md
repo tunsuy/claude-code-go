@@ -50,6 +50,19 @@
 
 > **🤖 全程由 AI Agent 构建——零人工生产代码。** 初始构建（2026 年 4 月）由 9 个 Claude AI Agent 用 9 天协作完成；2026 年 8 月起由单个主 Claude 会话对照行为对等台账维护项目，人类负责人评审与合并。[完整故事 ↓](#零人工代码的构建故事)
 
+## ❤️ 赞助商
+
+> [想出现在这里？](https://github.com/tunsuy)
+
+<table>
+  <tr>
+    <td width="180"><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075"><img src="assets/sponsors/orcarouter.png" alt="OrcaRouter" width="150"></a></td>
+    <td><strong><a href="https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075">OrcaRouter</a></strong> —— 一个网关，所有模型。OrcaRouter 把每个请求在 200+ 个模型（前沿与开源）中路由到最合适的一个，价格与各提供商官方价格一致，并提供故障转移与请求日志。它兼容 OpenAI API，可直接接入 Claude Code Go——具体配置见 <a href="#api-提供商">API 提供商</a> 一节。</td>
+  </tr>
+</table>
+
+*赞助商链接可能是推广（referral）链接。*
+
 ## 功能特性
 
 - **交互式 TUI** — 基于 [Bubble Tea](https://github.com/charmbracelet/bubbletea) 构建的全功能终端界面，支持深色/浅色主题

@@ -1,10 +1,12 @@
 # Claude Code Go — Roadmap
 
-> 最后更新：2026-08-29
+> 最后更新：2026-09-05
 >
-> 本文档基于与 claude-code-main（TypeScript 原版）的全面对比分析，规划 claude-code-go 项目从当前状态（~75% 完成度）到生产可用的完整路径。
+> 本文档基于与 claude-code-main（TypeScript 原版）的全面对比分析，规划 claude-code-go 项目从当前状态到生产可用的完整路径。
 >
 > **2026-08-29 状态刷新**：Phase 1 已全部完成（权限接入 + 安全增强 T-060..T-064 已合并 main，CI 含 lint + race + 覆盖率）；Phase 2 大部分完成（34 个工具注册、20 个斜杠命令、mcp/agents/update/install 子命令落地）。各节标注 ✅ 已完成 / ⚠️ 部分完成 / ❌ 未开始。
+>
+> **2026-09-05 状态刷新（B2/B5 落地，PR #23）**：`mcp` 命令组（7 命令）与 `plugin` 命令组（8 命令 + marketplace 子树）从桩变为真实实现，输出与 oracle（claude v2.1.261）字节级一致；用户可见桩 42 → 27。插件系统 CLI 层落地（§3.4 的 3.4.4），加载引擎仍为骨架。同日起项目按维护模式运转（见 [`test/parity/cases.md`](../test/parity/cases.md) 差距台账与 [`2026-08-29 流程复盘`](discussions/2026-08-29-process-retrospective.md)）。
 
 ---
 
@@ -27,29 +29,37 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                   claude-code-go v0.1.0                     │
+│                   claude-code-go v0.8.0                     │
 │                                                             │
 │  ✅ 已完成（可用）          ⚠️ 部分完成            ❌ 缺失  │
 │  ─────────────────     ──────────────────     ────────────  │
-│  • 核心引擎 query 循环   • 工具系统 (34 个)     • LSP 服务   │
-│  • API Direct 客户端     • CLI 子命令 (~15)     • Hook 配置 │
-│  • OpenAI 兼容客户端     • MCP (3/4 transport)  │   接入    │
-│  • 上下文压缩三件套      • Bedrock/Vertex       • Feature Flag│
-│  • TUI (BubbleTea)      • 插件系统 (空壳)      • Voice/Vim  │
-│  • OAuth 认证            • 测试覆盖率 (~59%)    • Analytics  │
-│  • 配置加载              │                      • Remote 模式│
-│  • 会话持久化            │                      • 数据迁移   │
+│  • 核心引擎 query 循环   • Hook 配置接入       • LSP 服务   │
+│  • API Direct 客户端     • MCP (3/4 transport) • Feature Flag│
+│  • OpenAI 兼容客户端     • Bedrock/Vertex      • Voice/Vim  │
+│  • 上下文压缩三件套      • 插件加载引擎        • Analytics  │
+│  • TUI (BubbleTea)      • 测试覆盖率          • Remote 模式│
+│  • OAuth 认证            │                      • 数据迁移   │
+│  • 配置加载              │                      │            │
+│  • 会话持久化            │                      │            │
 │  • 协调器框架            │                      │            │
-│  • 权限管线（已接入 ✅） │                      │            │
-│  • 权限安全增强 ✅       │                      │            │
+│  • 权限管线（含安全增强） │                      │            │
+│  • 工具系统 (34 个)      │                      │            │
+│  • CLI 子命令：mcp(7)    │                      │            │
+│    plugin(8)+marketplace │                      │            │
+│    auth/doctor/update    │                      │            │
 └─────────────────────────────────────────────────────────────┘
 
 完成度: ███████████████░░░░░ 75%
+（维护模式：以 parity 差距台账驱动，不再按本表时间线推进）
 ```
 
 ---
 
 ## 版本规划总览
+
+> ⚠️ 下表为构建期（2026-04）的历史规划，时间线已作废——项目自 2026-08-29 起转入维护模式，
+> 由 [`test/parity/cases.md`](../test/parity/cases.md) 差距台账驱动。保留此图仅为阶段划分参照；
+> 版本号实际推进到 v0.8.0，与下表阶段并不一一对应。各 Phase 的完成状态见后文各节标注。
 
 ```
 时间线（预估）
@@ -156,11 +166,11 @@ executeOneTool (已实现)
 
 ---
 
-## Phase 2：工具与命令补全（v0.3.0）
+## Phase 2：工具与命令补全（v0.3.0）✅ 已完成（2026-09-05）
 
 **目标**：补齐 11 个未实现的工具和 20 个 CLI 子命令，实现与原版功能对等的工具集。
 
-**预估周期**：3 周
+**预估周期**：3 周（历史规划；实际经维护模式 parity 驱动完成，见 §2.4）
 
 ### 2.1 交互工具实现 ✅ 已完成
 
@@ -200,16 +210,16 @@ executeOneTool (已实现)
 
 （现共 **20 个内建斜杠命令**：clear/help/exit/vim/theme/model/effort/status/cost/session/config/compact/memory/dream/mcp/review/commit/diff/init/resume/terminal-setup。）
 
-### 2.4 CLI 子命令补全 ⚠️ 部分完成
+### 2.4 CLI 子命令补全 ✅ 已完成（2026-09-05，B2/B5）
 
 **高优先级（用户直接使用）**：
 
 | # | 命令 | 状态 | 说明 |
 |---|------|------|------|
-| 2.4.1 | ✅ `mcp add` | 完成 | `internal/bootstrap/mcp.go` |
-| 2.4.2 | ✅ `mcp remove` | 完成 | |
-| 2.4.3 | ✅ `mcp list` | 完成 | |
-| 2.4.4 | ✅ `mcp get` | 完成 | |
+| 2.4.1 | ✅ `mcp add` | 完成 | `internal/bootstrap/mcp_run.go`（2026-09-05 从桩变为真实实现，字节级对齐 oracle） |
+| 2.4.2 | ✅ `mcp remove` | 完成 | 同上 |
+| 2.4.3 | ✅ `mcp list` | 完成 | 同上 |
+| 2.4.4 | ✅ `mcp get` | 完成 | 同上（含连接健康检查） |
 
 **中优先级**：
 
@@ -225,10 +235,11 @@ executeOneTool (已实现)
 | # | 命令 | 状态 | 说明 |
 |---|------|------|------|
 | 2.4.9 | ✅ `agents list/add/remove` | 完成 | `internal/bootstrap/misc.go` |
-| 2.4.10 | ❌ `plugin list/install/uninstall/...` | 未开始 | 依赖插件系统完善（见 Phase 3.4） |
+| 2.4.10 | ✅ `plugin list/install/uninstall/...` | 完成 | 2026-09-05 落地（PR #23）：list/install/uninstall/enable/disable/update/validate + marketplace 子树，字节级对齐 oracle；分歧与未验证边缘见 cases.md §B12 |
 | 2.4.11 | ✅ `mcp reset-project-choices` | 完成 | |
 
 （另有 `auth login/logout/status`、`doctor`、`mcp serve` 等命令。）
+（`plugin details/eval/init/prune/tag` 为有意 waive，见 cases.md §B11 二级缺口表。）
 
 ### Phase 2 完成标准
 
@@ -236,7 +247,7 @@ executeOneTool (已实现)
 - [x] `/review`、`/commit`、`/diff`、`/init` 有专属逻辑
 - [x] `mcp add/remove/list/get` 可正常操作配置文件
 - [x] Agent tool 能通过 Coordinator 启动子代理
-- [ ] `plugin` 子命令组（依赖 Phase 3.4 插件系统）
+- [x] `plugin` 子命令组（2026-09-05，PR #23；插件加载引擎见 Phase 3.4）
 
 ---
 
@@ -280,16 +291,16 @@ executeOneTool (已实现)
 | 3.3.3 | ❌ 自动重连逻辑 | 未开始 | 连接断开后指数退避重连 |
 | 3.3.4 | ❌ 集成测试 | 未开始 | 使用 mock WS server 测试 |
 
-### 3.4 插件系统实现 ❌ 未开始（仅配置骨架）
+### 3.4 插件系统实现 ⚠️ 部分完成（CLI 层已落地，加载引擎待做）
 
-**现状**（2026-08-29 核查）：`internal/plugin/plugin.go` 的 `Manager` 只做配置加载/启停标记（`plugin.go:43` 标注 TODO：完整插件加载待做）。
+**现状**（2026-09-05 更新）：CLI 管理层已完整落地（PR #23）——`plugin list/install/uninstall/enable/disable/update/validate` + `marketplace` 子树，持久化在 `~/.claude/plugins/`（`internal/config/pluginstore.go`），输出与 oracle 字节级一致。但 `internal/plugin/plugin.go` 的 `Manager` 仍只做配置加载/启停标记（`plugin.go:43` 标注 TODO：完整插件加载待做）——已安装插件的 skills/commands/hooks 尚不会注入会话。
 
 | # | 任务 | 状态 | 说明 |
 |---|------|------|------|
 | 3.4.1 | ❌ 定义 `Plugin` 接口 | 未开始 | 包含 Init/Tools/Commands/Hooks 方法 |
 | 3.4.2 | ❌ 实现 Go plugin 加载 | 未开始 | 使用 `plugin.Open` 或 hashicorp/go-plugin |
 | 3.4.3 | ❌ 实现插件沙箱 | 未开始 | 限制插件的文件系统和网络访问 |
-| 3.4.4 | ❌ 补全 `plugin` CLI 子命令 | 未开始 | list/install/uninstall/enable/disable |
+| 3.4.4 | ✅ 补全 `plugin` CLI 子命令 | 完成 | 2026-09-05（PR #23）：list/install/uninstall/enable/disable/update/validate + marketplace 子树 |
 
 ### 3.5 Feature Flags 系统 ❌ 未开始
 

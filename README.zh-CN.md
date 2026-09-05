@@ -60,29 +60,31 @@ Tech Lead Agent   →  架构设计、设计文档评审、代码评审
 Agent-Infra       →  基础设施层（类型、配置、状态、会话）
 Agent-Services    →  服务层（API 客户端、OAuth、MCP、压缩）
 Agent-Core        →  核心引擎（推理循环、工具分发、多 Agent 协调）
-Agent-Tools       →  工具层（文件、命令、搜索、Web 等 18 个工具）
+Agent-Tools       →  工具层（文件、命令、搜索、Web 等，构建期 18 个工具）
 Agent-TUI         →  界面层（Bubble Tea MVU、主题、Vim 模式）
 Agent-CLI         →  入口层（Cobra CLI、依赖注入、启动流程）
 QA Agent          →  测试策略、逐层验收、集成测试
 ```
 
-各 Agent 在独立 Git Worktree 分支上并行开发，通过共享代码库、设计文档和 QA 报告协作交互。最终产出约 **7,000 行生产代码 + 完整测试套件**，`go test -race ./...` 全部通过。
+各 Agent 在独立 Git Worktree 分支上并行开发，通过共享代码库、设计文档和 QA 报告协作交互。最终在 **9 天内产出约 7,000 行生产代码 + 完整测试套件**，`go test -race ./...` 全部通过。
 
-这是一次真实规模的验证：**非平凡的多层 Go 应用可以完全由 AI Agent 异步协作设计、实现、评审并交付**。完整决策记录见 [`docs/project/`](docs/project/)。
+这是一次真实规模的验证：**非平凡的多层 Go 应用可以完全由 AI Agent 异步协作设计、实现、评审并交付**。2026 年 8 月起项目进入维护期，仍由 AI 主导——一个主 Claude 会话对照 TypeScript 原版的行为差距台账逐项关闭差距，人类负责人负责评审与合并。至今仍无任何人类编写的生产代码（当前约 33,000 行）。完整决策记录见 [`docs/project/`](docs/project/)。
 
 ---
 
 ## 功能特性
 
 - **交互式 TUI** — 基于 [Bubble Tea](https://github.com/charmbracelet/bubbletea) 构建的全功能终端界面，支持深色/浅色主题
-- **智能工具调用** — 文件读写、命令执行、代码搜索等，所有操作均经过权限层审批
+- **智能工具调用** — 34 个内置工具（文件、命令、搜索、Web、任务、子 Agent 等），所有操作均经过 9 层权限流水线审批
+- **CLI 子命令** — `claude mcp …`、`claude plugin …`、`claude auth …`、`claude doctor`、`claude update`；`mcp` 与 `plugin` 两组输出与 TypeScript 原版**字节级一致**
+- **插件管理** — 从本地 marketplace 安装/启用/停用插件，带完整 manifest 校验（`claude plugin validate`）
 - **多 Agent 协作** — 可启动后台子 Agent 并行处理任务
-- **MCP 支持** — 通过 [Model Context Protocol](https://modelcontextprotocol.io) 接入外部工具
+- **MCP 支持** — 通过 [Model Context Protocol](https://modelcontextprotocol.io) 接入外部工具（stdio + HTTP 传输），可从 Claude Desktop 导入
 - **CLAUDE.md 记忆** — 自动加载项目目录树中所有 `CLAUDE.md` 文件作为上下文
 - **会话管理** — 恢复历史对话；自动压缩过长的上下文历史
 - **Vim 模式** — 输入框支持可选的 Vim 按键绑定
-- **OAuth + API Key 认证** — 支持 Anthropic OAuth 登录或直接配置 `ANTHROPIC_API_KEY`
-- **18 个内置斜杠命令** — `/help`、`/clear`、`/compact`、`/commit`、`/diff`、`/review`、`/mcp` 等
+- **OAuth + API Key 认证** — `claude auth login` 走 Anthropic OAuth，或直接配置 `ANTHROPIC_API_KEY`
+- **内置斜杠命令** — `/compact`、`/commit`、`/review`、`/model`、`/theme` 等（见下文）
 - **流式响应** — 实时 token 流式输出，支持 thinking block 展示
 
 ## 架构设计
@@ -159,12 +161,15 @@ claude --resume
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+# 或持久化保存：
+claude auth login --api-key sk-ant-...
 ```
 
 **OAuth（推荐用于交互式使用）：**
 
 ```bash
-claude /config    # 在浏览器中打开 OAuth 授权流程
+claude auth login    # 在浏览器中打开 OAuth 授权流程
+claude auth status   # 查看当前登录身份
 ```
 
 ## API 提供商
@@ -267,6 +272,24 @@ claude [flags]
 | `--vim` | 启用 Vim 按键绑定 |
 | `-p, --print <prompt>` | 非交互模式：执行单次提问后退出 |
 
+### CLI 子命令
+
+非交互式管理命令。`mcp` 与 `plugin` 两组的输出与 TypeScript 原版**字节级一致**：
+
+| 命令 | 说明 |
+|------|------|
+| `claude mcp add <name> -- <command> [args…]` | 注册 stdio MCP 服务器（远程用 `--transport http <name> <url>`，环境变量用 `-e KEY=VAL`） |
+| `claude mcp list` / `claude mcp get <name>` | 列出已配置服务器 / 健康检查单个服务器 |
+| `claude mcp add-json <name> <json>` | 从原始 JSON 注册服务器 |
+| `claude mcp add-from-claude-desktop` | 从 Claude Desktop 配置导入服务器 |
+| `claude mcp remove <name>` / `reset-project-choices` | 移除服务器 / 重置项目级选择 |
+| `claude plugin install <plugin>` | 从已配置的 marketplace 安装插件 |
+| `claude plugin list` / `enable` / `disable` / `uninstall` / `update` | 管理已安装插件 |
+| `claude plugin validate <path>` | 校验插件或 marketplace manifest（`--strict`、`--json`） |
+| `claude plugin marketplace add/list/remove/update` | 管理插件 marketplace（本地路径） |
+| `claude auth login` / `logout` / `status` | OAuth 或 API Key 认证 |
+| `claude doctor` | 环境健康检查 |
+
 ### 斜杠命令
 
 在输入框中输入 `/` 即可查看所有可用命令：
@@ -277,17 +300,21 @@ claude [flags]
 | `/clear` | 清空对话历史 |
 | `/compact` | 压缩历史以减少上下文占用 |
 | `/exit` | 退出 Claude Code |
-| `/model` | 切换 Claude 模型 |
-| `/theme` | 切换深色/浅色主题 |
-| `/vim` | 切换 Vim 模式 |
-| `/commit` | 生成 git commit 信息 |
-| `/review` | 评审近期改动 |
-| `/diff` | 查看当前 diff |
-| `/mcp` | 管理 MCP 服务器 |
-| `/memory` | 查看已加载的 CLAUDE.md 文件 |
-| `/session` | 查看会话信息 |
-| `/status` | 查看 API/连接状态 |
-| `/cost` | 查看 token 用量及预估费用 |
+| `/model` | 查看或切换当前模型 |
+| `/theme` | 切换配色主题 |
+| `/vim` | 切换 Vim 按键绑定 |
+| `/effort` | 设置努力等级（low / medium / high） |
+| `/status` | 查看会话状态 |
+| `/cost` | 查看本次会话 token 用量 |
+| `/session` | 查看当前会话 ID |
+| `/memory` | 查看已加载的 CLAUDE.md 记忆文件 |
+| `/dream` | 手动触发记忆整理 |
+| `/review` | 让 Claude 评审当前 git diff |
+| `/commit` | 让 Claude 撰写并创建 git commit |
+| `/diff` | 查看当前 git diff |
+| `/init` | 为本项目生成 CLAUDE.md |
+
+`/config`、`/mcp`、`/resume`、`/terminal-setup` 已注册但尚未实现——MCP 管理请暂时使用上方的 CLI 子命令。
 
 ## 开发指南
 
@@ -358,28 +385,26 @@ claude-code-go/
 
 ## 路线图
 
-Claude Code Go 目前与原版 TypeScript 版本的功能对等度约为 **~65%**。以下是达到 v1.0 的分阶段计划：
+初始构建（2026 年 4 月）在 9 天内交付了完整的六层架构。2026 年 8 月起项目进入**维护模式**：开发由行为对等差距台账（[`test/parity/cases.md`](test/parity/cases.md)）驱动——逐项对比本 CLI 与 TypeScript 原版的行为，每关闭一个差距都以字节级测试钉住，每一个有意为之的分歧都以 `waived` 记录原因。
 
-| 阶段 | 版本 | 关键目标 | 时间线 |
-|------|------|----------|--------|
-| **Phase 1** | v0.2.0 | 🔒 权限系统接入引擎、Hook 系统接入、测试覆盖率基线、CI 强化 | +3 周 |
-| **Phase 2** | v0.3.0 | 🔧 补齐全部 22 个工具（当前 11 个）、CLI 子命令补全、斜杠命令增强、Agent 工具 | +3 周 |
-| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock 与 GCP Vertex 提供商、MCP WebSocket 传输、插件系统、Feature Flags | +4 周 |
-| **Phase 4** | v0.5.0 | 🚀 LSP 集成、Remote/Server 模式、语音输入、Vim 模式、Extended Thinking、费用追踪 | +4 周 |
-| **Phase 5** | v1.0.0 | 🎯 性能调优、安全审计、完善文档、多平台发布 | +2 周 |
+近期里程碑：
+
+- **2026-09-05** — `mcp`（7 个命令）与 `plugin`（8 个命令 + `marketplace` 子树）CLI 命令组落地，输出与 TS 原版字节级一致；用户可见桩 42 → 27
+- **2026-08-30** — `--version` 格式对齐；对照 TS CLI 完成子命令全量盘点（§B11）
+- **2026-08-29** — 维护模式流程落地：CI 强制的欠账红线、parity 测试骨架
+
+原始的分阶段计划（v0.2.0 → v1.0.0）及各阶段完成状态保留在 [`docs/ROADMAP.md`](docs/ROADMAP.md)。
 
 ### 当前状态
 
 ```
-完成度: ████████████░░░░░░░░ 65%
-
-✅ 已完成: 核心引擎、TUI、API 客户端（Direct + OpenAI）、上下文压缩、
-          OAuth、会话持久化、11 个工具、14 个斜杠命令
-⚠️  进行中: Bedrock/Vertex 提供商、MCP WebSocket、剩余工具与命令
-❌ 待完成: 权限接入、Hook 接入、LSP、插件系统、Remote 模式
+✅ 已完成: 核心引擎 + 流式输出、TUI、34 个工具、17 个斜杠命令（另有 4 个桩）、
+          mcp/plugin/auth/doctor CLI 子命令、9 层权限流水线、
+          三级上下文压缩（snip/micro/auto）、OAuth、会话持久化
+🔧 模式:  维护期——以差距台账驱动的对等修复（对照 TypeScript CLI）
+📉 欠账:  56 个 TODO(dep) / 27 个用户可见桩，CI 红线只降不升
+🚀 发布:  v0.8.0，5 平台二进制
 ```
-
-📋 查看 **[完整路线图](docs/ROADMAP.md)** 了解详细任务拆解、架构图和完成标准。
 
 ## 贡献指南
 

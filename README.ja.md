@@ -60,27 +60,31 @@ Tech Lead Agent   →  アーキテクチャ設計、設計書レビュー、コ
 Agent-Infra       →  インフラ層（型、設定、状態、セッション）
 Agent-Services    →  サービス層（API クライアント、OAuth、MCP、圧縮）
 Agent-Core        →  コアエンジン（LLM ループ、ツールディスパッチ、コーディネーター）
-Agent-Tools       →  ツール層（ファイル、シェル、検索、Web — 18 ツール）
+Agent-Tools       →  ツール層（ファイル、シェル、検索、Web — ビルド当時 18 ツール）
 Agent-TUI         →  UI 層（Bubble Tea MVU、テーマ、Vim モード）
 Agent-CLI         →  エントリ層（Cobra CLI、DI、ブートストラップフェーズ）
 QA Agent          →  テスト戦略、各層の受け入れテスト、統合テスト
 ```
 
-結果：約 **7,000 行の本番コード + フルテストスイート**、`go test -race ./...` がパス。
+結果：**9 日間で約 7,000 行の本番コード + フルテストスイート**、`go test -race ./...` がパス。
+
+これは、本格的な多層 Go アプリケーションが、非同期で協調する AI エージェントによって設計・実装・レビュー・リリースまで完全に遂行できることの実証でもあります。2026 年 8 月以降、本プロジェクトは同じ精神で維持されています — 単一のメイン Claude セッションが、オリジナルの TypeScript CLI との動作パリティギャップ台帳に沿って開発を進め、人間のオーナー 1 名がレビューとマージを担当します。人間が書いた本番コードは依然としてゼロ（現在のコードベースは約 33,000 行）。完全な意思決定の記録は [`docs/project/`](docs/project/) にあります。
 
 ---
 
 ## 機能
 
 - **インタラクティブ TUI** — [Bubble Tea](https://github.com/charmbracelet/bubbletea) で構築されたフル機能のターミナル UI、ダーク/ライトテーマ対応
-- **エージェントツール使用** — ファイル読み書き、シェル実行、検索など、すべて権限レイヤーを通じて制御
+- **エージェントツール使用** — 34 の組み込みツール（ファイル、シェル、検索、Web、タスク、サブエージェントなど）、すべて 9 層の権限パイプラインを通じて制御
+- **CLI サブコマンド** — `claude mcp …`、`claude plugin …`、`claude auth …`、`claude doctor`、`claude update`。`mcp` と `plugin` グループは TypeScript CLI とバイト単位で同一の出力を生成
+- **プラグイン管理** — ローカルマーケットプレイスからプラグインをインストール/有効化/無効化、マニフェストの完全検証付き（`claude plugin validate`）
 - **マルチエージェント連携** — 並列タスク用のバックグラウンドサブエージェントを起動
-- **MCP サポート** — [Model Context Protocol](https://modelcontextprotocol.io) 経由で外部ツールを接続
+- **MCP サポート** — [Model Context Protocol](https://modelcontextprotocol.io) 経由で外部ツールを接続（stdio + HTTP トランスポート）、Claude Desktop からインポート可能
 - **CLAUDE.md メモリ** — ディレクトリツリー上の `CLAUDE.md` ファイルからプロジェクトコンテキストを自動読み込み
 - **セッション管理** — 以前の会話を再開；長い履歴は自動圧縮
 - **Vim モード** — 入力エリアでオプションの Vim キーバインディング
-- **OAuth + API キー認証** — Anthropic OAuth でサインインまたは `ANTHROPIC_API_KEY` を提供
-- **18 の組み込みスラッシュコマンド** — `/help`、`/clear`、`/compact`、`/commit`、`/diff`、`/review`、`/mcp` など
+- **OAuth + API キー認証** — Anthropic OAuth でサインイン（`claude auth login`）または `ANTHROPIC_API_KEY` を提供
+- **組み込みスラッシュコマンド** — `/compact`、`/commit`、`/review`、`/model`、`/theme` など（下記参照）
 - **ストリーミングレスポンス** — thinking ブロック表示付きのリアルタイムトークンストリーミング
 
 ## アーキテクチャ
@@ -157,12 +161,15 @@ claude --resume
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+# または永続的に保存：
+claude auth login --api-key sk-ant-...
 ```
 
 **OAuth（インタラクティブ使用に推奨）：**
 
 ```bash
-claude /config    # ブラウザで OAuth フローを開きます
+claude auth login    # ブラウザで OAuth フローを開きます
+claude auth status   # サインイン中のアカウントを確認
 ```
 
 ## API プロバイダー
@@ -265,6 +272,24 @@ claude [flags]
 | `--vim` | Vim キーバインディングを有効化 |
 | `-p, --print <prompt>` | 非インタラクティブ：単一のプロンプトを実行して終了 |
 
+### CLI サブコマンド
+
+非インタラクティブな管理コマンド群です。`mcp` と `plugin` グループは TypeScript CLI とバイト単位で出力互換です：
+
+| コマンド | 説明 |
+|----------|------|
+| `claude mcp add <name> -- <command> [args…]` | stdio MCP サーバーを登録（リモートは `--transport http <name> <url>`、環境変数は `-e KEY=VAL`） |
+| `claude mcp list` / `claude mcp get <name>` | 設定済みサーバーの一覧表示 / ヘルスチェック |
+| `claude mcp add-json <name> <json>` | 生の JSON からサーバーを登録 |
+| `claude mcp add-from-claude-desktop` | Claude Desktop の設定からサーバーをインポート |
+| `claude mcp remove <name>` / `reset-project-choices` | サーバーを削除 / プロジェクトローカルの選択をリセット |
+| `claude plugin install <plugin>` | 設定済みマーケットプレイスからプラグインをインストール |
+| `claude plugin list` / `enable` / `disable` / `uninstall` / `update` | インストール済みプラグインを管理 |
+| `claude plugin validate <path>` | プラグインまたはマーケットプレイスのマニフェストを検証（`--strict`、`--json`） |
+| `claude plugin marketplace add/list/remove/update` | プラグインマーケットプレイスを管理（ローカルパス） |
+| `claude auth login` / `logout` / `status` | OAuth または API キー認証 |
+| `claude doctor` | 環境のヘルスチェック |
+
 ### スラッシュコマンド
 
 入力欄で `/` を入力すると、利用可能なすべてのコマンドが表示されます：
@@ -275,17 +300,21 @@ claude [flags]
 | `/clear` | 会話履歴をクリア |
 | `/compact` | 履歴を要約してコンテキスト使用量を削減 |
 | `/exit` | Claude Code を終了 |
-| `/model` | Claude モデルを切り替え |
-| `/theme` | ダーク/ライトテーマを切り替え |
-| `/vim` | Vim モードを切り替え |
-| `/commit` | git コミットメッセージを生成 |
-| `/review` | 最近の変更をレビュー |
-| `/diff` | 現在の diff を表示 |
-| `/mcp` | MCP サーバーを管理 |
-| `/memory` | 読み込まれた CLAUDE.md ファイルを表示 |
-| `/session` | セッション情報を表示 |
-| `/status` | API/接続ステータスを表示 |
-| `/cost` | トークン使用量と推定コストを表示 |
+| `/model` | アクティブなモデルを表示または設定 |
+| `/theme` | カラーテーマを切り替え |
+| `/vim` | Vim キーバインディングを切り替え |
+| `/effort` | effort レベルを設定（low / medium / high） |
+| `/status` | セッションステータスを表示 |
+| `/cost` | このセッションのトークン使用量を表示 |
+| `/session` | 現在のセッション ID を表示 |
+| `/memory` | 読み込まれた CLAUDE.md メモリファイルを表示 |
+| `/dream` | メモリ統合を手動で実行 |
+| `/review` | 現在の git diff を Claude でレビュー |
+| `/commit` | git コミットの作成を Claude に依頼 |
+| `/diff` | 現在の git diff を表示 |
+| `/init` | このプロジェクト用の CLAUDE.md を生成 |
+
+`/config`、`/mcp`、`/resume`、`/terminal-setup` は登録済みですが、まだ実装されていません — 当面は、MCP 管理に上記の CLI サブコマンドを使用してください。
 
 ## 開発
 
@@ -318,28 +347,26 @@ make all
 
 ## ロードマップ
 
-Claude Code Go は現在、オリジナルの TypeScript 版との機能パリティが約 **65%** です。v1.0 に向けたフェーズ別計画：
+初回ビルド（2026 年 4 月）では、完全な 6 層アーキテクチャを 9 日間で完成させました。2026 年 8 月以降、本プロジェクトは**保守モード**にあります：開発は、本 CLI をオリジナルの TypeScript 版と比較する動作パリティギャップ台帳（[`test/parity/cases.md`](test/parity/cases.md)）によって駆動されます — 閉じられたギャップはすべてテストでバイト単位に固定され、意図的な乖離はすべて理由付きで `waived` として記録されます。
 
-| フェーズ | バージョン | 主な目標 | タイムライン |
-|----------|-----------|----------|-------------|
-| **Phase 1** | v0.2.0 | 🔒 権限システムの統合、Hook システムの接続、テストカバレッジ基準、CI 強化 | +3 週間 |
-| **Phase 2** | v0.3.0 | 🔧 全 22 ツール完成（現在 11）、CLI サブコマンド、スラッシュコマンド強化、Agent ツール | +3 週間 |
-| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock & GCP Vertex プロバイダー、MCP WebSocket、プラグインシステム、Feature Flags | +4 週間 |
-| **Phase 4** | v0.5.0 | 🚀 LSP 統合、Remote/Server モード、音声入力、Vim モード、Extended Thinking、コストトラッカー | +4 週間 |
-| **Phase 5** | v1.0.0 | 🎯 パフォーマンス最適化、セキュリティ監査、ドキュメント完成、マルチプラットフォームリリース | +2 週間 |
+最近のマイルストーン：
+
+- **2026-09-05** — `mcp`（7 コマンド）と `plugin`（8 コマンド + `marketplace` サブツリー）の CLI グループが投入され、出力は TS CLI とバイト単位で同一に。ユーザーに見えるスタブを 42 → 27 に削減
+- **2026-08-30** — `--version` フォーマットのパリティ；TS CLI に対するサブコマンドの全インベントリ（§B11）
+- **2026-08-29** — 保守モードのプロセスが導入：CI で強制される負債レッドライン、パリティテストスケルトン
+
+元のフェーズ別計画（v0.2.0 → v1.0.0）は、フェーズごとの完了状況とともに [`docs/ROADMAP.md`](docs/ROADMAP.md) に保存されています。
 
 ### 現在の状態
 
 ```
-完成度: ████████████░░░░░░░░ 65%
-
-✅ 完了: コアエンジン、TUI、API クライアント（Direct + OpenAI）、コンテキスト圧縮、
-        OAuth、セッション永続化、11 ツール、14 スラッシュコマンド
-⚠️  進行中: Bedrock/Vertex プロバイダー、MCP WebSocket、残りのツールとコマンド
-❌ 未着手: 権限接続、Hook 接続、LSP、プラグインシステム、Remote モード
+✅ 完了: コアエンジン + ストリーミング、TUI、34 ツール、17 スラッシュコマンド（うち 4 つはスタブ）、
+         mcp/plugin/auth/doctor CLI サブコマンド、9 層権限パイプライン、
+         コンテキスト圧縮（snip/micro/auto）、OAuth、セッション永続化
+🔧 モード: 保守 — TypeScript CLI に対するギャップ台帳駆動のパリティ作業
+📉 負債: 56 TODO(dep) / 27 ユーザーに見えるスタブ、CI で強制される増加禁止レッドライン
+🚀 リリース: v0.8.0、5 プラットフォーム向けバイナリ
 ```
-
-📋 詳細なタスク分解、アーキテクチャ図、完成基準は **[完全なロードマップ](docs/ROADMAP.md)** をご覧ください。
 
 ## 貢献
 

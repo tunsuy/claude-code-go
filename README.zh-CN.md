@@ -61,8 +61,6 @@
   </tr>
 </table>
 
-*赞助商链接可能是推广（referral）链接。*
-
 ## 功能特性
 
 - **交互式 TUI** — 基于 [Bubble Tea](https://github.com/charmbracelet/bubbletea) 构建的全功能终端界面，支持深色/浅色主题

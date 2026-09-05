@@ -61,8 +61,6 @@
   </tr>
 </table>
 
-*이 섹션의 링크는 추천인(referral) 링크일 수 있습니다.*
-
 ## 기능
 
 - **대화형 TUI** — [Bubble Tea](https://github.com/charmbracelet/bubbletea)로 구축된 완전한 터미널 UI, 다크/라이트 테마 지원

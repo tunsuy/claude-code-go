@@ -61,8 +61,6 @@ Este proyecto es una **reimplementación completa en Go de [Claude Code](https:/
   </tr>
 </table>
 
-*Los enlaces de esta sección pueden ser enlaces de referido.*
-
 ## Características
 
 - **TUI interactiva** — Interfaz de terminal completa construida con [Bubble Tea](https://github.com/charmbracelet/bubbletea), con temas oscuro/claro

@@ -16,7 +16,7 @@
 | 欠账 | 数量 | 红线 |
 |------|------|------|
 | `TODO(dep)` 占位（非测试代码） | 56 | 只降不升，CI 强制（`make debt-check`） |
-| 用户可见 `not yet implemented` 桩 | 42 | 只降不升，CI 强制 |
+| 用户可见 `not yet implemented` 桩 | 27 | 只降不升，CI 强制 |
 | 相对原版 TS 的 LOC 覆盖 | ≈5.3% | 行为对比测试见 `test/parity/` |
 
 关闭欠账后运行 `scripts/debt-check.sh --update` 刷新基线并随 PR 提交。

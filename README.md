@@ -60,15 +60,15 @@ Tech Lead Agent   →  architecture design, design-doc review, code review
 Agent-Infra       →  infrastructure layer (types, config, state, session)
 Agent-Services    →  services layer (API client, OAuth, MCP, compaction)
 Agent-Core        →  core engine (LLM loop, tool dispatch, coordinator)
-Agent-Tools       →  tools layer (file, shell, search, web — 18 tools)
+Agent-Tools       →  tools layer (file, shell, search, web — 18 tools at build time)
 Agent-TUI         →  UI layer (Bubble Tea MVU, themes, Vim mode)
 Agent-CLI         →  entry layer (Cobra CLI, DI, bootstrap phases)
 QA Agent          →  test strategy, per-layer acceptance, integration tests
 ```
 
-Each agent worked on an isolated Git Worktree branch in parallel, collaborating through the shared codebase, design docs, and QA reports. The result: ~**7,000 lines of production code + a full test suite**, with `go test -race ./...` passing.
+Each agent worked on an isolated Git Worktree branch in parallel, collaborating through the shared codebase, design docs, and QA reports. The result: ~**7,000 lines of production code + a full test suite in 9 days**, with `go test -race ./...` passing.
 
-This is a real-world demonstration that a non-trivial, multi-layer Go application can be fully designed, implemented, reviewed, and shipped by AI agents collaborating asynchronously. The complete decision trail lives in [`docs/project/`](docs/project/).
+This is a real-world demonstration that a non-trivial, multi-layer Go application can be fully designed, implemented, reviewed, and shipped by AI agents collaborating asynchronously. Since August 2026 the project is maintained in the same spirit — a single main Claude session working through a behavior-parity gap ledger against the original TypeScript CLI, with one human owner reviewing and merging. Still zero human-written production code (~33,000 lines today). The complete decision trail lives in [`docs/project/`](docs/project/).
 
 ---
 
@@ -77,14 +77,16 @@ A Go implementation of [Claude Code](https://claude.ai/code) — an agentic AI c
 ## Features
 
 - **Interactive TUI** — Full-featured terminal UI built with [Bubble Tea](https://github.com/charmbracelet/bubbletea), with dark/light themes
-- **Agentic tool use** — File reads/writes, shell execution, search, and more, all mediated through a permission layer
+- **Agentic tool use** — 34 built-in tools (file, shell, search, web, tasks, sub-agents, …), all mediated through a 9-layer permission pipeline
+- **CLI subcommands** — `claude mcp …`, `claude plugin …`, `claude auth …`, `claude doctor`, `claude update`; the `mcp` and `plugin` groups produce byte-for-byte identical output to the TypeScript CLI
+- **Plugin management** — Install/enable/disable plugins from local marketplaces, with full manifest validation (`claude plugin validate`)
 - **Multi-agent coordination** — Spawn background sub-agents for parallel tasks
-- **MCP support** — Connect external tools via the [Model Context Protocol](https://modelcontextprotocol.io)
+- **MCP support** — Connect external tools via the [Model Context Protocol](https://modelcontextprotocol.io) (stdio + HTTP transports), importable from Claude Desktop
 - **CLAUDE.md memory** — Auto-loads project context from `CLAUDE.md` files up the directory tree
 - **Session management** — Resume previous conversations; compact long histories automatically
 - **Vim mode** — Optional Vim key bindings in the input area
-- **OAuth + API key auth** — Sign in with Anthropic OAuth or supply an `ANTHROPIC_API_KEY`
-- **18 built-in slash commands** — `/help`, `/clear`, `/compact`, `/commit`, `/diff`, `/review`, `/mcp`, and more
+- **OAuth + API key auth** — Sign in with Anthropic OAuth (`claude auth login`) or supply an `ANTHROPIC_API_KEY`
+- **Built-in slash commands** — `/compact`, `/commit`, `/review`, `/model`, `/theme`, and more (see below)
 - **Streaming responses** — Real-time token streaming with thinking-block display
 
 ## Architecture
@@ -161,12 +163,15 @@ claude --resume
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+# or store it persistently:
+claude auth login --api-key sk-ant-...
 ```
 
 **OAuth (recommended for interactive use):**
 
 ```bash
-claude /config    # opens the OAuth flow in your browser
+claude auth login    # opens the OAuth flow in your browser
+claude auth status   # check who you're signed in as
 ```
 
 ## API Providers
@@ -269,6 +274,24 @@ claude [flags]
 | `--vim` | Enable Vim key bindings |
 | `-p, --print <prompt>` | Non-interactive: run a single prompt and exit |
 
+### CLI subcommands
+
+Non-interactive management commands. The `mcp` and `plugin` groups are byte-for-byte output-compatible with the TypeScript CLI:
+
+| Command | Description |
+|---------|-------------|
+| `claude mcp add <name> -- <command> [args…]` | Register a stdio MCP server (`--transport http <name> <url>` for remote, `-e KEY=VAL` for env) |
+| `claude mcp list` / `claude mcp get <name>` | List configured servers / health-check one |
+| `claude mcp add-json <name> <json>` | Register a server from raw JSON |
+| `claude mcp add-from-claude-desktop` | Import servers from Claude Desktop's config |
+| `claude mcp remove <name>` / `reset-project-choices` | Remove a server / reset project-local choices |
+| `claude plugin install <plugin>` | Install a plugin from a configured marketplace |
+| `claude plugin list` / `enable` / `disable` / `uninstall` / `update` | Manage installed plugins |
+| `claude plugin validate <path>` | Validate a plugin or marketplace manifest (`--strict`, `--json`) |
+| `claude plugin marketplace add/list/remove/update` | Manage plugin marketplaces (local paths) |
+| `claude auth login` / `logout` / `status` | OAuth or API-key authentication |
+| `claude doctor` | Environment health check |
+
 ### Slash commands
 
 Type `/` in the input to see all available commands:
@@ -279,17 +302,21 @@ Type `/` in the input to see all available commands:
 | `/clear` | Clear conversation history |
 | `/compact` | Summarise history to reduce context usage |
 | `/exit` | Exit Claude Code |
-| `/model` | Switch Claude model |
-| `/theme` | Toggle dark/light theme |
-| `/vim` | Toggle Vim mode |
-| `/commit` | Generate a git commit message |
-| `/review` | Review recent changes |
-| `/diff` | Show current diff |
-| `/mcp` | Manage MCP servers |
-| `/memory` | Show loaded CLAUDE.md files |
-| `/session` | Show session info |
-| `/status` | Show API/connection status |
-| `/cost` | Show token usage and estimated cost |
+| `/model` | Show or set the active model |
+| `/theme` | Switch color theme |
+| `/vim` | Toggle Vim key bindings |
+| `/effort` | Set effort level (low / medium / high) |
+| `/status` | Show session status |
+| `/cost` | Show token usage for this session |
+| `/session` | Show current session ID |
+| `/memory` | Show loaded CLAUDE.md memory files |
+| `/dream` | Manually trigger memory consolidation |
+| `/review` | Review the current git diff with Claude |
+| `/commit` | Ask Claude to write and create a git commit |
+| `/diff` | Show the current git diff |
+| `/init` | Generate a CLAUDE.md for this project |
+
+`/config`, `/mcp`, `/resume`, and `/terminal-setup` are registered but not yet implemented — use the CLI subcommands above for MCP management in the meantime.
 
 ## Development
 
@@ -360,28 +387,26 @@ claude-code-go/
 
 ## Roadmap
 
-Claude Code Go is currently at **~65% feature parity** with the original TypeScript version. Here's our phased plan to reach v1.0:
+The initial build (April 2026) delivered the full six-layer architecture in 9 days. Since August 2026 the project is in **maintenance mode**: development is driven by a behavior-parity gap ledger ([`test/parity/cases.md`](test/parity/cases.md)) that compares this CLI against the original TypeScript version — every closed gap is byte-pinned by tests, every deliberate divergence is recorded as `waived` with a reason.
 
-| Phase | Version | Key Goals | Timeline |
-|-------|---------|-----------|----------|
-| **Phase 1** | v0.2.0 | 🔒 Permission system integration, Hook system wiring, test coverage baseline, CI hardening | +3 weeks |
-| **Phase 2** | v0.3.0 | 🔧 Complete all 22 tools (currently 11), full CLI subcommands, slash command enhancements, Agent tool | +3 weeks |
-| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock & GCP Vertex providers, MCP WebSocket transport, plugin system, feature flags | +4 weeks |
-| **Phase 4** | v0.5.0 | 🚀 LSP integration, Remote/Server mode, Voice input, Vim mode, Extended Thinking, Cost Tracker | +4 weeks |
-| **Phase 5** | v1.0.0 | 🎯 Performance tuning, security audit, full documentation, multi-platform release | +2 weeks |
+Recent milestones:
+
+- **2026-09-05** — `mcp` (7 commands) and `plugin` (8 commands + `marketplace` subtree) CLI groups landed, output byte-identical to the TS CLI; user-visible stubs reduced 42 → 27
+- **2026-08-30** — `--version` format parity; full subcommand inventory against the TS CLI (§B11)
+- **2026-08-29** — maintenance-mode process landed: CI-enforced debt red lines, parity test skeleton
+
+The original phased plan (v0.2.0 → v1.0.0) is preserved with per-phase completion status in [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ### Current Status
 
 ```
-Completion: ████████████░░░░░░░░ 65%
-
-✅ Done: Core engine, TUI, API client (Direct + OpenAI), context compaction,
-         OAuth, session persistence, 11 tools, 14 slash commands
-⚠️  WIP:  Bedrock/Vertex providers, MCP WebSocket, remaining tools & commands
-❌ Todo: Permission wiring, Hook wiring, LSP, plugin system, Remote mode
+✅ Done:  Core engine + streaming, TUI, 34 tools, 17 slash commands (4 stubs),
+          mcp/plugin/auth/doctor CLI subcommands, 9-layer permission pipeline,
+          context compaction (snip/micro/auto), OAuth, session persistence
+🔧 Mode:  Maintenance — gap-ledger-driven parity work vs. the TypeScript CLI
+📉 Debt:  56 TODO(dep) / 27 user-visible stubs, CI-enforced only-down red lines
+🚀 Release: v0.8.0, 5-platform binaries
 ```
-
-📋 See the **[full Roadmap](docs/ROADMAP.md)** for detailed task breakdowns, architecture diagrams, and completion criteria.
 
 ## Contributing
 

@@ -60,27 +60,31 @@ Agente Tech Lead   →  diseño de arquitectura, revisión de documentos de dise
 Agent-Infra        →  capa de infraestructura (tipos, configuración, estado, sesión)
 Agent-Services     →  capa de servicios (cliente API, OAuth, MCP, compactación)
 Agent-Core         →  motor central (bucle LLM, despacho de herramientas, coordinador)
-Agent-Tools        →  capa de herramientas (archivo, shell, búsqueda, web — 18 herramientas)
+Agent-Tools        →  capa de herramientas (archivo, shell, búsqueda, web — 18 herramientas al momento de la construcción)
 Agent-TUI          →  capa de UI (Bubble Tea MVU, temas, modo Vim)
 Agent-CLI          →  capa de entrada (Cobra CLI, DI, fases de bootstrap)
 Agente QA          →  estrategia de pruebas, aceptación por capa, pruebas de integración
 ```
 
-Resultado: ~**7,000 líneas de código de producción + suite de pruebas completa**, con `go test -race ./...` pasando.
+Resultado: ~**7,000 líneas de código de producción + suite de pruebas completa en 9 días**, con `go test -race ./...` pasando.
+
+Esta es una demostración real de que una aplicación Go no trivial y multicapa puede ser diseñada, implementada, revisada y entregada en su totalidad por agentes de IA que colaboran de forma asíncrona. Desde agosto de 2026 el proyecto se mantiene con el mismo espíritu — una única sesión principal de Claude trabajando sobre un registro de brechas de paridad de comportamiento frente al CLI original en TypeScript, con un responsable humano que revisa y fusiona. Sigue habiendo cero código de producción escrito por humanos (~33,000 líneas en la actualidad). El registro completo de decisiones vive en [`docs/project/`](docs/project/).
 
 ---
 
 ## Características
 
 - **TUI interactiva** — Interfaz de terminal completa construida con [Bubble Tea](https://github.com/charmbracelet/bubbletea), con temas oscuro/claro
-- **Uso de herramientas agénticas** — Lectura/escritura de archivos, ejecución de shell, búsqueda y más, todo mediado a través de una capa de permisos
+- **Uso de herramientas agénticas** — 34 herramientas integradas (archivo, shell, búsqueda, web, tareas, sub-agentes, …), todas mediadas a través de un pipeline de permisos de 9 capas
+- **Subcomandos CLI** — `claude mcp …`, `claude plugin …`, `claude auth …`, `claude doctor`, `claude update`; los grupos `mcp` y `plugin` producen una salida idéntica byte a byte a la del CLI de TypeScript
+- **Gestión de plugins** — Instala/activa/desactiva plugins desde marketplaces locales, con validación completa de manifiestos (`claude plugin validate`)
 - **Coordinación multi-agente** — Genera sub-agentes en segundo plano para tareas paralelas
-- **Soporte MCP** — Conecta herramientas externas a través del [Model Context Protocol](https://modelcontextprotocol.io)
+- **Soporte MCP** — Conecta herramientas externas a través del [Model Context Protocol](https://modelcontextprotocol.io) (transportes stdio + HTTP), importables desde Claude Desktop
 - **Memoria CLAUDE.md** — Carga automáticamente el contexto del proyecto desde archivos `CLAUDE.md` en el árbol de directorios
 - **Gestión de sesiones** — Reanuda conversaciones anteriores; compacta automáticamente historiales largos
 - **Modo Vim** — Atajos de teclado Vim opcionales en el área de entrada
-- **Autenticación OAuth + clave API** — Inicia sesión con OAuth de Anthropic o proporciona una `ANTHROPIC_API_KEY`
-- **18 comandos slash integrados** — `/help`, `/clear`, `/compact`, `/commit`, `/diff`, `/review`, `/mcp` y más
+- **Autenticación OAuth + clave API** — Inicia sesión con OAuth de Anthropic (`claude auth login`) o proporciona una `ANTHROPIC_API_KEY`
+- **Comandos slash integrados** — `/compact`, `/commit`, `/review`, `/model`, `/theme` y más (ver abajo)
 - **Respuestas en streaming** — Streaming de tokens en tiempo real con visualización de bloques de pensamiento
 
 ## Arquitectura
@@ -157,12 +161,15 @@ claude --resume
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+# o guárdala de forma persistente:
+claude auth login --api-key sk-ant-...
 ```
 
 **OAuth (recomendado para uso interactivo):**
 
 ```bash
-claude /config    # abre el flujo OAuth en tu navegador
+claude auth login    # abre el flujo OAuth en tu navegador
+claude auth status   # comprueba con qué cuenta has iniciado sesión
 ```
 
 ## Proveedores de API
@@ -265,6 +272,24 @@ claude [flags]
 | `--vim` | Habilita atajos de teclado Vim |
 | `-p, --print <prompt>` | No interactivo: ejecuta un solo prompt y sale |
 
+### Subcomandos CLI
+
+Comandos de gestión no interactivos. Los grupos `mcp` y `plugin` producen una salida idéntica byte a byte a la del CLI de TypeScript:
+
+| Comando | Descripción |
+|---------|-------------|
+| `claude mcp add <name> -- <command> [args…]` | Registra un servidor MCP por stdio (`--transport http <name> <url>` para remotos, `-e KEY=VAL` para variables de entorno) |
+| `claude mcp list` / `claude mcp get <name>` | Lista los servidores configurados / comprueba el estado de uno |
+| `claude mcp add-json <name> <json>` | Registra un servidor a partir de JSON en bruto |
+| `claude mcp add-from-claude-desktop` | Importa servidores desde la configuración de Claude Desktop |
+| `claude mcp remove <name>` / `reset-project-choices` | Elimina un servidor / restablece las elecciones locales del proyecto |
+| `claude plugin install <plugin>` | Instala un plugin desde un marketplace configurado |
+| `claude plugin list` / `enable` / `disable` / `uninstall` / `update` | Gestiona los plugins instalados |
+| `claude plugin validate <path>` | Valida un manifiesto de plugin o de marketplace (`--strict`, `--json`) |
+| `claude plugin marketplace add/list/remove/update` | Gestiona marketplaces de plugins (rutas locales) |
+| `claude auth login` / `logout` / `status` | Autenticación OAuth o por clave API |
+| `claude doctor` | Comprobación del estado del entorno |
+
 ### Comandos slash
 
 Escribe `/` en la entrada para ver todos los comandos disponibles:
@@ -273,19 +298,23 @@ Escribe `/` en la entrada para ver todos los comandos disponibles:
 |---------|-------------|
 | `/help` | Muestra todos los comandos |
 | `/clear` | Limpia el historial de conversación |
-| `/compact` | Resume el historial para reducir uso de contexto |
+| `/compact` | Resume el historial para reducir el uso de contexto |
 | `/exit` | Sale de Claude Code |
-| `/model` | Cambia el modelo Claude |
-| `/theme` | Alterna tema oscuro/claro |
-| `/vim` | Alterna modo Vim |
-| `/commit` | Genera un mensaje de commit git |
-| `/review` | Revisa cambios recientes |
-| `/diff` | Muestra el diff actual |
-| `/mcp` | Gestiona servidores MCP |
-| `/memory` | Muestra archivos CLAUDE.md cargados |
-| `/session` | Muestra información de sesión |
-| `/status` | Muestra estado de API/conexión |
-| `/cost` | Muestra uso de tokens y costo estimado |
+| `/model` | Muestra o establece el modelo activo |
+| `/theme` | Cambia el tema de colores |
+| `/vim` | Alterna los atajos de teclado Vim |
+| `/effort` | Establece el nivel de esfuerzo (low / medium / high) |
+| `/status` | Muestra el estado de la sesión |
+| `/cost` | Muestra el uso de tokens de esta sesión |
+| `/session` | Muestra el ID de la sesión actual |
+| `/memory` | Muestra los archivos de memoria CLAUDE.md cargados |
+| `/dream` | Dispara manualmente la consolidación de memoria |
+| `/review` | Revisa el diff actual de git con Claude |
+| `/commit` | Pide a Claude que escriba y cree un commit de git |
+| `/diff` | Muestra el diff actual de git |
+| `/init` | Genera un CLAUDE.md para este proyecto |
+
+`/config`, `/mcp`, `/resume` y `/terminal-setup` están registrados pero aún no están implementados — mientras tanto, usa los subcomandos CLI anteriores para gestionar MCP.
 
 ## Desarrollo
 
@@ -318,28 +347,29 @@ make all
 
 ## Hoja de ruta
 
-Claude Code Go actualmente tiene una paridad de funciones de aproximadamente **65%** con la versión original en TypeScript. Aquí está nuestro plan por fases para llegar a v1.0:
+La construcción inicial (abril de 2026) entregó la arquitectura completa de seis capas en 9 días. Desde agosto de 2026 el proyecto está en **modo mantenimiento**: el desarrollo se guía por un registro de brechas de paridad de comportamiento ([`test/parity/cases.md`](test/parity/cases.md)) que compara este CLI con la versión original en TypeScript — cada brecha cerrada queda fijada byte a byte mediante pruebas, y cada divergencia deliberada se registra como `waived` con su motivo.
 
-| Fase | Versión | Objetivos clave | Plazo |
-|------|---------|-----------------|-------|
-| **Phase 1** | v0.2.0 | 🔒 Integración del sistema de permisos, conexión del sistema Hook, base de cobertura de pruebas, refuerzo de CI | +3 semanas |
-| **Phase 2** | v0.3.0 | 🔧 Completar las 22 herramientas (actualmente 11), subcomandos CLI, mejoras de comandos slash, herramienta Agent | +3 semanas |
-| **Phase 3** | v0.4.0 | 🌐 Proveedores AWS Bedrock y GCP Vertex, transporte MCP WebSocket, sistema de plugins, Feature Flags | +4 semanas |
-| **Phase 4** | v0.5.0 | 🚀 Integración LSP, modo Remote/Server, entrada de voz, modo Vim, Extended Thinking, rastreador de costos | +4 semanas |
-| **Phase 5** | v1.0.0 | 🎯 Optimización de rendimiento, auditoría de seguridad, documentación completa, lanzamiento multiplataforma | +2 semanas |
+Hitos recientes:
+
+- **2026-09-05** — Los grupos CLI `mcp` (7 comandos) y `plugin` (8 comandos + el subárbol `marketplace`) quedaron integrados, con una salida idéntica byte a byte a la del CLI de TS; los stubs visibles para el usuario se redujeron de 42 a 27
+- **2026-08-30** — Paridad de formato de `--version`; inventario completo de subcomandos frente al CLI de TS (§B11)
+- **2026-08-29** — Proceso de modo mantenimiento implementado: líneas rojas de deuda aplicadas por CI, esqueleto de pruebas de paridad
+
+El plan original por fases (v0.2.0 → v1.0.0) se conserva, con el estado de finalización de cada fase, en [`docs/ROADMAP.md`](docs/ROADMAP.md).
 
 ### Estado actual
 
 ```
-Completado: ████████████░░░░░░░░ 65%
-
-✅ Hecho: Motor central, TUI, cliente API (Direct + OpenAI), compactación de contexto,
-          OAuth, persistencia de sesiones, 11 herramientas, 14 comandos slash
-⚠️  En progreso: Proveedores Bedrock/Vertex, MCP WebSocket, herramientas y comandos restantes
-❌ Pendiente: Conexión de permisos, conexión de Hooks, LSP, sistema de plugins, modo Remote
+✅ Hecho:       Motor central + streaming, TUI, 34 herramientas, 17 comandos
+                slash (4 stubs), subcomandos CLI mcp/plugin/auth/doctor,
+                pipeline de permisos de 9 capas, compactación de contexto
+                (snip/micro/auto), OAuth, persistencia de sesiones
+🔧 Modo:        Mantenimiento — trabajo de paridad guiado por el registro de
+                brechas frente al CLI de TypeScript
+📉 Deuda:       56 TODO(dep) / 27 stubs visibles para el usuario, líneas rojas
+                de solo-descenso aplicadas por CI
+🚀 Lanzamiento: v0.8.0, binarios para 5 plataformas
 ```
-
-📋 Consulta la **[hoja de ruta completa](docs/ROADMAP.md)** para desgloses detallados de tareas, diagramas de arquitectura y criterios de finalización.
 
 ## Contribuir
 

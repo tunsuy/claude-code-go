@@ -60,27 +60,31 @@ Tech Lead Agent   →  아키텍처 설계, 설계 문서 리뷰, 코드 리뷰
 Agent-Infra       →  인프라 계층(타입, 설정, 상태, 세션)
 Agent-Services    →  서비스 계층(API 클라이언트, OAuth, MCP, 압축)
 Agent-Core        →  코어 엔진(LLM 루프, 도구 디스패치, 코디네이터)
-Agent-Tools       →  도구 계층(파일, 셸, 검색, 웹 — 18개 도구)
+Agent-Tools       →  도구 계층(파일, 셸, 검색, 웹 — 빌드 시점 기준 18개 도구)
 Agent-TUI         →  UI 계층(Bubble Tea MVU, 테마, Vim 모드)
 Agent-CLI         →  진입점 계층(Cobra CLI, DI, 부트스트랩 단계)
 QA Agent          →  테스트 전략, 계층별 승인, 통합 테스트
 ```
 
-결과: 약 **7,000줄의 프로덕션 코드 + 전체 테스트 스위트**, `go test -race ./...` 통과.
+결과: **9일 만에 약 7,000줄의 프로덕션 코드 + 전체 테스트 스위트** 완성, `go test -race ./...` 통과.
+
+이는 규모가 있는 다계층 Go 애플리케이션이 AI 에이전트들의 비동기 협업만으로 설계, 구현, 리뷰, 출시까지 완전히 가능하다는 실제 사례입니다. 2026년 8월부터는 프로젝트가 같은 정신으로 유지 보수되고 있습니다 — 원본 TypeScript CLI와의 행동 동등성 갭 원장(behavior-parity gap ledger)을 한 개의 메인 Claude 세션이 작업하고, 한 명의 인간 담당자가 리뷰하고 병합합니다. 여전히 인간이 작성한 프로덕션 코드는 단 한 줄도 없습니다(현재 약 33,000줄). 전체 의사결정 기록은 [`docs/project/`](docs/project/)에서 확인할 수 있습니다.
 
 ---
 
 ## 기능
 
 - **대화형 TUI** — [Bubble Tea](https://github.com/charmbracelet/bubbletea)로 구축된 완전한 터미널 UI, 다크/라이트 테마 지원
-- **에이전트 도구 사용** — 파일 읽기/쓰기, 셸 실행, 검색 등, 모두 권한 계층을 통해 중재
+- **에이전트 도구 사용** — 34개 내장 도구(파일, 셸, 검색, 웹, 작업, 서브 에이전트 등), 모두 9계층 권한 파이프라인을 통해 중재
+- **CLI 하위 명령** — `claude mcp …`, `claude plugin …`, `claude auth …`, `claude doctor`, `claude update`; `mcp` 및 `plugin` 그룹은 TypeScript CLI와 바이트 단위까지 동일한 출력 생성
+- **플러그인 관리** — 로컬 마켓플레이스에서 플러그인 설치/활성화/비활성화, 매니페스트 완전 검증 지원(`claude plugin validate`)
 - **멀티 에이전트 조정** — 병렬 작업을 위한 백그라운드 서브 에이전트 생성
-- **MCP 지원** — [Model Context Protocol](https://modelcontextprotocol.io)을 통한 외부 도구 연결
+- **MCP 지원** — [Model Context Protocol](https://modelcontextprotocol.io)을 통한 외부 도구 연결(stdio + HTTP 전송), Claude Desktop에서 가져오기 가능
 - **CLAUDE.md 메모리** — 디렉터리 트리의 `CLAUDE.md` 파일에서 프로젝트 컨텍스트 자동 로드
 - **세션 관리** — 이전 대화 재개; 긴 기록 자동 압축
 - **Vim 모드** — 입력 영역에서 선택적 Vim 키 바인딩
-- **OAuth + API 키 인증** — Anthropic OAuth로 로그인하거나 `ANTHROPIC_API_KEY` 제공
-- **18개의 내장 슬래시 명령** — `/help`, `/clear`, `/compact`, `/commit`, `/diff`, `/review`, `/mcp` 등
+- **OAuth + API 키 인증** — Anthropic OAuth로 로그인(`claude auth login`)하거나 `ANTHROPIC_API_KEY` 제공
+- **내장 슬래시 명령** — `/compact`, `/commit`, `/review`, `/model`, `/theme` 등(아래 참조)
 - **스트리밍 응답** — thinking 블록 표시와 함께 실시간 토큰 스트리밍
 
 ## 아키텍처
@@ -157,12 +161,15 @@ claude --resume
 
 ```bash
 export ANTHROPIC_API_KEY=sk-ant-...
+# 또는 영구적으로 저장:
+claude auth login --api-key sk-ant-...
 ```
 
 **OAuth(대화형 사용에 권장):**
 
 ```bash
-claude /config    # 브라우저에서 OAuth 플로우 열기
+claude auth login    # 브라우저에서 OAuth 플로우 열기
+claude auth status   # 로그인된 계정 확인
 ```
 
 ## API 프로바이더
@@ -265,6 +272,24 @@ claude [flags]
 | `--vim` | Vim 키 바인딩 활성화 |
 | `-p, --print <prompt>` | 비대화형: 단일 프롬프트 실행 후 종료 |
 
+### CLI 하위 명령
+
+비대화형 관리 명령입니다. `mcp` 및 `plugin` 그룹은 TypeScript CLI와 출력이 바이트 단위까지 호환됩니다:
+
+| 명령 | 설명 |
+|------|------|
+| `claude mcp add <name> -- <command> [args…]` | stdio MCP 서버 등록(원격은 `--transport http <name> <url>`, 환경 변수는 `-e KEY=VAL`) |
+| `claude mcp list` / `claude mcp get <name>` | 설정된 서버 목록 조회 / 개별 서버 헬스 체크 |
+| `claude mcp add-json <name> <json>` | raw JSON으로 서버 등록 |
+| `claude mcp add-from-claude-desktop` | Claude Desktop 설정에서 서버 가져오기 |
+| `claude mcp remove <name>` / `reset-project-choices` | 서버 제거 / 프로젝트 로컬 선택 초기화 |
+| `claude plugin install <plugin>` | 구성된 마켓플레이스에서 플러그인 설치 |
+| `claude plugin list` / `enable` / `disable` / `uninstall` / `update` | 설치된 플러그인 관리 |
+| `claude plugin validate <path>` | 플러그인 또는 마켓플레이스 매니페스트 검증(`--strict`, `--json`) |
+| `claude plugin marketplace add/list/remove/update` | 플러그인 마켓플레이스 관리(로컬 경로) |
+| `claude auth login` / `logout` / `status` | OAuth 또는 API 키 인증 |
+| `claude doctor` | 환경 상태 점검 |
+
 ### 슬래시 명령
 
 입력창에서 `/`를 입력하면 사용 가능한 모든 명령을 볼 수 있습니다:
@@ -275,17 +300,21 @@ claude [flags]
 | `/clear` | 대화 기록 지우기 |
 | `/compact` | 기록을 요약하여 컨텍스트 사용량 감소 |
 | `/exit` | Claude Code 종료 |
-| `/model` | Claude 모델 전환 |
-| `/theme` | 다크/라이트 테마 전환 |
-| `/vim` | Vim 모드 전환 |
-| `/commit` | git 커밋 메시지 생성 |
-| `/review` | 최근 변경 사항 검토 |
-| `/diff` | 현재 diff 표시 |
-| `/mcp` | MCP 서버 관리 |
-| `/memory` | 로드된 CLAUDE.md 파일 표시 |
-| `/session` | 세션 정보 표시 |
-| `/status` | API/연결 상태 표시 |
-| `/cost` | 토큰 사용량 및 예상 비용 표시 |
+| `/model` | 활성 모델 조회 또는 설정 |
+| `/theme` | 색상 테마 전환 |
+| `/vim` | Vim 키 바인딩 전환 |
+| `/effort` | effort 레벨 설정(low / medium / high) |
+| `/status` | 세션 상태 표시 |
+| `/cost` | 이 세션의 토큰 사용량 표시 |
+| `/session` | 현재 세션 ID 표시 |
+| `/memory` | 로드된 CLAUDE.md 메모리 파일 표시 |
+| `/dream` | 메모리 통합 수동 트리거 |
+| `/review` | Claude로 현재 git diff 검토 |
+| `/commit` | Claude에게 git 커밋 작성 및 생성 요청 |
+| `/diff` | 현재 git diff 표시 |
+| `/init` | 이 프로젝트용 CLAUDE.md 생성 |
+
+`/config`, `/mcp`, `/resume`, `/terminal-setup`는 등록은 되어 있지만 아직 구현되지 않았습니다 — 그동안 MCP 관리는 위의 CLI 하위 명령을 사용하세요.
 
 ## 개발
 
@@ -318,28 +347,26 @@ make all
 
 ## 로드맵
 
-Claude Code Go는 현재 원본 TypeScript 버전과의 기능 대등도가 약 **65%** 입니다. v1.0을 향한 단계별 계획:
+초기 빌드(2026년 4월)는 9일 만에 완전한 6계층 아키텍처를 완성했습니다. 2026년 8월부터 이 프로젝트는 **유지 보수 모드**에 있습니다: 개발은 이 CLI를 원본 TypeScript 버전과 비교하는 행동 동등성 갭 원장([`test/parity/cases.md`](test/parity/cases.md))이 주도하며 — 닫힌 갭은 모두 테스트로 바이트 단위까지 고정되고, 의도적인 차이는 그 이유와 함께 `waived`로 기록됩니다.
 
-| 단계 | 버전 | 주요 목표 | 타임라인 |
-|------|------|-----------|----------|
-| **Phase 1** | v0.2.0 | 🔒 권한 시스템 통합, Hook 시스템 연결, 테스트 커버리지 기준, CI 강화 | +3주 |
-| **Phase 2** | v0.3.0 | 🔧 22개 전체 도구 완성(현재 11개), CLI 하위 명령, 슬래시 명령 강화, Agent 도구 | +3주 |
-| **Phase 3** | v0.4.0 | 🌐 AWS Bedrock & GCP Vertex 프로바이더, MCP WebSocket, 플러그인 시스템, Feature Flags | +4주 |
-| **Phase 4** | v0.5.0 | 🚀 LSP 통합, Remote/Server 모드, 음성 입력, Vim 모드, Extended Thinking, 비용 추적기 | +4주 |
-| **Phase 5** | v1.0.0 | 🎯 성능 최적화, 보안 감사, 문서 완성, 멀티 플랫폼 릴리스 | +2주 |
+최근 마일스톤:
+
+- **2026-09-05** — `mcp`(7개 명령) 및 `plugin`(8개 명령 + `marketplace` 하위 트리) CLI 그룹 추가, 출력이 TS CLI와 바이트 단위까지 동일; 사용자 노출 스텁 42 → 27로 감소
+- **2026-08-30** — `--version` 형식 동등화; TS CLI 대비 전체 하위 명령 인벤토리 작성(§B11)
+- **2026-08-29** — 유지 보수 모드 프로세스 착수: CI 강제 부채 레드라인, 패리티 테스트 스켈레톤
+
+원래의 단계별 계획(v0.2.0 → v1.0.0)은 단계별 완료 상태와 함께 [`docs/ROADMAP.md`](docs/ROADMAP.md)에 보존되어 있습니다.
 
 ### 현재 상태
 
 ```
-완성도: ████████████░░░░░░░░ 65%
-
-✅ 완료: 코어 엔진, TUI, API 클라이언트(Direct + OpenAI), 컨텍스트 압축,
-        OAuth, 세션 지속성, 11개 도구, 14개 슬래시 명령
-⚠️  진행 중: Bedrock/Vertex 프로바이더, MCP WebSocket, 나머지 도구 및 명령
-❌ 미완료: 권한 연결, Hook 연결, LSP, 플러그인 시스템, Remote 모드
+✅ 완료:  코어 엔진 + 스트리밍, TUI, 34개 도구, 17개 슬래시 명령(4개 스텁),
+          mcp/plugin/auth/doctor CLI 하위 명령, 9계층 권한 파이프라인,
+          컨텍스트 압축(snip/micro/auto), OAuth, 세션 지속성
+🔧 모드:  유지 보수 — TypeScript CLI 대비 갭 원장 기반 동등성 작업
+📉 부채:  56개 TODO(dep) / 27개 사용자 노출 스텁, CI 강제 감소 전용 레드라인
+🚀 릴리스: v0.8.0, 5개 플랫폼 바이너리
 ```
-
-📋 자세한 작업 분류, 아키텍처 다이어그램 및 완료 기준은 **[전체 로드맵](docs/ROADMAP.md)**을 참조하세요.
 
 ## 기여
 

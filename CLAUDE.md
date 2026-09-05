@@ -8,7 +8,7 @@
 
 **必须遵守的现行约束（CI 强制）：**
 
-- 欠账红线 `make debt-check`：`TODO(dep)`（当前 56）与用户可见 `not yet implemented` 桩（当前 42）只降不升；减少后运行 `scripts/debt-check.sh --update` 刷新基线并随 PR 提交
+- 欠账红线 `make debt-check`：`TODO(dep)`（当前 56）与用户可见 `not yet implemented` 桩（当前 27）只降不升；减少后运行 `scripts/debt-check.sh --update` 刷新基线并随 PR 提交
 - 改包前先读该包 `CONTEXT.md`；改导出符号后运行 `make docs` 同步生成文档
 - 复盘与证据：[`docs/project/discussions/2026-08-29-process-retrospective.md`](docs/project/discussions/2026-08-29-process-retrospective.md)
 
@@ -16,7 +16,7 @@
 
 Claude Code Go is a **full Go rewrite** of Claude Code (originally TypeScript/Bun). It is an agentic AI coding assistant that runs in the terminal. The entire codebase (~7,000 lines of production code + tests) was built using **AI coding tool's multi-agent parallel development mode** — each architectural layer was implemented by a dedicated AI Agent (e.g., Agent-Infra, Agent-Core) on isolated Git Worktree branches, coordinated by PM Agent, reviewed by Tech Lead Agent, and tested by QA Agent. **Zero human-written production code**.
 
-- **Module**: `github.com/anthropics/claude-code-go`
+- **Module**: `github.com/tunsuy/claude-code-go`
 - **Go version**: 1.21+
 - **License**: MIT
 
@@ -90,7 +90,7 @@ import (
 
     "external/third-party/pkg" // Group 2: Third-party packages
 
-    "github.com/anthropics/claude-code-go/internal/..." // Group 3: Internal packages
+    "github.com/tunsuy/claude-code-go/internal/..." // Group 3: Internal packages
 )
 ```
 

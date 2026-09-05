@@ -61,8 +61,6 @@ This project is a **complete Go reimplementation of [Claude Code](https://claude
   </tr>
 </table>
 
-*Sponsor links may be referral links.*
-
 ## Features
 
 - **Interactive TUI** — Full-featured terminal UI built with [Bubble Tea](https://github.com/charmbracelet/bubbletea), with dark/light themes

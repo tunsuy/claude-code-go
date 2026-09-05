@@ -63,8 +63,6 @@
   </tr>
 </table>
 
-*このセクションのリンクはリファラルリンクの場合があります。*
-
 ## 機能
 
 - **インタラクティブ TUI** — [Bubble Tea](https://github.com/charmbracelet/bubbletea) で構築されたフル機能のターミナル UI、ダーク/ライトテーマ対応

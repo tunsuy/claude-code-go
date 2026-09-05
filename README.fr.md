@@ -233,6 +233,18 @@ export OPENAI_BASE_URL=https://your-resource.openai.azure.com
 export OPENAI_MODEL=your-deployment-name
 ```
 
+**OrcaRouter (passerelle d'IA) :**
+[OrcaRouter](https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075) est une passerelle d'IA qui route chaque requête vers le modèle le plus adapté parmi plus de 200 (de pointe et open source), aux prix des fournisseurs, avec basculement et journaux de requêtes. Compatible OpenAI, il fonctionne directement via le fournisseur `openai` :
+
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=<your-orcarouter-key>
+export OPENAI_BASE_URL=https://api.orcarouter.ai/v1
+export OPENAI_MODEL=orcarouter/auto   # laisse OrcaRouter choisir le modèle pour chaque requête
+```
+
+*(Le lien ci-dessus est un lien de parrainage.)*
+
 ## Utilisation
 
 ### Mode interactif

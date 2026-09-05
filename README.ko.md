@@ -233,6 +233,18 @@ export OPENAI_BASE_URL=https://your-resource.openai.azure.com
 export OPENAI_MODEL=your-deployment-name
 ```
 
+**OrcaRouter (AI 게이트웨이):**
+[OrcaRouter](https://www.orcarouter.ai/ref/ref_49eee7ba2e9927450075)는 AI 게이트웨이입니다. 각 요청을 200개 이상의 모델(프론티어 및 오픈소스) 중 가장 적합한 모델로 라우팅하며, 요금은 프로바이더 가격 그대로이고 페일오버와 요청 로그도 제공합니다. OpenAI 호환이므로 `openai` 프로바이더를 통해 바로 사용할 수 있습니다:
+
+```bash
+export CLAUDE_PROVIDER=openai
+export OPENAI_API_KEY=<your-orcarouter-key>
+export OPENAI_BASE_URL=https://api.orcarouter.ai/v1
+export OPENAI_MODEL=orcarouter/auto   # OrcaRouter가 요청마다 모델을 선택
+```
+
+*(위 링크는 추천인(referral) 링크입니다.)*
+
 ## 사용법
 
 ### 대화형 모드

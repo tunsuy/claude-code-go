@@ -13,12 +13,21 @@
 package bootstrap
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+// ErrSilent signals that a command has already written its own diagnostic
+// (to the right stream, with the right exit-code semantics) and that main
+// must exit non-zero WITHOUT printing a further "Error: ..." line.  RunE
+// bodies use it for user-facing validation failures the oracle prints bare
+// (e.g. "MCP server x already exists in local config"), where a wrapping
+// "Error:" prefix would break output parity.
+var ErrSilent = errors.New("bootstrap: silent error")
 
 // appVersion is the canonical binary version string.
 // Overridden at link-time via -ldflags "-X bootstrap.appVersion=x.y.z".

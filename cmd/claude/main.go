@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -19,7 +20,11 @@ func main() {
 
 	// Phase 1–6: full initialisation + cobra root command execution.
 	if err := bootstrap.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		// ErrSilent: the command already printed its own diagnostic; exit
+		// non-zero without adding an "Error: ..." line.
+		if !errors.Is(err, bootstrap.ErrSilent) {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		}
 		os.Exit(1)
 	}
 }

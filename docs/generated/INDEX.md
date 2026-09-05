@@ -1,6 +1,6 @@
 ---
 type: auto-generated-index
-generated_at: 2026-08-30T01:47:48Z
+generated_at: 2026-09-05T09:11:12Z
 package_count: 38
 ---
 
@@ -20,7 +20,7 @@ package_count: 38
 | `pkg/utils/permission` | Types (zero-dep) | - | [CONTEXT](../../pkg/utils/permission/CONTEXT.md) |
 | `internal/agentctx` | Infra | - | [CONTEXT](../../internal/agentctx/CONTEXT.md) |
 | `internal/agenttype` | Infra | AgentProfile, Registry, ToolFilter | [CONTEXT](../../internal/agenttype/CONTEXT.md) |
-| `internal/config` | Infra | ConfigLoader(1m), AttributionConfig, LayeredSettings, Loader, PermissionsConfig | [CONTEXT](../../internal/config/CONTEXT.md) |
+| `internal/config` | Infra | ConfigLoader(1m), AttributionConfig, EnvPair, InstalledPluginRecord, InstalledPlugins | [CONTEXT](../../internal/config/CONTEXT.md) |
 | `internal/hooks` | Infra | Dispatcher | [CONTEXT](../../internal/hooks/CONTEXT.md) |
 | `internal/plugin` | Infra | Manager | [CONTEXT](../../internal/plugin/CONTEXT.md) |
 | `internal/session` | Infra | SessionStorer(3m), SessionManager, SessionStore | [CONTEXT](../../internal/session/CONTEXT.md) |

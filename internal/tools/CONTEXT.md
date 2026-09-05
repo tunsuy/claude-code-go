@@ -2,7 +2,7 @@
 package: tools
 import_path: internal/tools
 layer: tools
-generated_at: 2026-08-30T01:47:48Z
+generated_at: 2026-09-05T09:11:12Z
 source_files: [base.go, registry.go, tool.go]
 ---
 

@@ -6,8 +6,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/tunsuy/claude-code-go/internal/engine"
-	"github.com/tunsuy/claude-code-go/pkg/types"
+	"github.com/tunsuy/agtkeel/engine"
+	"github.com/tunsuy/agtkeel/types"
 )
 
 // maxSummaryChars is the maximum character count for the conversation summary

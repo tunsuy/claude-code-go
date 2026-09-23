@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/tunsuy/claude-code-go/internal/agenttype"
-	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/agtkeel/tools"
 )
 
 // ── Shared types ──────────────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tunsuy/claude-code-go/internal/config"
+	"github.com/tunsuy/agtkeel/config"
 )
 
 // `mcp list` rendering, `mcp add-from-claude-desktop`, and the add-json field

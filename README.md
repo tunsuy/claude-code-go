@@ -86,14 +86,14 @@ Claude Code Go is organized in six layers:
 ├─────────────────────────────────────┤
 │  TUI (internal/tui)                 │  Bubble Tea MVU interface
 ├─────────────────────────────────────┤
-│  Tools (internal/tools)             │  file, shell, search, MCP tools
+│  Tools (internal/tools/*)           │  file, shell, search, MCP tools
 ├─────────────────────────────────────┤
-│  Core Engine (internal/engine)      │  streaming, tool dispatch, coordinator
+│  Core Engine (agtkeel/engine)       │  streaming, tool dispatch, coordinator
 ├─────────────────────────────────────┤
-│  Services (internal/api, oauth,     │  Anthropic API, OAuth, MCP client
-│            mcp, compact)            │
+│  Services (agtkeel/api, oauth,      │  Anthropic API, OAuth, MCP client
+│            agtkeel/mcp, compact)    │
 ├─────────────────────────────────────┤
-│  Infra (pkg/types, internal/config, │  types, config, state, hooks, plugins
+│  Infra (agtkeel/types, config,      │  types, config, state, hooks, plugins
 │         state, session, hooks)      │
 └─────────────────────────────────────┘
 ```

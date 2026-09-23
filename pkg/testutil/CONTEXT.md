@@ -2,7 +2,7 @@
 package: testutil
 import_path: pkg/testutil
 layer: types
-generated_at: 2026-09-05T09:11:12Z
+generated_at: 2026-09-23T11:03:32Z
 source_files: [testutil.go]
 ---
 

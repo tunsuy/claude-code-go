@@ -25,18 +25,21 @@ Claude Code Go is a **full Go rewrite** of Claude Code (originally TypeScript/Bu
 ```
 CLI (cmd/claude)         → Cobra entry point, bootstrap
 TUI (internal/tui)       → Bubble Tea MVU interface
-Tools (internal/tools)   → File, shell, search, MCP tools
-Engine (internal/engine) → LLM query loop, tool dispatch, coordinator
-Services (internal/api, oauth, mcp, compact) → API client, MCP, OAuth
-Infra (pkg/types, internal/config, state, session, hooks) → Types, config, state
+Tools (internal/tools/*) → File, shell, search, MCP tools（接口契约与注册表已提取到 agtkeel/tools）
+Engine (agtkeel/engine)  → LLM query loop, tool dispatch, coordinator
+Services (agtkeel/api, agtkeel/mcp, agtkeel/compact, internal/oauth) → API client, MCP, OAuth
+Infra (agtkeel/types, agtkeel/config, agtkeel/session, agtkeel/hooks, internal/state) → Types, config, state
 ```
 
-**Dependency rule**: Lower layers MUST NOT import from higher layers. `pkg/types` is zero-dependency — all layers may depend on it.
+**基座提取**：可复用 agent 内核（types/api/msgqueue/compact/tools 抽象/engine/session/permissions/hooks/mcp/config/utils）已提取到 [github.com/tunsuy/agtkeel](https://github.com/tunsuy/agtkeel)（MIT，2026-09-23 换库完成）；本仓保留产品侧：CLI/TUI/bootstrap/coordinator/oauth/plugin/state/memdir/agentctx/agenttype/commands 与具体工具实现（internal/tools/<category>）。
+
+**Dependency rule**: Lower layers MUST NOT import from higher layers. `agtkeel/types` is zero-dependency — all layers may depend on it.
 
 ## Key Dependencies
 
 | Library | Purpose |
 |---------|---------|
+| `github.com/tunsuy/agtkeel` | Shared agent foundation (engine, api, types, permissions, hooks, mcp, session, config, tools contract) |
 | `github.com/spf13/cobra` | CLI command framework |
 | `github.com/charmbracelet/bubbletea` | TUI framework (Elm-style MVU) |
 | `github.com/charmbracelet/lipgloss` | TUI styling |

@@ -4,7 +4,7 @@ package plugin
 import (
 	"fmt"
 
-	"github.com/tunsuy/claude-code-go/pkg/types"
+	"github.com/tunsuy/agtkeel/types"
 )
 
 // Manager loads and manages the plugin set.

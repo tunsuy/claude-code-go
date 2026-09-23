@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/tunsuy/claude-code-go/internal/config"
+	"github.com/tunsuy/agtkeel/config"
 )
 
 // Entry builders over raw ordered maps, mirroring what the storage layer

@@ -2,7 +2,7 @@
 package: bootstrap
 import_path: internal/bootstrap
 layer: cli
-generated_at: 2026-09-05T09:11:12Z
+generated_at: 2026-09-23T11:03:32Z
 source_files: [auth.go, bootstrap.go, mcp.go, mcp_health.go, mcp_help.go, mcp_list.go, mcp_parse.go, mcp_render.go, mcp_run.go, misc.go, plugin.go, plugin_help.go, plugin_install.go, plugin_marketplace.go, plugin_render.go, plugin_run.go, plugin_validate.go, root.go, run.go, session.go, tools.go, wire.go]
 ---
 
@@ -28,7 +28,7 @@ source_files: [auth.go, bootstrap.go, mcp.go, mcp_health.go, mcp_help.go, mcp_li
 
 ## Dependencies
 
-**Imports:** `internal/agentctx`, `internal/agenttype`, `internal/api`, `internal/config`, `internal/coordinator`, `internal/engine`, `internal/hooks`, `internal/mcp`, `internal/memdir`, `internal/msgqueue`, `internal/oauth`, `internal/permissions`, `internal/session`, `internal/state`, `internal/tools`, `internal/tools/agent`, `internal/tools/fileops`, `internal/tools/interact`, `internal/tools/mcp`, `internal/tools/memory`, `internal/tools/misc`, `internal/tools/shell`, `internal/tools/tasks`, `internal/tools/web`, `internal/tui`, `pkg/types`, `pkg/utils/fs`
+**Imports:** `internal/agentctx`, `internal/agenttype`, `internal/coordinator`, `internal/memdir`, `internal/oauth`, `internal/state`, `internal/tools/agent`, `internal/tools/fileops`, `internal/tools/interact`, `internal/tools/mcp`, `internal/tools/memory`, `internal/tools/misc`, `internal/tools/shell`, `internal/tools/tasks`, `internal/tools/web`, `internal/tui`
 
 **Imported by:** `cmd/claude`
 

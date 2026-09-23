@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tunsuy/claude-code-go/internal/config"
+	"github.com/tunsuy/agtkeel/config"
 )
 
 // `claude plugin install` and `claude plugin uninstall`.  Both resolve the

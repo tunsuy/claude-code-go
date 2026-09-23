@@ -2,7 +2,7 @@
 package: main
 import_path: cmd/claude
 layer: cli
-generated_at: 2026-09-05T09:11:12Z
+generated_at: 2026-09-23T11:03:32Z
 source_files: [main.go]
 ---
 

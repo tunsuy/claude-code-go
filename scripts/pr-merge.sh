@@ -103,8 +103,16 @@ else
   echo "==> pr-merge: no kb_sync.py in this repo — skipping product ship gate"
 fi
 
+# main 保护策略要求 1 个 review 批准，而本仓单人账号（作者=仓库主）无法自批；
+# 先例 #29/#30 均为仓库主 admin 合入。PR_MERGE_ADMIN=1 显式选择 admin 通道。
+ADMIN_FLAG=""
+if [ "${PR_MERGE_ADMIN:-0}" = "1" ]; then
+  ADMIN_FLAG="--admin"
+  echo "==> pr-merge: PR_MERGE_ADMIN=1 — using admin channel (review gate unsatisfiable on single-account repo; precedent #29/#30)"
+fi
+
 echo "==> pr-merge: CI green; squash merging PR #${PR}"
-gh pr merge "$PR" --squash --delete-branch
+gh pr merge "$PR" --squash --delete-branch $ADMIN_FLAG
 echo "PR #${PR} merged ✓"
 
 # 自动防呆：合入后将本地 handoff.md 复位为 status: idle，避免切回 main 后残留 active

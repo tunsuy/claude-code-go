@@ -2,7 +2,7 @@
 package: shell
 import_path: internal/tools/shell
 layer: tools
-generated_at: 2026-09-05T09:11:12Z
+generated_at: 2026-09-23T11:03:32Z
 source_files: [bash.go, doc.go, matcher.go, security.go]
 ---
 
@@ -28,7 +28,7 @@ source_files: [bash.go, doc.go, matcher.go, security.go]
 
 ## Dependencies
 
-**Imports:** `internal/tools`
+**Imports:** *(none — zero-dependency)*
 
 **Imported by:** `internal/bootstrap`
 

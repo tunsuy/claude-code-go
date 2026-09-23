@@ -2,7 +2,7 @@
 package: coordinator
 import_path: internal/coordinator
 layer: core
-generated_at: 2026-09-05T09:11:12Z
+generated_at: 2026-09-23T11:03:32Z
 source_files: [adapter.go, coordinator.go, prompt.go]
 ---
 
@@ -85,7 +85,7 @@ type Coordinator interface {
 
 ## Dependencies
 
-**Imports:** `internal/tools`, `pkg/utils/ids`
+**Imports:** *(none — zero-dependency)*
 
 **Imported by:** `internal/bootstrap`, `internal/tui`
 

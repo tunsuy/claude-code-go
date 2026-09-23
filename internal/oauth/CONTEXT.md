@@ -2,7 +2,7 @@
 package: oauth
 import_path: internal/oauth
 layer: services
-generated_at: 2026-09-05T09:11:12Z
+generated_at: 2026-09-23T11:03:32Z
 source_files: [client.go, crypto.go, crypto_aes.go, listener.go, refresh.go, store.go, store_darwin.go, store_other.go, types.go]
 ---
 
@@ -54,7 +54,6 @@ type TokenStore interface {
 ## Change Impact
 
 **Test Mocks (must add new methods when interfaces change):**
-- `mockClient` in `internal/engine/engine_test.go`
 - `mockClient` in `test/integration/engine_e2e_test.go`
 
 **Exported type references (files that use types from this package):**

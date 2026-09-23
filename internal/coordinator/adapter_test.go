@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/agtkeel/tools"
 )
 
 // TestNewAgentCoordinator_NilInput verifies nil returns nil.

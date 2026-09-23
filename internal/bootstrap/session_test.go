@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/tunsuy/claude-code-go/pkg/types"
-	utilfs "github.com/tunsuy/claude-code-go/pkg/utils/fs"
+	"github.com/tunsuy/agtkeel/types"
+	utilfs "github.com/tunsuy/agtkeel/utils/fs"
 )
 
 // ── helpers ──────────────────────────────────────────────────────────────────

@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/glamour/ansi"
-	"github.com/tunsuy/claude-code-go/pkg/types"
+	"github.com/tunsuy/agtkeel/types"
 )
 
 // BLACK_CIRCLE is the bullet used for tool indicators.

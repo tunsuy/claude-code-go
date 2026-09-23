@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tunsuy/claude-code-go/internal/config"
-	"github.com/tunsuy/claude-code-go/internal/mcp"
+	"github.com/tunsuy/agtkeel/config"
+	"github.com/tunsuy/agtkeel/mcp"
 )
 
 // Health checking for `mcp list` / `mcp get`.  The connection is attempted with

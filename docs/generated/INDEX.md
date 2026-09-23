@@ -1,7 +1,7 @@
 ---
 type: auto-generated-index
-generated_at: 2026-09-05T09:11:12Z
-package_count: 38
+generated_at: 2026-09-23T11:03:32Z
+package_count: 25
 ---
 
 # Package Index
@@ -12,29 +12,16 @@ package_count: 38
 | Package | Layer | Key Exports | Context |
 |---------|-------|-------------|----------|
 | `pkg/testutil` | Types (zero-dep) | - | [CONTEXT](../../pkg/testutil/CONTEXT.md) |
-| `pkg/types` | Types (zero-dep) | AppStateReader(3m), MCPConnection(2m), AdditionalWorkingDirectory, AggregatedHookResult, CommandBase | [CONTEXT](../../pkg/types/CONTEXT.md) |
 | `pkg/utils/env` | Types (zero-dep) | - | [CONTEXT](../../pkg/utils/env/CONTEXT.md) |
-| `pkg/utils/fs` | Types (zero-dep) | - | [CONTEXT](../../pkg/utils/fs/CONTEXT.md) |
-| `pkg/utils/ids` | Types (zero-dep) | - | [CONTEXT](../../pkg/utils/ids/CONTEXT.md) |
 | `pkg/utils/jsonutil` | Types (zero-dep) | - | [CONTEXT](../../pkg/utils/jsonutil/CONTEXT.md) |
 | `pkg/utils/permission` | Types (zero-dep) | - | [CONTEXT](../../pkg/utils/permission/CONTEXT.md) |
 | `internal/agentctx` | Infra | - | [CONTEXT](../../internal/agentctx/CONTEXT.md) |
 | `internal/agenttype` | Infra | AgentProfile, Registry, ToolFilter | [CONTEXT](../../internal/agenttype/CONTEXT.md) |
-| `internal/config` | Infra | ConfigLoader(1m), AttributionConfig, EnvPair, InstalledPluginRecord, InstalledPlugins | [CONTEXT](../../internal/config/CONTEXT.md) |
-| `internal/hooks` | Infra | Dispatcher | [CONTEXT](../../internal/hooks/CONTEXT.md) |
 | `internal/plugin` | Infra | Manager | [CONTEXT](../../internal/plugin/CONTEXT.md) |
-| `internal/session` | Infra | SessionStorer(3m), SessionManager, SessionStore | [CONTEXT](../../internal/session/CONTEXT.md) |
 | `internal/state` | Infra | AppState, ModelSetting, Store, TaskState | [CONTEXT](../../internal/state/CONTEXT.md) |
-| `internal/api` | Services | Client(2m), StreamReader(1m), APIError, APIErrorData, Accumulator | [CONTEXT](../../internal/api/CONTEXT.md) |
-| `internal/compact` | Services | Compressor(2m), AutoCompactTrackingState, AutoCompactor, CacheEdit, CompactionExtra | [CONTEXT](../../internal/compact/CONTEXT.md) |
-| `internal/mcp` | Services | MCPClient(7m), Transport(3m), HTTPTransportConfig, JSONRPCError, JSONRPCMessage | [CONTEXT](../../internal/mcp/CONTEXT.md) |
 | `internal/memdir` | Services | AutoDreamConfig, DiscoveredFile, ExtractMemoriesConfig, MemoryFile, MemoryHeader | [CONTEXT](../../internal/memdir/CONTEXT.md) |
-| `internal/msgqueue` | Services | MessageQueue, QueryGuard, QueuedCommand, Signal | [CONTEXT](../../internal/msgqueue/CONTEXT.md) |
 | `internal/oauth` | Services | TokenStore(3m), AuthCodeListener, AuthURLParams, Client, FileStore | [CONTEXT](../../internal/oauth/CONTEXT.md) |
-| `internal/permissions` | Services | Checker(3m), AskRequest, AskResponse, CheckerConfig, DangerousPathResult | [CONTEXT](../../internal/permissions/CONTEXT.md) |
 | `internal/coordinator` | Core | Coordinator(8m), AgentUsage, Config, Event, MCPClientInfo | [CONTEXT](../../internal/coordinator/CONTEXT.md) |
-| `internal/engine` | Core | QueryEngine(5m), BudgetTracker, CacheSafeParams, Config, ForkedAgentConfig | [CONTEXT](../../internal/engine/CONTEXT.md) |
-| `internal/tools` | Tools | AgentCoordinator(9m), MCPToolInfo(1m), PathTool(1m), PermissionContext(1m), SearchOrReadTool(1m), ... | [CONTEXT](../../internal/tools/CONTEXT.md) |
 | `internal/tools/agent` | Tools | AgentInput, AgentOutput, GetAgentStatusInput, GetAgentStatusOutput, SendMessageInput | [CONTEXT](../../internal/tools/agent/CONTEXT.md) |
 | `internal/tools/fileops` | Tools | FileEditInput, FileReadInput, FileReadOutput, FileWriteInput, GlobInput | [CONTEXT](../../internal/tools/fileops/CONTEXT.md) |
 | `internal/tools/interact` | Tools | AskUserQuestionInput, EnterPlanModeInput, EnterWorktreeInput, ExitPlanModeInput, ExitWorktreeInput | [CONTEXT](../../internal/tools/interact/CONTEXT.md) |
@@ -50,4 +37,4 @@ package_count: 38
 | `internal/commands` | CLI | Command, CommandContext, Registry, Result | [CONTEXT](../../internal/commands/CONTEXT.md) |
 
 ---
-*38 packages across 8 layers.*
+*25 packages across 8 layers.*

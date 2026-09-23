@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/agtkeel/tools"
 )
 
 func TestCheckDangerousPathFiles(t *testing.T) {

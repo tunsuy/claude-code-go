@@ -6,7 +6,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/tunsuy/claude-code-go/internal/commands"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
-	"github.com/tunsuy/claude-code-go/internal/msgqueue"
+	"github.com/tunsuy/agtkeel/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/state"
 )
 

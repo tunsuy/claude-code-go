@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/agtkeel/tools"
 )
 
 // Compile-time assertion: coordinatorAdapter implements tools.AgentCoordinator.

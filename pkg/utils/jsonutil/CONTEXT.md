@@ -2,7 +2,7 @@
 package: jsonutil
 import_path: pkg/utils/jsonutil
 layer: types
-generated_at: 2026-09-05T09:11:12Z
+generated_at: 2026-09-23T11:03:32Z
 source_files: [json.go]
 ---
 

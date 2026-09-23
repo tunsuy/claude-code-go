@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/agtkeel/tools"
 )
 
 // ── Input / Output types ──────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/tunsuy/claude-code-go/internal/api"
+	"github.com/tunsuy/agtkeel/api"
 	"github.com/tunsuy/claude-code-go/internal/bootstrap"
 )
 

@@ -8,19 +8,19 @@ import (
 
 	"github.com/tunsuy/claude-code-go/internal/agentctx"
 	"github.com/tunsuy/claude-code-go/internal/agenttype"
-	"github.com/tunsuy/claude-code-go/internal/api"
-	"github.com/tunsuy/claude-code-go/internal/config"
+	"github.com/tunsuy/agtkeel/api"
+	"github.com/tunsuy/agtkeel/config"
 	"github.com/tunsuy/claude-code-go/internal/coordinator"
-	"github.com/tunsuy/claude-code-go/internal/engine"
-	"github.com/tunsuy/claude-code-go/internal/hooks"
-	"github.com/tunsuy/claude-code-go/internal/mcp"
+	"github.com/tunsuy/agtkeel/engine"
+	"github.com/tunsuy/agtkeel/hooks"
+	"github.com/tunsuy/agtkeel/mcp"
 	"github.com/tunsuy/claude-code-go/internal/memdir"
-	"github.com/tunsuy/claude-code-go/internal/msgqueue"
+	"github.com/tunsuy/agtkeel/msgqueue"
 	"github.com/tunsuy/claude-code-go/internal/oauth"
-	"github.com/tunsuy/claude-code-go/internal/permissions"
+	"github.com/tunsuy/agtkeel/permissions"
 	"github.com/tunsuy/claude-code-go/internal/state"
-	"github.com/tunsuy/claude-code-go/internal/tools"
-	"github.com/tunsuy/claude-code-go/pkg/types"
+	"github.com/tunsuy/agtkeel/tools"
+	"github.com/tunsuy/agtkeel/types"
 )
 
 // P1-F: Compile-time interface assertions for AppContainer field types.

@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/tunsuy/claude-code-go/internal/mcp"
-	"github.com/tunsuy/claude-code-go/internal/tools"
+	"github.com/tunsuy/agtkeel/mcp"
+	"github.com/tunsuy/agtkeel/tools"
 )
 
 // The `claude mcp` command tree.  The whole tree reproduces the upstream TS
